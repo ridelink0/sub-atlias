@@ -1,0 +1,171 @@
+{
+  "schema": "atlias.public-status.v1",
+  "generatedAt": "2026-10-09T20:41:10.307Z",
+  "engine": {
+    "target": "OpenCode v2",
+    "pin": "d2905b8ddae8b0353cd2166d68d59795397921db",
+    "version": "2.0.26",
+    "verifiedIntegration": false
+  },
+  "agents": [
+    {
+      "id": "local-evolution",
+      "name": "Local evolution",
+      "state": "unknown",
+      "observedAt": "2026-10-09T20:40:15.010Z",
+      "phase": "eval",
+      "variant": "v0000",
+      "stage": "s3",
+      "model": "qwen2.5-coder:7b",
+      "inferenceLock": true,
+      "processVerified": null
+    },
+    {
+      "id": "codex-migration",
+      "name": "Codex",
+      "state": "unknown",
+      "observedAt": "2026-10-09T20:20:40.077Z",
+      "phase": "Benchmark and website verification",
+      "model": "gpt-6.1-sol",
+      "processVerified": null
+    },
+    {
+      "id": "research-team",
+      "name": "Research",
+      "state": "completed",
+      "observedAt": "2026-10-09T20:20:40.077Z",
+      "phase": "11 source-evidence scrapers and3 claim verifiers",
+      "model": null,
+      "processVerified": null
+    },
+    {
+      "id": "claude-runtime",
+      "name": "Claude",
+      "state": "working",
+      "observedAt": "2026-10-09T20:41:10.306Z",
+      "phase": "OpenCode runtime migration",
+      "model": "Opus5.5 xhigh",
+      "processVerified": true
+    }
+  ],
+  "champion": "v0000",
+  "completedIterations": 2,
+  "results": [
+    {
+      "variant": "v0000",
+      "stage": "s1",
+      "passed": 1,
+      "total": 10,
+      "rate": 0.1,
+      "interval": {
+        "lower": 0.017876213095072896,
+        "upper": 0.4041500267952385,
+        "scope": "Binomial interval for this task set; no general capability or adaptive-search guarantee."
+      },
+      "promptTokens": 250171,
+      "outputTokens": null,
+      "fullNativePeak": null,
+      "providerReportedPeak": 4364,
+      "scope": "Original completed stage summary, not independently regraded or native20x proof."
+    },
+    {
+      "variant": "v0000",
+      "stage": "s2",
+      "passed": 10,
+      "total": 60,
+      "rate": 0.16666666666666666,
+      "interval": {
+        "lower": 0.0931317697919145,
+        "upper": 0.2803161316361453,
+        "scope": "Binomial interval for this task set; no general capability or adaptive-search guarantee."
+      },
+      "promptTokens": 1428528,
+      "outputTokens": null,
+      "fullNativePeak": null,
+      "providerReportedPeak": 10010,
+      "scope": "Original completed stage summary, not independently regraded or native20x proof."
+    },
+    {
+      "variant": "v0001",
+      "stage": "s1",
+      "passed": 3,
+      "total": 10,
+      "rate": 0.3,
+      "interval": {
+        "lower": 0.10779126740630099,
+        "upper": 0.6032218525388546,
+        "scope": "Binomial interval for this task set; no general capability or adaptive-search guarantee."
+      },
+      "promptTokens": 187654,
+      "outputTokens": null,
+      "fullNativePeak": null,
+      "providerReportedPeak": 4888,
+      "scope": "Original completed stage summary, not independently regraded or native20x proof."
+    },
+    {
+      "variant": "v0001",
+      "stage": "s2",
+      "passed": 7,
+      "total": 60,
+      "rate": 0.11666666666666667,
+      "interval": {
+        "lower": 0.0576772064005603,
+        "upper": 0.2217878802417086,
+        "scope": "Binomial interval for this task set; no general capability or adaptive-search guarantee."
+      },
+      "promptTokens": 1484584,
+      "outputTokens": null,
+      "fullNativePeak": null,
+      "providerReportedPeak": 10430,
+      "scope": "Original completed stage summary, not independently regraded or native20x proof."
+    },
+    {
+      "variant": "v0002",
+      "stage": "s1",
+      "passed": 7,
+      "total": 10,
+      "rate": 0.7,
+      "interval": {
+        "lower": 0.39677814746114537,
+        "upper": 0.8922087325936989,
+        "scope": "Binomial interval for this task set; no general capability or adaptive-search guarantee."
+      },
+      "promptTokens": 169938,
+      "outputTokens": null,
+      "fullNativePeak": null,
+      "providerReportedPeak": 4456,
+      "scope": "Original completed stage summary, not independently regraded or native20x proof."
+    },
+    {
+      "variant": "v0002",
+      "stage": "s2",
+      "passed": 44,
+      "total": 60,
+      "rate": 0.7333333333333333,
+      "interval": {
+        "lower": 0.6099128690331636,
+        "upper": 0.8286735999671945,
+        "scope": "Binomial interval for this task set; no general capability or adaptive-search guarantee."
+      },
+      "promptTokens": 1144310,
+      "outputTokens": null,
+      "fullNativePeak": null,
+      "providerReportedPeak": 7578,
+      "scope": "Original completed stage summary, not independently regraded or native20x proof."
+    }
+  ],
+  "goals": {
+    "totalNativeTokens": {
+      "target": 20,
+      "proved": false
+    },
+    "fullNativePeak": {
+      "target": 20,
+      "proved": false
+    },
+    "capability": "unproved",
+    "allowance": "unproved",
+    "continueAfterGoal": true
+  },
+  "scope": "Published snapshot of measured local state. Missing, stale and unknown evidence never means completion."
+}
