@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {plateauState,chooseParent,proposalChoices,selectProposal} from '../lib/evolution-search.mjs';
+const stage=(passes,tokens=100)=>({n:4,passed:passes,tokens,rows:[0,1,2,3].map(i=>({key:'task-'+i,pass:i<passes}))});
+const champion={id:'v0002',born:'2026-10-10T00:00:00Z',config:{budget:8,model:'local'},s1:stage(3),s2:stage(3)};
+const variants=[champion,...[3,4,5].map((n,i)=>({id:'v000'+n,born:`2026-10-10T00:0${i+1}:00Z`,parent:champion.id,config:{budget:4+i,model:'local'},change:{budget:4+i},s2:stage(2),vsChampionS2:{champion:champion.id,better:false,cheaper:false}}))];
+const a={champion:champion.id,variants};
+assert.equal(plateauState(a).plateau,true);assert.equal(chooseParent(a).parent.id,champion.id);
+assert.equal(plateauState(a).regressions.length,3);
+assert.equal(plateauState({...a,variants:variants.slice(0,3)}).penalty.active,false);
+assert.equal(plateauState(a).penalty.parentWeightMultiplier,0);
+assert.deepEqual(plateauState(a).penalty.excludedParentIds,['v0003','v0004','v0005']);
+for(const random of [0,0.5,0.999])assert.equal(chooseParent(a,{random:()=>random}).parent.id,champion.id);
+const choices=proposalChoices(a,champion,{budget:[4,5,6,8,12],model:['local','different']});
+assert.equal(choices.some(c=>c.change.budget===4),false);assert.ok(choices.some(c=>c.change.budget===12));
+assert.deepEqual(selectProposal(a,champion,{budget:[8,12],model:['local','different']},{proposed:{budget:12},random:()=>0}).change,{model:'different'});
+const before=JSON.stringify(a);chooseParent(a);proposalChoices(a,champion,{budget:[12]});assert.equal(JSON.stringify(a),before);
+console.log('PASS functional: third completed round applies branch-weight penalty, champion anchoring, enforced least-penalized unseen actions and immutable scores');

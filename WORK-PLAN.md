@@ -1,5 +1,19 @@
 # Gev's OpenCode migration checkpoint
 
+## Current October10 continuation — latest Gev directives
+
+Claude FIRST at fresh actual quota, then plateau/self-learning and all core runtime/local-model/benchmark goals, WEBSITE LAST. Latest explicit website fix/publication request supersedes the older exclusive-Claude ownership paragraph below. Codex owns its current source repair; Claude coordinates before editing it. Put "use Usage Limits relays" in Claude's prompt only; do not inspect relay settings.
+
+Actual Claude delivery at2026-10-10T06:30:40Z confirmed working session8333be2a, Opus5.5 xhigh, Ultrathink, full CLAUDE-FRESH-COLLABORATION.md and relay instruction. Fresh API23%five-hour/60%weekly, extra usage off. A first queue attempt held after transient RAM headroom; corrected owned queue82375 rechecked reserve and native session ownership, then delivered once. One-time Claude handoff automation fulfilled/deleted; daily21:20Chicago preserved.
+
+Gev added an operational punishment after THREE COMPLETED measured nonchampion rounds. Implemented lib/evolution-search.mjs, imported by actual next-process D:/harness-work/atlias-evolve/evolve.mjs: nonchampion parent weights become zero, candidates start from champion, unseen typed least-penalized proposals enforced, promotion resets streak. Pending/partial/confirmation rounds and infrastructure outages excluded; original grades/promotion gates unchanged. Functional policy/controller checks and separate adversarial policy/controller checks passed. No model call/archive mutation or running restart. Syntax check of actual controller passed.
+
+Corrected actual archive audit06:28Z: championv0002, FOUR completed measured nonchampion rounds(v0003,v0014,v0015,v0016), TEN zero-counted-call outages. Current v0017s2 still partial56/60,36passed, heartbeatowner41764 fresh. The previous draft incorrectly included unfinishedv0017 from its completed smoke stage; fixed. New policy is on disk, NOT loaded by that process. Never STOP during active eval. Preserve original120 confirmation and distinct new250+holdout identities; next-runtime-ready is mandatory before clean restart. No artificial champion or model-weight learning claim.
+
+Live website deployed https://atlias.vercel.app with real90-second API/feed, rounds/versus/history/suite definitions/resources and typed archived proposals. Own livepublisher session78176; no duplicate worker. Remaining source refinements are not deployed. Source/API/privacy checks and actual production UFS render checks passed earlier; website remains LAST. Keep private paths/transcripts/sealed IDs out of public data.
+
+Next core work: independently review/merge Claude runtimea66240d, fix unmatched provider dispatch-intent accounting in native adapter, qualify actual pinned Bun bootstrap under reserve with inference held, complete native migration and safe versioned evolution handoff. Native20xTOTAL/FULLpeak on BOTH hosts, causal allowance, full Ultimate execution/general capability/useful days/actual reboot/powerloss remain unproved and active. Preserve games, protected dirty originals, production46unknownHTTP500/47–49failures and V30production49hold. Free downloads authorized; no credits/paidcalls/purchases/unrelatedpublishing/messages. Local commits/checkpoints before long steps.
+
 Updated October9,2026,19:56 America/Chicago. Work is ongoing. Download restrictions were explicitly removed by Gev: "destroy the download restriction and run it all". No paid calls, credits or purchases. Only the requested Atlias website publication and Claude communication are authorized externally.
 
 ## Latest Gev priority and current integration checkpoint
