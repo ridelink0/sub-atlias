@@ -7,6 +7,7 @@
 // test/run.mjs.
 import * as loop from '../lib/loop.mjs';
 import * as settings from '../lib/settings.mjs';
+import * as gate from '../lib/gate.mjs';
 
 export default async function finishGreenSuites({ asyncSuite, suite, check, core, agentMod, TMP, fs, path }) {
   const NL = String.fromCharCode(10);
@@ -33,7 +34,7 @@ export default async function finishGreenSuites({ asyncSuite, suite, check, core
       const st = agentMod.newState(d, 'ollama');
       const reply = await loop.runLoop(st, 'make two() return 2', { chat, say: () => {}, ask: async () => true, limits });
       const said = st.messages.filter((m) => m.role !== 'system' && m.role !== 'assistant').map((m) => String(m.content || ''));
-      return { st, reply, calls, said, file: (rel) => fs.readFileSync(path.join(d, rel), 'utf8') };
+      return { d, st, reply, calls, said, file: (rel) => fs.readFileSync(path.join(d, rel), 'utf8') };
     } finally { if (before == null) delete process.env[FLAG]; else process.env[FLAG] = before; }
   };
   const SUM = 'export const two = () => 1;' + NL;
@@ -84,5 +85,58 @@ export default async function finishGreenSuites({ asyncSuite, suite, check, core
       { happened: brief(on) + ' vs ' + brief(off), why: 'CanItEdit hides its tests until the run ends; there the flag must be invisible.', fix: 'Run nothing when gate.visibleCheck returns null.' });
     check('unset and off give the same run', unset.calls === offFull.calls && JSON.stringify(unset.said) === JSON.stringify(offFull.said) && unset.st.greenChecks === undefined,
       { happened: brief(unset) + ' vs ' + brief(offFull), why: 'The baseline every archived result was measured on is the flag unset.', fix: 'Default false in DEFAULTS.flags.' });
+  });
+
+  // From the ultrareview of d366ac5 (2026-10-10): a red hidden check stood in
+  // for the model's own, and the check's file name reached a shell unquoted.
+  const same = (a, b) => a.calls === b.calls && JSON.stringify(a.said) === JSON.stringify(b.said) && JSON.stringify(a.st.stop) === JSON.stringify(b.st.stop);
+  const nudged = (r) => r.said.some((s) => /ran no check after the last edit/.test(s));
+
+  await asyncSuite('finish on green expert', 'a red check the model never saw does not count as its check', async () => {
+    const npm = { ...PROJECT, 'package.json': JSON.stringify({ scripts: { test: 'node check.mjs' } }) };
+    const on = await run('1', PROJECT, [wrong, 'Done.']);
+    const off = await run('0', PROJECT, [wrong, 'Done.']);
+    const onNpm = await run('1', npm, [wrong, 'Done.']);
+    const offNpm = await run('0', npm, [wrong, 'Done.']);
+    const autoRan = (r) => r.said.some((s) => /ran the project's check after your edits/.test(s));
+    check('an answer with no check after a red hidden check is nudged, as it is with the flag off', on.st.greenChecks === 1 && nudged(on) && same(on, off),
+      { happened: brief(on) + ' vs ' + brief(off), why: 'The hidden check set verifiedAt, so the loop took "Done." over a failing check without the nudge it gives with the flag off.', fix: 'runLoop: put state.verifiedAt back after a hidden check that did not pass.' });
+    check('where the project has a test command the loop still runs it and the model reads the result', onNpm.st.greenChecks === 1 && autoRan(onNpm) && autoRan(offNpm) && onNpm.calls === offNpm.calls && onNpm.st.stop.reason === offNpm.st.stop.reason,
+      { happened: brief(onNpm) + ' vs ' + brief(offNpm), why: 'The loop\'s own check after edits is the safety net the flag must leave alone.', fix: 'runLoop: put state.verifiedAt back after a hidden check that did not pass.' });
+  });
+
+  await asyncSuite('finish on green adversary', 'the hidden check neither erases nor fakes a check', async () => {
+    const paired = await run('1', PROJECT, [wrong + NL + own, 'Done.']);
+    const pairedOff = await run('0', PROJECT, [wrong + NL + own, 'Done.']);
+    const again = blk({ tool: 'edit_file', path: 'sum.mjs', old_string: '=> 3', new_string: '=> 4' });
+    const twice = await run('1', PROJECT, [wrong, again, 'Done.']);
+    const twiceOff = await run('0', PROJECT, [wrong, again, 'Done.']);
+    check('a check the model ran itself after its edit still counts after a red hidden check', paired.st.greenChecks === 1 && !nudged(paired) && same(paired, pairedOff),
+      { happened: brief(paired) + ' vs ' + brief(pairedOff), why: 'Putting verifiedAt back must restore the model\'s own check, not clear it.', fix: 'Keep the value from before the hidden run, not zero.' });
+    check('two red hidden checks in a row still leave the answer unchecked', twice.st.greenChecks === 2 && nudged(twice) && same(twice, twiceOff),
+      { happened: brief(twice) + ' vs ' + brief(twiceOff), why: 'Each hidden run must put back what it found.', fix: 'Read state.verifiedAt just before each hidden run.' });
+  });
+
+  await asyncSuite('finish on green expert', 'a check named with dots and hyphens still runs', async () => {
+    const on = await run('1', { 'sum.mjs': SUM, 'my-app.v2_check.mjs': CHECK }, [fix, 'Done.']);
+    check('my-app.v2_check.mjs is run and its pass ends the run', on.calls === 1 && on.st.stop.detail === 'check passed after the edit' && /node my-app\.v2_check\.mjs/.test(on.reply),
+      { happened: brief(on), why: 'The plain-name rule must keep every name the gate names on a real project.', fix: 'Allow word characters, dots and hyphens.' });
+  });
+
+  await asyncSuite('finish on green adversary', 'a file name the shell would read as commands is never run', async () => {
+    const evil = process.platform === 'win32' ? 'a&mkdir PWNED&python x_check.py' : 'a$(mkdir${IFS}PWNED)\\x_check.py';
+    const files = { 'sum.mjs': SUM, [evil]: 'print("ok")' + NL };
+    const named = gate.visibleCheck(dir(files));
+    const on = await run('1', files, [fix, 'Done.']);
+    const off = await run('0', files, [fix, 'Done.']);
+    const pwned = fs.existsSync(path.join(on.d, 'PWNED'));
+    check('the gate names the file, and the loop runs nothing: no PWNED, the run is the flag-off run', named && named.name === evil && !pwned && on.st.greenChecks === undefined && same(on, off),
+      { happened: `named=${named && named.name} pwned=${pwned} ` + brief(on), why: 'runTool hands the command to a shell, which would run what the name smuggles in.', fix: 'runLoop: run the found check only when its name is word characters, dots and hyphens.' });
+    const opt = { 'sum.mjs': SUM, '-h_check.py': 'print("ok")' + NL };
+    const optNamed = gate.visibleCheck(dir(opt));
+    const optOn = await run('1', opt, [fix, 'Done.']);
+    const optOff = await run('0', opt, [fix, 'Done.']);
+    check('a name that starts with a hyphen is an option to the interpreter, not a check: nothing runs', optNamed && optNamed.name === '-h_check.py' && optOn.st.greenChecks === undefined && same(optOn, optOff),
+      { happened: `named=${optNamed && optNamed.name} ` + brief(optOn), why: 'python -h_check.py prints its help and exits 0, a pass for code nothing checked.', fix: 'The name must not start with a hyphen.' });
   });
 }
