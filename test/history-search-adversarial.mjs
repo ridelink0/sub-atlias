@@ -44,5 +44,32 @@ const reviewed = live.status.communications.filter(m => m.kind === 'reviewed col
 assert.equal(reviewed.length, 1); assert.equal(reviewed[0].text, 'handoff delivered');
 assert.equal(live.status.communications.find(m => m.variant === 'v0001').text, 'A proposal was recorded; its contents are withheld.');
 assert.ok(!/[A-Za-z]:[\\/]|example\.com|Bearer/.test(JSON.stringify(live)));
+// Conversations and activity: raw words and task text never appear, unknown
+// stop reasons read as other, a sealed stage shows no per-task rows, and a
+// proposer label that is not a model name is never echoed.
+const secretRows = (n) => Array.from({ length: n }, (_, i) => ({ key: `humanevalfix-python-${i}`, pass: i % 2 === 0 }));
+const r4 = write({ champion: 'v0000', iterations: 3, playbook: {}, variants: [
+  { id: 'v0000', parent: null, born: '2026-10-09T00:00:00Z', config: { 'agent.ollamaModel': 'qwen3.5:9b' }, s2: { n: 4, passed: 2, tokens: 4000, rows: secretRows(4) } },
+  { id: 'v0001', parent: 'v0000', born: '2026-10-09T01:00:00Z', by: 'D:/x SECRET-LABEL', reason: 'SECRET-REASON-TEXT', change: { 'agent.evictBlock': 2 }, config: { 'agent.ollamaModel': 'C:/evil' }, s1: { n: 10, passed: 0, tokens: 0, rows: secretRows(10).map(r => ({ ...r, pass: false })) }, broken: 's1: 0 vs champion 7' },
+  { id: 'v0002', parent: 'v0000', born: '2026-10-09T02:00:00Z', by: 'random (proposer unavailable)', reason: 'SECRET-REASON-TEXT', change: { 'agent.evictBlock': 6 }, config: { 'agent.ollamaModel': 'qwen3.5:9b' } },
+] });
+roots.push(r4);
+fs.writeFileSync(path.join(r4, 'HEARTBEAT.json'), JSON.stringify({ at: now.toISOString(), pid: 1, phase: 'eval', variant: 'v0002', stage: 's1' }));
+fs.mkdirSync(path.join(r4, 'variants', 'v0002'), { recursive: true });
+fs.writeFileSync(path.join(r4, 'variants', 'v0002', 's1.json'), JSON.stringify({ partial: true, results: [{ id: 'humanevalfix-python-3', pass: false, stop: 'weird-new-reason', why: 'SECRET-TASK-TEXT', said: 'SECRET-TASK-TEXT', rounds: 2, promptTotal: 100, outputTotal: 10 }] }));
+const l4 = collectLive({ stateRoot: r4, now });
+const dump = JSON.stringify(l4);
+assert.ok(!/SECRET|[A-Za-z]:[\\/]/.test(dump));
+assert.equal(l4.status.activity.recent[0].stop, 'other');
+const c1 = l4.status.conversations.find(c => c.variant === 'v0001').turns;
+assert.ok(c1.some(t => t.from === 'Coder (model unknown)'));
+assert.ok(c1.some(t => t.from === 'Evolution controller' && t.to === null && t.text === 'Chose a random change itself: agent.evictBlock = 2.'));
+assert.equal(c1.at(-1).text, 'Not a capability result: no model call was counted because the model server was unreachable.');
+const c2 = l4.status.conversations.find(c => c.variant === 'v0002').turns;
+assert.ok(c2.some(t => t.from === 'Proposer' && t.text === 'No answer: the model server was unreachable.'));
+fs.writeFileSync(path.join(r4, 'HEARTBEAT.json'), JSON.stringify({ at: now.toISOString(), pid: 1, phase: 'eval', variant: 'v0002', stage: 'c250' }));
+fs.writeFileSync(path.join(r4, 'variants', 'v0002', 'c250.json'), JSON.stringify({ partial: true, results: [{ id: 'humanevalfix-python-9', pass: true, stop: 'answered', rounds: 4, promptTotal: 100, outputTotal: 10 }] }));
+const sealed = collectLive({ stateRoot: r4, now }).status.activity;
+assert.equal(sealed.sealed, true); assert.deepEqual(sealed.recent, []); assert.equal(sealed.stageLabel, 'sealed confirmation (250 tasks)');
 for (const r of roots) fs.rmSync(r, { recursive: true, force: true });
 console.log('PASS history search separate adversarial: malformed and missing counters stay Unknown, zero-solve stages have no ratio, unknown outcomes/policies/routes dropped, no-champion archive has no penalty, private senders/recipients/text withheld');

@@ -48,6 +48,7 @@ function showStatus(data) {
     $('message-list').append(item);
   }
   if (!(data.communications || []).length) $('message-list').append(text('p', 'No public recorded messages available.'));
+  renderModels(data);
   $('result-list').replaceChildren();
   for (const result of data.results) {
     const row = document.createElement('tr');
@@ -56,6 +57,36 @@ function showStatus(data) {
   }
   if (!data.results.length) { const row = document.createElement('tr'), cell = text('td', 'No completed stage evidence available.'); cell.colSpan = 6; row.append(cell); $('result-list').append(row); }
   freshness();
+}
+// What the coder is doing now, and each recent round as the recorded exchange
+// between controller, proposer and coder. Open rounds stay open across refreshes.
+function renderModels(data) {
+  const a = data.activity;
+  $('activity-now').textContent = a ? `${a.coder ? 'Coder ' + a.coder : 'The coder'} is ${a.phase === 'eval' ? 'working on' : 'at'} ${a.variant}, ${a.stageLabel}: ${count(a.completed)} of ${count(a.expected)} tasks done, ${count(a.passed)} solved. Change under test: ${a.change || 'withheld'}.${a.sealed ? ' Sealed stage: per-task results are withheld.' : ''}` : 'No current activity evidence.';
+  const body = $('activity-tasks');
+  body.replaceChildren();
+  for (const t of a?.recent || []) {
+    const row = document.createElement('tr');
+    for (const value of [count(t.number), t.suite, t.solved === true ? 'solved' : 'not solved', t.stop, count(t.rounds), count(t.promptTokens), count(t.outputTokens)]) row.append(text('td', value));
+    body.append(row);
+  }
+  if (!(a?.recent || []).length) { const row = document.createElement('tr'), cell = text('td', a?.sealed ? 'Sealed stage: per-task results are withheld.' : 'No task results in this stage yet.'); cell.colSpan = 7; row.append(cell); body.append(row); }
+  const list = $('conversation-list');
+  const wasOpen = new Set([...list.querySelectorAll('details')].filter(d => d.open).map(d => d.dataset.variant));
+  const first = !list.childElementCount;
+  list.replaceChildren();
+  (data.conversations || []).forEach((c, i) => {
+    const item = text('details', '', 'suite talk');
+    item.dataset.variant = c.variant;
+    item.open = first ? i === 0 : wasOpen.has(c.variant);
+    const summary = document.createElement('summary');
+    summary.append(text('span', `${c.variant}: ${c.headline || (c.live ? 'running now' : 'outcome unknown')}`), text('span', c.at ? new Date(c.at).toLocaleString() : 'Time unknown', 'availability'));
+    const turns = document.createElement('ol');
+    for (const t of c.turns || []) { const li = document.createElement('li'); li.append(text('span', t.to ? `${t.from} to ${t.to}` : `${t.from}, decision`, 'who'), text('p', t.text)); turns.append(li); }
+    item.append(summary, turns);
+    list.append(item);
+  });
+  if (!(data.conversations || []).length) list.append(text('p', 'No recorded rounds yet.'));
 }
 function showSuites() {
   const category = $('category').value;
