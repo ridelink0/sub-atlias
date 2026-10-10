@@ -4,7 +4,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { writePublicStatus } from '../lib/evolution-status.mjs';
+import { writePublicStatus, writePublicHistory } from '../lib/evolution-status.mjs';
 const source = fileURLToPath(new URL('..', import.meta.url));
 const root = path.dirname(source), site = path.join(source, 'site');
 const cli = 'C:/Users/OWNER/AppData/Local/npm-cache/_npx/69f9afb961c37556/node_modules/vercel/dist/vc.js';
@@ -37,8 +37,9 @@ function publish() {
     } catch { registry = registry.filter(agent => agent.id !== 'claude-runtime'); }
   }
   const status = writePublicStatus({ stateRoot: 'D:/harness-work/atlias-evolve', destination: path.join(site, 'status.json'), agentRegistry: registry });
-  const assets = ['index.html', 'site.css', 'app.js', 'favicon.svg', 'vercel.json', 'benchmark.json'].map(name => ({ name, hash: crypto.createHash('sha256').update(fs.readFileSync(path.join(site, name))).digest('hex') }));
-  const signature = crypto.createHash('sha256').update(JSON.stringify({ assets, agents: status.agents.map(({ observedAt, ...agent }) => agent), results: status.results, champion: status.champion, completedIterations: status.completedIterations })).digest('hex');
+  const history = writePublicHistory({ stateRoot: 'D:/harness-work/atlias-evolve', destination: path.join(site, 'history.json') });
+  const assets = ['index.html', 'site.css', 'app.js', 'favicon.svg', 'vercel.json', 'benchmark.json', 'history.js'].map(name => ({ name, hash: crypto.createHash('sha256').update(fs.readFileSync(path.join(site, name))).digest('hex') }));
+  const signature = crypto.createHash('sha256').update(JSON.stringify({ assets, agents: status.agents.map(({ observedAt, ...agent }) => agent), results: status.results, champion: status.champion, completedIterations: status.completedIterations, history: { champion: history.champion, iterations: history.iterations, brokenStreak: history.brokenStreak, variants: history.variants.map(({ status: s, ...v }) => v) } })).digest('hex');
   if (signature === previous) return;
   const args = [cli, 'deploy', '--scope', 'ridelink1', '--yes', '--no-wait', ...(production ? ['--prod'] : [])];
   const deploy = spawnSync(process.execPath, args, { cwd: site, windowsHide: true, encoding: 'utf8', timeout: 120000, maxBuffer: 4 * 1024 * 1024, env });

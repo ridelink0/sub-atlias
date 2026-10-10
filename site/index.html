@@ -12,14 +12,27 @@
   <title>Atlias — execution gives direction</title>
   <link rel="stylesheet" href="/site.css">
   <script type="module" src="/app.js"></script>
+  <script type="module" src="/history.js"></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
-  <header><a href="#main" class="wordmark">atlias</a><nav aria-label="Main"><a href="#agents">Agents</a><a href="#results">Results</a><a href="#benchmark">Ultimate Benchmark</a><a href="https://github.com/ridelink0/atlias">Source</a></nav></header>
+  <header><a href="#main" class="wordmark">atlias</a><nav aria-label="Main"><a href="#agents">Agents</a><a href="#rounds">Rounds</a><a href="#compare">Versus</a><a href="#history">History</a><a href="#benchmark">Ultimate Benchmark</a><a href="https://github.com/ridelink0/atlias">Source</a></nav></header>
   <main id="main">
     <section class="hero" aria-labelledby="headline"><div class="hero-copy"><h1 id="headline">Execution gives direction.</h1><p>A local harness by Gev. Agents build, run checks, learn from failures and keep working after a goal is reached.</p><a class="button" href="#agents">See agent status</a></div><div class="engine"><span>Next engine</span><strong>OpenCode v2</strong><p id="engine-status">Loading integration evidence</p></div></section>
     <section id="agents"><div class="section-head"><h2>Current agents</h2><p id="freshness" role="status">Loading published state</p></div><p id="error" class="error" hidden></p><div id="agent-list" class="agent-list"></div><p class="note">This is a published snapshot. Its timestamp is part of the evidence.</p></section>
     <section id="results"><div class="section-head"><h2>Completed local stages</h2><p>Original results remain intact.</p></div><div class="table-scroll"><table><caption>Task checks and provider counters from completed evolution stages</caption><thead><tr><th scope="col">Variant</th><th scope="col">Stage</th><th scope="col">Passed</th><th scope="col">Input tokens</th><th scope="col">Output tokens</th><th scope="col">Provider peak</th></tr></thead><tbody id="result-list"></tbody></table></div><p class="note">These task results do not establish native 20x savings, general coding capability, subscription gains or useful unattended days.</p></section>
+    <section id="rounds"><div class="section-head"><h2>Evolution rounds</h2><p id="round-count" role="status">Loading round history</p></div>
+      <p id="history-error" class="error" hidden></p>
+      <div id="evolution-health" class="health"></div>
+      <div class="filters"><label>Model <select id="f-model"><option value="all">All models</option></select></label><label>Status <select id="f-status"><option value="all">All statuses</option></select></label><label>Chart stage <select id="f-stage"><option value="s1">S1 (10 tasks)</option><option value="s2" selected>S2 (60 tasks)</option><option value="s3">S3 (120-task sealed confirmation)</option></select></label></div>
+      <div id="chart" class="chart"></div>
+      <div class="table-scroll"><table><caption>Every original evolution variant. Select a variant for its change, reason, intervals and per-suite results.</caption><thead><tr><th scope="col" data-sort="id">Variant</th><th scope="col" data-sort="born">Started</th><th scope="col" data-sort="model">Model / context</th><th scope="col" data-sort="s1">S1</th><th scope="col" data-sort="s2">S2</th><th scope="col" data-sort="s3">S3</th><th scope="col" data-sort="tpp">Tokens per pass</th><th scope="col" data-sort="status">Status</th></tr></thead><tbody id="round-list"></tbody></table></div>
+      <p id="history-time" class="note"></p></section>
+    <section id="compare"><div class="section-head"><h2>Versus</h2><p>Same tasks, same judge, paired outcomes. A missing or mismatched pair never produces a winner.</p></div>
+      <div class="filters"><label>Baseline <select id="c-a"></select></label><label>Candidate <select id="c-b"></select></label><label>Stage <select id="c-stage"><option value="s1">S1</option><option value="s2" selected>S2</option><option value="s3">S3 (sealed)</option></select></label></div>
+      <div id="compare-out"></div>
+      <p class="note">Exact two-sided paired test on tasks only one side solved. Failures stay in the denominators. Tokens are the original runtime's prompt-side counters; output tokens and full native peak are unknown.</p></section>
+    <section id="history"><div class="section-head"><h2>Earlier rounds</h2><p>Older studies keep their original outcomes and numbering.</p></div><div id="legacy" class="legacy"></div></section>
     <section class="goals"><h2>Two separate targets.</h2><div><article><strong>20x</strong><h3>Fewer total native tokens</h3><p>Input and output, including failures and retries.</p><span>Unproved</span></article><article><strong>20x</strong><h3>Smaller full native peak</h3><p>Instructions, tools, evidence and compaction included.</p><span>Unproved</span></article></div><p>Both require equal or better capability on Codex and Claude, with independent evidence.</p></section>
     <section id="benchmark"><div class="section-head"><h2>Ultimate Benchmark</h2><p id="suite-summary">Loading suite ledger</p></div><label for="category">Filter suites</label><select id="category"><option value="all">All categories</option></select><div id="suite-list" class="suite-list"></div><p class="note">Data availability is separate from runtime execution. Unknown costs stay unknown. Model-judged scores keep their own grading contract.</p></section>
   </main>
