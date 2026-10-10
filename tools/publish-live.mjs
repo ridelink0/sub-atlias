@@ -12,7 +12,11 @@ const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); }
 const description = 'Atlias by Gev: reviewed live benchmark aggregates and recorded typed proposals';
 const configFile = path.join(source, 'site/live-config.json'), receiptFile = path.join(root, 'LIVE-PUBLISHER-LAST.json');
 const lockFile = path.join(root, 'LIVE-PUBLISHER.lock');
-const fd = fs.openSync(lockFile, 'wx');
+// Another publisher, or one that ended without cleaning up, may hold the lock:
+// say so plainly and leave that lock alone (the exit cleanup is not set yet).
+let fd;
+try { fd = fs.openSync(lockFile, 'wx'); }
+catch (e) { if (e.code !== 'EEXIST') throw e; console.error(`Atlias live publisher: ${lockFile} already exists, so another publisher owns it or one ended without cleaning up; inspect its owner before another launch`); process.exit(1); }
 fs.writeFileSync(fd, JSON.stringify({ pid: process.pid, at: new Date().toISOString(), scope: 'atlias-live' }));
 let stopped = false;
 const cleanup = () => { if (!stopped) { stopped = true; fs.closeSync(fd); fs.unlinkSync(lockFile); } };

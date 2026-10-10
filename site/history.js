@@ -1,6 +1,7 @@
 // Rounds, versus comparisons and earlier history, read from /history.json.
 // Every figure comes from the published file; anything missing reads Unknown.
 import { feed } from './feed.mjs';
+import { comparePair } from './compare.mjs';
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => {
   const n = document.createElement(tag);
@@ -125,7 +126,9 @@ function renderCompare() {
   const A = H.variants.find(v => v.id === a), B = H.variants.find(v => v.id === b);
   const out = $('compare-out');
   out.replaceChildren(el('div', { class: 'versus' }, card(A, stage, 'Baseline'), card(B, stage, 'Candidate')));
-  const c = H.comparisons.find(x => x.a === a && x.b === b && x.stage === stage);
+  // Any two variants pair from the published outcomes; a file from before
+  // them carries its pairs precomputed.
+  const c = H.pairing ? comparePair(a, b, stage, H.pairing[stage]?.[a], H.pairing[stage]?.[b]) : H.comparisons.find(x => x.a === a && x.b === b && x.stage === stage);
   let verdict;
   if (a === b) verdict = 'Pick two different variants.';
   else if (!c) verdict = `No shared ${stage.toUpperCase()} tasks: there is no winner.`;
