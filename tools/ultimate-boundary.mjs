@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { inspectCatalog } from '../lib/ultimate-benchmark.mjs';
+import { direction } from '../lib/benchmark-oracle.mjs';
 
 const source = fileURLToPath(new URL('..', import.meta.url));
 const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
@@ -52,5 +53,6 @@ export async function runUltimateBoundary({ root, champion, heartbeat = () => {}
   const complete = [0, 1].includes(code) && unchanged && report?.partial !== true && report?.promptTotal > 0 && Number.isSafeInteger(report?.outputTotal) && got.length === suite.expected && new Set(got).size === ids.length && ids.every(id => got.includes(id));
   Object.assign(job, { status: complete ? 'completed' : 'held', exit: code, recorded: rows.length, solved: rows.filter(r => r.pass === true).length, endedAt: new Date().toISOString(), inputTokens: Number.isSafeInteger(report?.promptTotal) ? report.promptTotal : null, outputTokens: Number.isSafeInteger(report?.outputTotal) ? report.outputTotal : null, ms: Number.isFinite(report?.ms) ? report.ms : null });
   write(file, journal);
+  if (report) write(path.join(folder, 'direction.json'), direction(report, { expectedIds: ids }));
   return job;
 }
