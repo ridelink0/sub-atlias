@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {plateauState,chooseParent,proposalChoices,selectProposal,untriedAttempt} from '../lib/evolution-search.mjs';
+import {plateauState,chooseParent,proposalChoices,selectProposal,untriedAttempt,effectiveConfig} from '../lib/evolution-search.mjs';
 const s={n:1,passed:1,tokens:10,rows:[{key:'a',pass:true}]};
 const c={id:'v0002',born:'2026-10-10T00:00:00Z',config:{x:2},s1:s,s2:s};
 const failures=[3,4,5].map(n=>({id:'v000'+n,born:`2026-10-10T00:0${n}:00Z`,config:{x:n},s1:{...s,passed:0,tokens:0,rows:[{key:'a',pass:false}]},broken:'model unavailable'}));
@@ -34,4 +34,10 @@ assert.equal(failures.every(untriedAttempt),true);assert.ok(proposalChoices(a,c,
 assert.equal(proposalChoices({...a,variants:[c,...pending]},c,{x:[3]}).length,0);
 assert.equal(untriedAttempt({roundOutcome:{outcome:'infrastructure-held'},s1:{...s,tokens:5}}),false);
 assert.equal(untriedAttempt({roundOutcome:{outcome:'superseded-before-evaluation'}}),true);
+// A value equal to the harness default is no change, and spelling a default out is the same configuration.
+assert.deepEqual(effectiveConfig({x:2,y:1},{y:1}),{x:2});
+assert.deepEqual(proposalChoices({...a,variants:[c]},c,{y:[1,5]},{defaults:{y:1}}).map(ch=>ch.change),[{y:5}]);
+assert.equal(proposalChoices({...a,variants:[c,{...c,id:'v0009',config:{x:2,y:5},s1:s,s2:s}]},c,{y:[5]},{defaults:{y:1}}).length,0);
+assert.equal(proposalChoices({...a,variants:[c,{...c,id:'v0009',config:{x:3,y:1},s1:s,s2:s}]},c,{x:[3]},{defaults:{y:1}}).length,0);
+assert.deepEqual(selectProposal({...a,variants:[c]},c,{y:[1,5]},{defaults:{y:1},random:()=>0}).change,{y:5});
 console.log('PASS separate adversarial: outages/pending/partial/confirmation excluded, promotion resets punishment, malformed evidence held, context scoped and exhausted search terminates safely');
