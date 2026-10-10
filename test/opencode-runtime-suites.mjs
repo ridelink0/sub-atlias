@@ -139,6 +139,15 @@ export default async function opencodeRuntimeSuites({ asyncSuite, check, TMP }) 
     c('CLI JSON lines are counted per session', ev.events === 3 && ev.sessions.s1.input === 700 && ev.sessions.s1.cacheRead === 100 && ev.text === 'ok' && ev.unparsed.length === 1, JSON.stringify(ev), 'The CLI side of the reconciliation.');
     const rc = reconcile(ev, summarize([{ kind: 'chat', status: 'ok', countersExpected: true, session: { id: 's1' }, tokens: { input: 800, output: 64, cachedInput: 100 } }, { kind: 'chat', status: 'ok', countersExpected: true, session: { id: 'title' }, tokens: { input: 50, output: 5 } }]));
     c('reconciliation matches the main session and surfaces ledger-only calls', rc.sessions.s1.match && rc.ledgerOnly.join() === 'title' && rc.unreportedByCli === 55, JSON.stringify(rc), 'The difference is what the CLI never reported.');
+    // The shape of the first real run (2026-10-10): three printed steps, a title call and a last step whose finish the CLI never printed, all on one session.
+    const realLike = parseRunEvents([
+      '{"type":"step_start","sessionID":"r"}', '{"type":"step_finish","sessionID":"r","part":{"tokens":{"input":2440,"output":65,"reasoning":0,"cache":{"read":0,"write":0}}}}',
+      '{"type":"step_start","sessionID":"r"}', '{"type":"step_finish","sessionID":"r","part":{"tokens":{"input":39,"output":116,"reasoning":0,"cache":{"read":2504,"write":0}}}}',
+      '{"type":"step_start","sessionID":"r"}', '{"type":"step_finish","sessionID":"r","part":{"tokens":{"input":23,"output":61,"reasoning":0,"cache":{"read":2658,"write":0}}}}',
+      '{"type":"step_start","sessionID":"r"}'].join('\n'));
+    const realRecs = [[3, 558, 927, 0], [4, 2440, 65, 0], [6, 2543, 116, 2504], [7, 2681, 61, 2658], [8, 2780, 63, 2741]].map(([seq, input, output, cachedInput]) => ({ kind: 'chat', seq, status: 'ok', countersExpected: true, dispatched: true, session: { id: 'r' }, tokens: { input, output, cachedInput } }));
+    const rr = reconcile(realLike, summarize(realRecs), realRecs).sessions.r;
+    c('call-level reconciliation: every printed step is a real call; the title and the unprinted last step are named, not hidden', rr.match === true && rr.stepsMatched === 3 && rr.cli.started === 4 && rr.totalsEqual === false && rr.auxiliary.map((a) => `${a.seq}:${a.kind}`).join('|') === '3:not a printed step (title or summary)|8:step the CLI did not print', JSON.stringify(rr), 'OpenCode pays for calls it never prints as steps; the ledger total stays the cost.');
     if (fs.existsSync(DEFAULTS.sourceRoot)) {
       const src = verifySource();
       c('the pinned upstream checkout is 2.0.26 at the pinned commit', src.version === OPENCODE_PIN.version && src.commit === OPENCODE_PIN.commit && src.ok === (src.problems.length === 0), JSON.stringify(src), 'The runtime must run the source it claims.');
@@ -342,6 +351,16 @@ for (const e of [{ type: 'step_start', sessionID: 'ses_main', part: {} }, { type
     const bad = parseRunEvents([JSON.stringify({ type: 'step_finish', sessionID: 's', part: { tokens: { input: -1, output: 2, reasoning: 0, cache: { read: 0, write: 0 } } } }), JSON.stringify({ type: 'step_finish', sessionID: 's', part: {} }), '[1,2]'].join('\n'));
     const rcb = reconcile(bad, summarize([{ kind: 'chat', dispatched: true, status: 'ok', session: { id: 's' }, tokens: { input: 0, output: 0 } }]));
     c('CLI steps with bad or missing counters are invalid and cannot reconcile', bad.sessions.s.invalid === 2 && bad.unparsed.length === 1 && rcb.sessions.s.match === false && rcb.cliTotal === null && rcb.unreportedByCli === null, JSON.stringify({ b: bad.sessions, r: rcb }), 'Missing CLI metadata is never counted as zero.');
+    // Call-level matching cannot be fooled: a printed step with no real call, two identical printed steps against one call, or a call from another session.
+    const step = (input, output, read) => JSON.stringify({ type: 'step_finish', sessionID: 'x', part: { tokens: { input, output, reasoning: 0, cache: { read, write: 0 } } } });
+    const rec = (seq, input, output, cachedInput, id = 'x') => ({ kind: 'chat', seq, status: 'ok', countersExpected: true, dispatched: true, session: { id }, tokens: { input, output, cachedInput } });
+    const phantom = [rec(1, 500, 10, 0)];
+    const twice = [rec(1, 500, 10, 0), rec(2, 900, 20, 0)];
+    const other = [rec(1, 500, 10, 0, 'y'), rec(2, 900, 20, 0)];
+    const p1 = reconcile(parseRunEvents([step(500, 10, 0), step(700, 30, 0)].join('\n')), summarize(phantom), phantom).sessions.x;
+    const p2 = reconcile(parseRunEvents([step(500, 10, 0), step(500, 10, 0)].join('\n')), summarize(twice), twice).sessions.x;
+    const p3 = reconcile(parseRunEvents([step(500, 10, 0)].join('\n')), summarize(other), other).sessions.x;
+    c('a printed step with no real call, a step counted twice or a call from another session never reconciles', p1.match === false && p1.stepsMatched === 1 && p2.match === false && p2.stepsMatched === 1 && p3.match === false && p3.stepsMatched === 0, JSON.stringify({ p1, p2, p3 }), 'Each printed step must be one distinct call of its own session.');
   });
 
   await asyncSuite('local runtime adversary', 'opencode runtime: exclusive lease, PID-free cancellation and source identity (adversarial)', async () => {
