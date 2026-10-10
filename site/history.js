@@ -1,5 +1,6 @@
 // Rounds, versus comparisons and earlier history, read from /history.json.
 // Every figure comes from the published file; anything missing reads Unknown.
+import { feed } from './feed.mjs';
 const $ = id => document.getElementById(id);
 const el = (tag, props = {}, ...kids) => {
   const n = document.createElement(tag);
@@ -164,9 +165,7 @@ function show(data) {
 
 async function load() {
   try {
-    const r = await fetch('/history.json', { cache: 'no-store' });
-    if (!r.ok) throw new Error('HTTP ' + r.status);
-    show(await r.json());
+    show(await feed('history'));
   } catch { $('history-error').textContent = 'Round history could not be loaded. Figures shown may be stale.'; $('history-error').hidden = false; }
 }
 
@@ -178,4 +177,4 @@ for (const th of document.querySelectorAll('#rounds th[data-sort]')) {
 for (const id of ['f-model', 'f-status', 'f-stage']) $(id).addEventListener('change', () => H && renderRounds());
 for (const id of ['c-a', 'c-b', 'c-stage']) $(id).addEventListener('change', () => H && renderCompare());
 await load();
-setInterval(load, 60000);
+setInterval(load, 90000); setInterval(() => H && renderHealth(), 10000);

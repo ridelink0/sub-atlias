@@ -1,3 +1,4 @@
+import { feed } from './feed.mjs';
 const $ = id => document.getElementById(id);
 let state = null, suites = [];
 const text = (tag, value, className) => { const node = document.createElement(tag); node.textContent = value; if (className) node.className = className; return node; };
@@ -7,8 +8,15 @@ function freshness() {
   const timestamp = Date.parse(state.generatedAt), seconds = (Date.now() - timestamp) / 1000;
   if (!Number.isFinite(seconds) || seconds < -60) { $('freshness').textContent = 'Timestamp invalid'; return; }
   const age = Math.max(0, Math.floor(seconds / 60));
-  $('freshness').textContent = `Published ${new Date(timestamp).toLocaleString()} · ${age} minute${age === 1 ? '' : 's'} old${seconds > 900 ? ' · Stale snapshot' : ''}`;
-  $('freshness').classList.toggle('stale', seconds > 900);
+  $('freshness').textContent = `Data observed ${new Date(timestamp).toLocaleString()} · ${age} minute${age === 1 ? '' : 's'} old${seconds > 180 ? ' · Stale snapshot' : ''}`;
+  $('freshness').classList.toggle('stale', seconds > 180);
+  for (const node of document.querySelectorAll('#agent-list .agent')) {
+    const agentAge = (Date.now() - Date.parse(node.dataset.observed)) / 1000;
+    if (node.dataset.state !== 'completed' && (!Number.isFinite(agentAge) || agentAge < -60 || agentAge > 180)) node.querySelector('.state').textContent = 'stale / current state unknown';
+  }
+  const progressAge=(Date.now()-Date.parse(state.progress?.observedAt))/1000;
+  $('live-progress').classList.toggle('stale',!Number.isFinite(progressAge)||progressAge>180||progressAge < -60);
+  if (!Number.isFinite(progressAge)||progressAge>180||progressAge < -60) $('live-progress').textContent = 'Current stage status unknown: checkpoint is stale. Last recorded: ' + (state.progress ? `${state.progress.variant} / ${state.progress.stage}, ${count(state.progress.completed)} results.` : 'No checkpoint.');
 }
 function showStatus(data) {
   if (data?.schema !== 'atlias.public-status.v1' || !Array.isArray(data.agents) || !Array.isArray(data.results)) throw new Error('Published state is invalid');
@@ -17,11 +25,29 @@ function showStatus(data) {
   $('agent-list').replaceChildren();
   for (const agent of data.agents) {
     const row = text('article', '', 'agent');
+    row.dataset.observed = agent.observedAt;
+    row.dataset.state = agent.state;
     row.append(text('h3', agent.name), text('span', agent.state, 'state'), text('p', [agent.phase, agent.variant, agent.stage].filter(Boolean).join(' / ') || 'No stage evidence'));
     row.append(text('p', agent.model ? `Model: ${agent.model}` : 'Model identity unknown'), text('p', agent.processVerified === true ? 'Process identity verified' : 'Process identity not verified'));
     $('agent-list').append(row);
   }
   if (!data.agents.length) $('agent-list').append(text('p', 'No agent evidence available.'));
+  const p = data.progress;
+  $('live-progress').textContent = p ? `${p.variant || 'Unknown round'} / ${p.stage || 'Unknown stage'}: ${count(p.completed)} of ${count(p.expected)} task results recorded, ${count(p.passed)} passed, ${count(p.failed)} failed.${p.partial ? ' Stage in progress.' : ''} Checkpoint observed ${p.observedAt ? new Date(p.observedAt).toLocaleString() : 'Unknown'}.` : 'No current-stage checkpoint available.';
+  const ram = data.resources;
+  $('resource-sample').textContent = ram ? `System RAM available: ${(ram.systemFreeRAM / 2 ** 30).toFixed(2)} GiB of ${(ram.systemTotalRAM / 2 ** 30).toFixed(1)} GiB. Guard: ${(ram.RAMFloor / 2 ** 20).toFixed(0)} MiB. GPU usage and historical resource peaks: Unknown. Sampled ${new Date(ram.sampledAt).toLocaleString()}.` : 'Resource evidence unavailable.';
+  $('allowance-list').replaceChildren();
+  for (const a of data.allowance || []) {
+    const age = (Date.now() - Date.parse(a.observedAt)) / 1000;
+    $('allowance-list').append(text('p', `${a.host}: ${count(a.usedPercent)}% used at ${a.observedAt ? new Date(a.observedAt).toLocaleString() : 'Unknown time'}${age > 180 || !Number.isFinite(age) ? ' (stale; current allowance unknown)' : ''}. Measured reset: ${a.resetsAt ? new Date(a.resetsAt).toLocaleString() : 'Unknown'}.`));
+  }
+  $('message-list').replaceChildren();
+  for (const m of data.communications || []) {
+    const item = text('article', '', 'message');
+    item.append(text('h3', `${m.sender} to ${m.recipient}`), text('p', `${m.kind}${m.variant ? ' / ' + m.variant : ''} / ${m.at ? new Date(m.at).toLocaleString() : 'Time unknown'}`, 'note'), text('p', m.text));
+    $('message-list').append(item);
+  }
+  if (!(data.communications || []).length) $('message-list').append(text('p', 'No public recorded messages available.'));
   $('result-list').replaceChildren();
   for (const result of data.results) {
     const row = document.createElement('tr');
@@ -37,15 +63,15 @@ function showSuites() {
   for (const suite of suites.filter(s => category === 'all' || s.category === category)) {
     const item = text('details', '', 'suite');
     const summary = document.createElement('summary'); summary.append(text('span', suite.name), text('span', suite.availability.replaceAll('-', ' '), 'availability'));
-    item.append(summary, text('p', suite.grading), text('p', `Available tasks: ${count(suite.availableTasks)}. Completed: ${suite.completed === true ? 'Yes' : 'No'}.`));
+    item.append(summary, text('p', suite.grading), text('p', `Suite ID: ${suite.id}. Kind: ${suite.kind}. Available tasks: ${count(suite.availableTasks)} of ${count(suite.expected)} expected. Completed: ${suite.completed === true ? 'Yes' : 'No'}.`), text('p', `Corpus hash: ${suite.contentHash || 'Unknown'}. Upstream version: ${suite.upstreamVersion || 'Unknown in this ledger'}. License: ${suite.license || 'Unknown in this ledger; inspect the original corpus notice before use'}. Required evidence: ${suite.requirement || 'Unknown'}.`));
+    const runs = state?.historyRuns?.[suite.id] || [];
+    item.append(text('p', runs.length ? 'Observed original-runtime stages: ' + runs.map(r => `${r.variant}/${r.stage}: ${r.passed}/${r.n}`).join('; ') + '. These are subsets, not suite completion.' : 'No mapped original-runtime stage evidence for this suite. Execution remains unproved.'));
     $('suite-list').append(item);
   }
 }
 async function load() {
   try {
-    const response = await fetch('/status.json', { cache: 'no-store' });
-    if (!response.ok) throw new Error('State returned HTTP ' + response.status);
-    showStatus(await response.json()); $('error').hidden = true;
+    showStatus(await feed('status')); if (suites.length) showSuites(); $('error').hidden = true;
   } catch { $('error').textContent = 'Current state could not be loaded. Existing results may be stale.'; $('error').hidden = false; }
 }
 try {
@@ -59,4 +85,4 @@ try {
   showSuites();
 } catch { $('suite-summary').textContent = 'Suite ledger unavailable'; }
 $('category').addEventListener('change', showSuites);
-await load(); setInterval(load, 30000); setInterval(freshness, 10000);
+await load(); setInterval(load, 90000); setInterval(freshness, 10000);

@@ -2,6 +2,10 @@
 
 ## Current October10 continuation — latest Gev directives
 
+LATEST Gev allowance handoff request: give Claude EVERYTHING Codex is doing and explicitly direct it to read all Gev Markdown instructions before Codex loses allowance. Complete transfer brief is ../CLAUDE-CODEX-ALLOWANCE-HANDOFF.md. Codex stops source edits after committing its checkpoint and delivering that brief; Claude takes ownership of all unfinished native adapter/eval/CLI/search/source website work. Any later Codex continuation must inspect Claude ownership before editing. Website remains LAST.
+
+Core new checkpoint: Claude runtimea66240d merged as68b237c after independent37functional+51adversarial software checks. Readiness/HB guard preserved, exclusive lease/fsynced intents/owned-handle cancellation integrated; Bun cleanup still unproved. Native adapter lost/malformed/duplicate/mismatched intent accounting fixed in72d11e4; functional plus separate adversarial checks passed and actual adapter/judge33/33 regression passed. All zero model calls; no native completion/20x claim. Actual06:38 original evolution nowv0018s1 partial5/10,3pass; v0017finished40/60, champion44/60 unchanged. FIVE finalized measured nonchampion rounds/TENoutages. Penalty on disk remains NOT loaded; never STOP during eval.
+
 Claude FIRST at fresh actual quota, then plateau/self-learning and all core runtime/local-model/benchmark goals, WEBSITE LAST. Latest explicit website fix/publication request supersedes the older exclusive-Claude ownership paragraph below. Codex owns its current source repair; Claude coordinates before editing it. Put "use Usage Limits relays" in Claude's prompt only; do not inspect relay settings.
 
 Actual Claude delivery at2026-10-10T06:30:40Z confirmed working session8333be2a, Opus5.5 xhigh, Ultrathink, full CLAUDE-FRESH-COLLABORATION.md and relay instruction. Fresh API23%five-hour/60%weekly, extra usage off. A first queue attempt held after transient RAM headroom; corrected owned queue82375 rechecked reserve and native session ownership, then delivered once. One-time Claude handoff automation fulfilled/deleted; daily21:20Chicago preserved.
