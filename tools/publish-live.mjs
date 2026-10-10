@@ -48,10 +48,19 @@ function claudeLive(now = Date.now()) {
   const agents = [{ id: 'claude-code', name: `Claude Code (${model})`, state: now - lastSeen <= 180000 ? 'working' : 'idle', observedAt: new Date(lastSeen).toISOString() }];
   return { allowance, agents };
 }
+// Codex's latest reading as the usage-limits plugin recorded it for Codex
+// sessions: the two windows' percentages, reset times and when it was read.
+function codexLive() {
+  const r = read(path.join(os.homedir(), '.codex', 'usage-limits-reading.json'));
+  return [['five_hour', '5-hour'], ['seven_day', 'weekly']].map(([key, window]) => {
+    const w = r?.[key];
+    return w && Number.isFinite(w.percentUsed) && Number.isFinite(w.at) && w.adjusted !== true ? { host: 'codex', window, usedPercent: w.percentUsed, observedAt: new Date(w.at).toISOString(), resetsAt: Number.isFinite(w.resetsAt) ? new Date(w.resetsAt).toISOString() : null, source: 'actual-provider' } : null;
+  }).filter(Boolean);
+}
 function publish() {
   if (fs.existsSync(path.join(root, 'LIVE-PUBLISHER.STOP'))) { console.log('Atlias live publisher stopped cooperatively'); process.exit(0); }
-  const claude = claudeLive();
-  const allowance = [...claude.allowance, ...(read(path.join(root, 'PUBLIC-ALLOWANCE.json')) || []).filter(a => a?.host !== 'claude' || !claude.allowance.length)];
+  const claude = claudeLive(), codex = codexLive();
+  const allowance = [...claude.allowance, ...codex, ...(read(path.join(root, 'PUBLIC-ALLOWANCE.json')) || []).filter(a => (a?.host !== 'claude' || !claude.allowance.length) && (a?.host !== 'codex' || !codex.length))];
   const agentRegistry = [...claude.agents, ...(read(path.join(root, 'AGENTS-STATUS.json')) || []).filter(a => a?.id !== 'claude-code' && !(claude.agents.length && a?.id === 'claude-runtime'))];
   const bundle = collectLive({ stateRoot: 'D:/harness-work/atlias-evolve', agentRegistry, allowance, messages: read(path.join(root, 'PUBLIC-COMMUNICATIONS.json')) || [] });
   const content = JSON.stringify(bundle);
