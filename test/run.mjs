@@ -989,6 +989,7 @@ await (await import('./sametext-suites.mjs')).default({ suite, asyncSuite, check
 await (await import('./oracle-ledger-suites.mjs')).default({ asyncSuite, check, ROOT, spawnSync });
 await (await import('./opencode-runtime-suites.mjs')).default({ asyncSuite, check, TMP });
 await (await import('./standalone-suites.mjs')).default({ asyncSuite, check, skip, ROOT, TMP, spawnSync });
+await (await import('./finishgreen-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
 
 let failed = 0;
