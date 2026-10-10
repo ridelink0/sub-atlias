@@ -14,6 +14,8 @@ const pct = x => Number.isFinite(x) ? (x * 100).toFixed(1) + '%' : 'Unknown';
 const num = x => Number.isSafeInteger(x) && x >= 0 ? x.toLocaleString() : 'Unknown';
 const pfmt = p => !Number.isFinite(p) ? 'n/a' : p < 0.0001 ? p.toExponential(1) : p.toFixed(4);
 const when = s => Number.isFinite(Date.parse(s)) ? new Date(s).toLocaleString() : 'Unknown';
+const OUTCOMES = { 'promoted': 'promoted to champion', 'not-promoted': 'measured, not promoted', 'screen-rejected': 'rejected at the 10-task smoke stage', 'infrastructure-held': 'held: the run did not produce a capability result (outage, partial or unconfirmed)', 'superseded-before-evaluation': 'superseded before evaluation at a controller handoff; never run' };
+const POLICIES = { 'champion-anchored-three-round-penalty': 'three-round penalty: started from the champion with an unseen, least-penalised change', 'archive-exploration': 'archive exploration: parent sampled by score', 'champion-anchor': 'started from the champion' };
 let H = null, sortKey = 'born', sortDir = -1;
 const open = new Set();
 
@@ -33,6 +35,10 @@ function renderHealth() {
   const live = Number.isFinite(age) && age >= -60 && age <= 180;
   box.append(el('p', { text: H.current?.variant ? `Last heartbeat: ${H.current.variant} ${H.current.stage || ''} ${H.current.phase || ''}, ${when(H.current.at)}${live ? '' : ' (stale: the loop may be backing off or stopped)'}` : 'No heartbeat evidence.' }));
   box.append(el('p', { text: `Champion: ${H.champion || 'Unknown'}. Completed iterations: ${num(H.iterations)}. Archive updated ${when(H.archiveUpdated)}.` }));
+  if (H.search) box.append(el('p', { text: H.search.penaltyActive
+    ? `Search penalty active: ${num(H.search.measuredWithoutPromotion)} completed measured rounds without a new champion (threshold ${num(H.search.threshold)}), so every new variant starts from ${H.search.nextParent || 'the champion'} with an unseen single change. ${num(H.search.outages)} outage runs are not counted.`
+    : `Search penalty not active: ${num(H.search.measuredWithoutPromotion)} of ${num(H.search.threshold)} completed measured rounds without a new champion. ${num(H.search.outages)} outage runs are not counted.` }));
+  for (const p of (H.promotions || []).slice(-3)) box.append(el('p', { text: `Promotion ${when(p.at)}: ${p.to} over ${p.from || 'Unknown'}${p.route ? ` (${p.route === 'cost' ? 'same or better solves for at least 10% fewer tokens per solve' : 'significantly more solves'})` : ''}.` }));
   if (H.brokenStreak >= 3) box.append(el('p', { class: 'warn', text: `The last ${H.brokenStreak} variants failed every task with no counted model call. Their model server was unreachable, so these are runtime failures, not capability results.` }));
 }
 
@@ -46,8 +52,10 @@ function detailRow(v) {
   const cell = el('td', { colspan: '8', class: 'detail' });
   const facts = [
     ['Parent', v.parent || 'none (baseline)'], ['Change', v.change || 'none'], ['Proposed by', v.proposedBy || 'Unknown'],
-    ['Reason given', v.reason || 'none recorded'], ['Runtime', v.runtime], ['Born', when(v.born)],
+    ['Reason given', v.reason || (v.proposedBy ? 'withheld: the proposer\'s own words can quote task text, so only the typed change is public' : 'none recorded')], ['Runtime', v.runtime], ['Born', when(v.born)],
   ];
+  if (v.outcome) facts.push(['Round outcome', OUTCOMES[v.outcome] || v.outcome]);
+  if (v.searchPolicy) facts.push(['Search policy when proposed', POLICIES[v.searchPolicy] || v.searchPolicy]);
   if (v.broken) facts.push(['Broken', v.broken]);
   const dl = el('dl');
   for (const [k, x] of facts) dl.append(el('dt', { text: k }), el('dd', { text: x }));
@@ -56,7 +64,7 @@ function detailRow(v) {
     const r = v.stages?.[s];
     if (!r) continue;
     const suites = Object.entries(r.suites || {}).map(([k, x]) => `${k} ${x.passed}/${x.n}`).join(', ');
-    cell.append(el('p', { text: `${s.toUpperCase()}${r.sealed ? ' (sealed confirmation)' : ''}: ${r.passed}/${r.n} passed, ${pct(r.rate)}, 95% interval ${pct(r.interval?.lower)} to ${pct(r.interval?.upper)}. Prompt tokens ${num(r.promptTokens)}, tokens per pass ${num(r.tokensPerPass)}, largest prompt ${num(r.peakPrompt)}, output tokens Unknown.${r.partial ? ' Partial stage.' : ''}${suites ? ' By suite: ' + suites + '.' : ''}` }));
+    cell.append(el('p', { text: `${s.toUpperCase()}${r.sealed ? ' (sealed confirmation)' : ''}: ${r.passed}/${r.n} passed, ${pct(r.rate)}, 95% interval ${pct(r.interval?.lower)} to ${pct(r.interval?.upper)}. Prompt tokens ${num(r.promptTokens)}, prompt tokens per pass ${num(r.tokensPerPass)}, largest prompt ${num(r.peakPrompt)}, output tokens ${num(r.outputTokens)}, input+output per pass ${num(r.totalPerPass)}.${r.partial ? ' Partial stage.' : ''}${suites ? ' By suite: ' + suites + '.' : ''}` }));
   }
   return el('tr', { class: 'detail-row' }, cell);
 }
