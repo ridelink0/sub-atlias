@@ -103,7 +103,7 @@ function renderModels(data) {
   const first = !list.childElementCount;
   list.replaceChildren();
   (data.conversations || []).forEach((c, i) => {
-    const item = text('details', '', 'suite talk');
+    const item = text('details', '', 'talk');
     item.dataset.variant = c.variant;
     item.open = first ? i === 0 : wasOpen.has(c.variant);
     const summary = document.createElement('summary');
