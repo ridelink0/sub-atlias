@@ -404,11 +404,8 @@ export default async function agentSuites({ suite, asyncSuite, check, core, agen
     settings.set('agent.ollamaUrl', `http://127.0.0.1:${server.address().port}`);
     let reply = '';
     try {
-      const st = agentMod.newState(G, 'claude');
-      // Replay the historical fixture at the host seam; local production
-      // turns now run OpenCode rather than the historical text protocol.
-      const engineTurn = async (input) => loop.runLoop(st, input, { chat: loop.ollamaChat(core.config().agent) });
-      reply = await agentMod.turn(st, 'fix it', null, null, { engineTurn });
+      const st = agentMod.newState(G, 'ollama');
+      reply = await agentMod.turn(st, 'fix it', null, null);
     } finally {
       settings.reset('agent.ollamaUrl');
       server.close();
@@ -715,7 +712,7 @@ export default async function agentSuites({ suite, asyncSuite, check, core, agen
     check('the openai engine needs a model name', !loop.openaiReady({ openaiModel: '', openaiUrl: 'https://api.openai.com/v1' }, { OPENAI_API_KEY: 'k' }), { happened: 'ready with no model', why: 'Every call would fail with a model-not-found error.', fix: 'Check openaiReady.' });
     check('and a key unless the endpoint is local', loop.openaiReady({ openaiModel: 'm', openaiUrl: 'https://api.openai.com/v1' }, { ATLIAS_API_KEY: 'k' }) && !loop.openaiReady({ openaiModel: 'm', openaiUrl: 'https://api.openai.com/v1' }, {}) && loop.openaiReady({ openaiModel: 'm', openaiUrl: 'http://localhost:1234/v1' }, {}), { happened: 'wrong readiness', why: 'LM Studio and llama.cpp need no key; OpenAI does.', fix: 'Check LOCAL in openaiReady.' });
     check('the atlias key wins over the OpenAI one', loop.apiKey({ ATLIAS_API_KEY: 'a', OPENAI_API_KEY: 'o' }) === 'a', { happened: loop.apiKey({ ATLIAS_API_KEY: 'a', OPENAI_API_KEY: 'o' }), why: 'Pointing atlias at OpenRouter must not require unsetting an OpenAI key.', fix: 'Read ATLIAS_API_KEY first.' });
-    check('auto picks the pinned OpenCode runtime before the host engines', agentMod.ENGINE_ORDER.join(',') === 'opencode,claude,codex', { happened: agentMod.ENGINE_ORDER.join(','), why: 'Local standalone work must run on OpenCode.', fix: 'Check ENGINE_ORDER.' });
+    check('auto picks the openai engine after claude and codex, before ollama', agentMod.ENGINE_ORDER.join(',') === 'claude,codex,openai,ollama', { happened: agentMod.ENGINE_ORDER.join(','), why: 'A configured endpoint is a deliberate choice; a local Ollama is usually a fallback.', fix: 'Check ENGINE_ORDER.' });
   });
 
   await asyncSuite('modes expert', 'sub-harness, harness, or both', async () => {
@@ -736,7 +733,7 @@ export default async function agentSuites({ suite, asyncSuite, check, core, agen
   await asyncSuite('settings expert', 'every option can be changed', async () => {
     const undocumented = settings.rows().filter((r) => !r.about).map((r) => r.id);
     check('every setting says what it does', undocumented.length === 0, { happened: undocumented.join(', '), why: 'A setting nobody can understand is a setting nobody changes.', fix: 'Add it to DESCRIPTIONS in lib/settings.mjs.' });
-    check('the choice settings accept OpenCode and refuse the removed OpenAI runtime', /is one of both, sub, standalone/.test(core.parseSetting('agent', 'mode', 'sideways').error || '') && core.parseSetting('agent', 'engine', 'OpenCode').value === 'opencode' && Boolean(core.parseSetting('agent', 'engine', 'OpenAI').error), { happened: JSON.stringify([core.parseSetting('agent', 'mode', 'sideways'), core.parseSetting('agent', 'engine', 'OpenAI')]), why: 'A removed runtime must not remain selectable.', fix: 'Check CHOICES in parseSetting.' });
+    check('the choice settings refuse what they cannot be', /is one of both, sub, standalone/.test(core.parseSetting('agent', 'mode', 'sideways').error || '') && core.parseSetting('agent', 'engine', 'OpenAI').value === 'openai', { happened: JSON.stringify([core.parseSetting('agent', 'mode', 'sideways'), core.parseSetting('agent', 'engine', 'OpenAI')]), why: 'An engine name with a typo would otherwise mean no engine at all.', fix: 'Check CHOICES in parseSetting.' });
     const set = settings.set('guard.loopThreshold', '7');
     check('a setting is written and read back', set.ok && core.config().guard.loopThreshold === 7 && settings.rows().find((r) => r.id === 'guard.loopThreshold').changed, { happened: set.text, why: 'The text reported must be what took effect.', fix: 'Check settings.set.' });
     const back = settings.reset('guard.loopThreshold');

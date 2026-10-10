@@ -8,7 +8,7 @@ const put=(f,d)=>fs.writeFileSync(path.join(root,f),JSON.stringify(d));
 const now=new Date('2026-10-10T06:00:00Z');
 try {
   put('HEARTBEAT.json',{pid:1,variant:'../../outside',stage:'../../secret',at:'2030-01-01T00:00:00Z'});
-  put('ARCHIVE.json',{variants:[{id:'v0000',reason:'private sealed prompt',change:{'agent.ollamaModel':'C:/secret.txt'},s1:{n:1,passed:0,tokens:0,peak:0},s3:{n:1,passed:1,rows:[{key:'sealed-key',pass:true}]}},{id:'v0001',s3:{n:1,passed:1,rows:[{key:'sealed-key',pass:true},{key:'sealed-key',pass:true}]}}]});
+  put('ARCHIVE.json',{champion:'v0000',variants:[{id:'v0000',reason:'private sealed prompt',change:{'agent.ollamaModel':'C:/secret.txt'},s1:{n:1,passed:0,tokens:0,peak:0},s3:{n:1,passed:1,rows:[{key:'sealed-key',pass:true}]}},{id:'v0001',s3:{n:1,passed:1,rows:[{key:'sealed-key',pass:true},{key:'sealed-key',pass:true}]}}]});
   const b=collectLive({stateRoot:root,now,processProbe:()=>true,messages:[{visibility:'reviewed-public',at:now.toISOString(),sender:'Codex',recipient:'Claude',text:'Bearer abcdefsecret'},{visibility:'private',at:now.toISOString(),sender:'Codex',recipient:'Claude',text:'private-message'}],allowance:[{host:'claude',usedPercent:-1,observedAt:'invalid',resetsAt:'invalid',source:'guess'}]});
   assert.equal(b.status.agents[0].state,'unknown'); assert.equal(b.status.progress.variant,null); assert.equal(b.status.progress.expected,null);
   assert.equal(b.status.results[0].promptTokens,null); assert.equal(b.status.results[0].providerReportedPeak,null);

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {pickParent,propose} from '../../../atlias-evolve/evolve.mjs';
+import {pickParent,propose} from 'file:///D:/harness-work/atlias-evolve/evolve.mjs';
 const stage=passed=>({n:2,passed,tokens:100,rows:[{key:'a',pass:passed>0},{key:'b',pass:passed>1}]});
 const champion={id:'v0002',born:'2026-10-10T00:00:00Z',config:{'agent.keepObservations':6},s1:stage(2),s2:stage(2)};
 const losses=[3,4,5].map(n=>({id:'v000'+n,parent:champion.id,born:`2026-10-10T00:0${n}:00Z`,config:{'agent.keepObservations':n},change:{'agent.keepObservations':n},s2:stage(1),vsChampionS2:{champion:champion.id,wins:false}}));

@@ -21,7 +21,7 @@ function freshness() {
 function showStatus(data) {
   if (data?.schema !== 'atlias.public-status.v1' || !Array.isArray(data.agents) || !Array.isArray(data.results)) throw new Error('Published state is invalid');
   state = data;
-  $('engine-status').textContent = data.engine?.verifiedIntegration === true ? 'Integration verified by execution' : 'Migration in progress; integration not yet verified';
+  $('engine-status').textContent = data.engine?.status === 'active' ? 'Original champion retained; OpenCode rejected after comparison' : data.engine?.verifiedIntegration === true ? 'Integration verified by execution' : 'Integration not yet verified';
   $('agent-list').replaceChildren();
   for (const agent of data.agents) {
     const row = text('article', '', 'agent');

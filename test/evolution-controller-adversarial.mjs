@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {pickParent,propose} from '../../../atlias-evolve/evolve.mjs';
+import {pickParent,propose} from 'file:///D:/harness-work/atlias-evolve/evolve.mjs';
 const s={n:1,passed:0,tokens:10,rows:[{key:'a',pass:false}]};
 const c={id:'v0002',born:'2026-10-10T00:00:00Z',config:{'agent.ollamaNumCtx':16384},s1:s,s2:s};
 const a={champion:c.id,variants:[c],playbook:{}};
