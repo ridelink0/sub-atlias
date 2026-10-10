@@ -32,7 +32,8 @@ assert.equal(proposalChoices(contextual,c,{x:[4]})[0].contextualPenalty,0);
 // An outage-only attempt (no counted call) never bans its change; a counted or pending attempt does.
 assert.equal(failures.every(untriedAttempt),true);assert.ok(proposalChoices(a,c,{x:[3]}).some(ch=>ch.change.x===3));
 assert.equal(proposalChoices({...a,variants:[c,...pending]},c,{x:[3]}).length,0);
-assert.equal(untriedAttempt({roundOutcome:{outcome:'infrastructure-held'},s1:{...s,tokens:5}}),false);
+assert.equal(untriedAttempt({roundOutcome:{outcome:'infrastructure-held'},s1:{...s,tokens:5}}),true);
+assert.equal(untriedAttempt({roundOutcome:{outcome:'not-promoted'},s1:{...s,tokens:5}}),false);
 assert.equal(untriedAttempt({roundOutcome:{outcome:'superseded-before-evaluation'}}),true);
 // A value equal to the harness default is no change, and spelling a default out is the same configuration.
 assert.deepEqual(effectiveConfig({x:2,y:1},{y:1}),{x:2});
