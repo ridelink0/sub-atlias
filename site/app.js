@@ -123,6 +123,7 @@ function showSuites() {
     const summary = document.createElement('summary'); summary.append(text('span', suite.name), text('span', suite.availability.replaceAll('-', ' '), 'availability'));
     item.append(summary, text('p', suite.grading), text('p', `Suite ID: ${suite.id}. Kind: ${suite.kind}. Available tasks: ${count(suite.availableTasks)} of ${count(suite.expected)} expected. Completed: ${suite.completed === true ? 'Yes' : 'No'}.`), text('p', `Corpus hash: ${suite.contentHash || 'Unknown'}. Upstream version: ${suite.upstreamVersion || 'Unknown in this ledger'}. License: ${suite.license || 'Unknown in this ledger; inspect the original corpus notice before use'}. Required evidence: ${suite.requirement || 'Unknown'}.`));
     const runs = state?.historyRuns?.[suite.id] || [];
+    for (const run of state?.ultimateRuns || []) if (run.id === suite.id) item.append(text('p', `Full corpus run: ${run.status}; ${count(run.recorded)} of ${count(run.expected)} tasks recorded, ${count(run.solved)} solved. Input tokens ${count(run.inputTokens)}, output tokens ${count(run.outputTokens)}. ${run.scope}`));
     item.append(text('p', runs.length ? 'Observed original-runtime stages: ' + runs.map(r => `${r.variant}/${r.stage}: ${r.passed}/${r.n}`).join('; ') + '. These are subsets, not suite completion.' : 'No mapped original-runtime stage evidence for this suite. Execution remains unproved.'));
     $('suite-list').append(item);
   }

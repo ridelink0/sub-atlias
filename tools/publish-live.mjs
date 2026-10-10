@@ -76,6 +76,14 @@ function publish() {
     { id: 'original', name: 'Original runtime', history: original.history },
     { id: 'opencode', name: 'OpenCode v2', history: openCode.history },
   ];
+  const ultimate = read(path.join(originalRoot, 'ULTIMATE-RUNS.json'));
+  bundle.status.ultimateRuns = (Array.isArray(ultimate?.jobs) ? ultimate.jobs : []).filter(j => /^[a-z0-9-]{1,60}$/.test(j?.id || '') && ['running', 'completed', 'held'].includes(j.status)).map(j => {
+    const folder = path.join(originalRoot, 'ultimate');
+    const relative = typeof j.report === 'string' ? path.relative(folder, j.report) : '..';
+    const report = !relative.startsWith('..') && !path.isAbsolute(relative) ? read(j.report) : null;
+    const rows = Array.isArray(report?.results) ? report.results : null;
+    return { id: j.id, status: j.status, expected: Number.isSafeInteger(j.expected) ? j.expected : null, recorded: rows ? rows.length : j.recorded ?? null, solved: rows ? rows.filter(r => r.pass === true).length : j.solved ?? null, inputTokens: Number.isSafeInteger(report?.promptTotal) ? report.promptTotal : null, outputTokens: Number.isSafeInteger(report?.outputTotal) ? report.outputTotal : null, scope: 'Real original-runtime corpus execution; full native context and20x gains remain unproved.' };
+  });
   const comparison = read(path.join(openCodeRoot, 'v0000', 's1.json'));
   if (Array.isArray(comparison?.results)) {
     const rows = comparison.results;
