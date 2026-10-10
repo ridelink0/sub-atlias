@@ -3,7 +3,8 @@ import path from 'node:path';
 import { plateauState } from '../lib/evolution-search.mjs';
 import { safeChange, writePublicHistory } from '../lib/evolution-status.mjs';
 
-export default async function ({ asyncSuite, check, TMP }) {
+export default async function ({ asyncSuite, check: record, TMP }) {
+  const check = (name, passed) => record(name, passed, { happened: String(passed), why: 'Search and publication must hold malformed evidence and preserve atomic output.', fix: 'Inspect the helper boundary before repeating the suite.' });
   await asyncSuite('evolution helper boundaries', 'evolution expert and adversary', async () => {
     let held = false;
     try { plateauState({ variants: [], champion: null }); } catch (error) { held = /dated champion/.test(error.message); }
