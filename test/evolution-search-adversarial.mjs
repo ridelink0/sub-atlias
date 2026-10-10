@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {plateauState,chooseParent,proposalChoices,selectProposal} from '../lib/evolution-search.mjs';
+import {plateauState,chooseParent,proposalChoices,selectProposal,untriedAttempt} from '../lib/evolution-search.mjs';
 const s={n:1,passed:1,tokens:10,rows:[{key:'a',pass:true}]};
 const c={id:'v0002',born:'2026-10-10T00:00:00Z',config:{x:2},s1:s,s2:s};
 const failures=[3,4,5].map(n=>({id:'v000'+n,born:`2026-10-10T00:0${n}:00Z`,config:{x:n},s1:{...s,passed:0,tokens:0,rows:[{key:'a',pass:false}]},broken:'model unavailable'}));
@@ -29,4 +29,9 @@ assert.throws(()=>proposalChoices(a,c,{x:[NaN]}));assert.throws(()=>selectPropos
 assert.equal(selectProposal(a,c,{x:[2]}).change,null);
 const contextual={...a,variants:[c,{...losses[0],parent:'other',change:{x:3},s2:{...s,passed:0,rows:[{key:'a',pass:false}]}}]};
 assert.equal(proposalChoices(contextual,c,{x:[4]})[0].contextualPenalty,0);
+// An outage-only attempt (no counted call) never bans its change; a counted or pending attempt does.
+assert.equal(failures.every(untriedAttempt),true);assert.ok(proposalChoices(a,c,{x:[3]}).some(ch=>ch.change.x===3));
+assert.equal(proposalChoices({...a,variants:[c,...pending]},c,{x:[3]}).length,0);
+assert.equal(untriedAttempt({roundOutcome:{outcome:'infrastructure-held'},s1:{...s,tokens:5}}),false);
+assert.equal(untriedAttempt({roundOutcome:{outcome:'superseded-before-evaluation'}}),true);
 console.log('PASS separate adversarial: outages/pending/partial/confirmation excluded, promotion resets punishment, malformed evidence held, context scoped and exhausted search terminates safely');
