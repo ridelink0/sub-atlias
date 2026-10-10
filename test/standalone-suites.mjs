@@ -5,7 +5,10 @@ import { safeChange, writePublicHistory } from '../lib/evolution-status.mjs';
 
 export default async function ({ asyncSuite, check, TMP }) {
   await asyncSuite('evolution helper boundaries', 'evolution expert and adversary', async () => {
-    check('an empty archive has no active plateau penalty', plateauState({ variants: [], champion: null }).penalty.active === false);
+    let held = false;
+    try { plateauState({ variants: [], champion: null }); } catch (error) { held = /dated champion/.test(error.message); }
+    check('an undated archive holds the search', held);
+    check('a dated champion starts without a plateau penalty', plateauState({ variants: [{ id: 'v0002', born: '2026-10-10T00:00:00Z' }], champion: 'v0002' }).penalty.active === false);
     check('only typed public settings survive hostile changes', safeChange({ 'unsafe.command': 'run', 'agent.ollamaModel': 'C:/private', 'agent.ollamaNumCtx': 16384 }) === 'agent.ollamaNumCtx = 16384');
     const root = path.join(TMP, 'history-helper');
     fs.mkdirSync(root, { recursive: true });
