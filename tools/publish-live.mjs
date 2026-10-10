@@ -1,6 +1,7 @@
 // Gev's live data is updated separately from Vercel deployments, with existing
 // GitHub CLI authentication. Only this reviewed Atlias aggregate is published.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
@@ -30,9 +31,29 @@ if (gistId) {
   const existing = api(['gists/' + gistId]);
   if (existing.owner?.login !== 'ridelink0' || existing.description !== description || !existing.files?.['atlias-live.json']) throw new Error('Refusing to modify an unrelated public artifact');
 }
+// Claude's own latest provider reading, kept by the usage-limits plugin. Only
+// the two windows' percentages and reset times, and whether a Claude Code
+// session was active in the last three minutes, leave this machine.
+function claudeLive(now = Date.now()) {
+  const sessions = Object.values(read(path.join(os.homedir(), '.claude', 'usage-limits-feed.json')) || {}).filter(e => e && Number.isFinite(e.headersAt) && e.rateLimits && typeof e.rateLimits === 'object');
+  const best = sessions.sort((a, b) => b.headersAt - a.headersAt)[0];
+  if (!best) return { allowance: [], agents: [] };
+  const at = new Date(best.headersAt).toISOString();
+  const allowance = [['five_hour', '5-hour'], ['seven_day', 'weekly']].map(([key, window]) => {
+    const w = best.rateLimits[key];
+    return w && Number.isFinite(w.used_percentage) ? { host: 'claude', window, usedPercent: w.used_percentage, observedAt: at, resetsAt: Number.isFinite(w.resets_at) ? new Date(w.resets_at * 1000).toISOString() : null, source: 'actual-provider' } : null;
+  }).filter(Boolean);
+  const lastSeen = Math.max(...sessions.map(e => Number.isFinite(e.at) ? e.at : 0));
+  const model = typeof best.modelName === 'string' && /^[A-Za-z0-9 .]{1,30}$/.test(best.modelName) ? best.modelName : 'model unknown';
+  const agents = [{ id: 'claude-code', name: `Claude Code (${model})`, state: now - lastSeen <= 180000 ? 'working' : 'idle', observedAt: new Date(lastSeen).toISOString() }];
+  return { allowance, agents };
+}
 function publish() {
   if (fs.existsSync(path.join(root, 'LIVE-PUBLISHER.STOP'))) { console.log('Atlias live publisher stopped cooperatively'); process.exit(0); }
-  const bundle = collectLive({ stateRoot: 'D:/harness-work/atlias-evolve', agentRegistry: read(path.join(root, 'AGENTS-STATUS.json')) || [], allowance: read(path.join(root, 'PUBLIC-ALLOWANCE.json')) || [], messages: read(path.join(root, 'PUBLIC-COMMUNICATIONS.json')) || [] });
+  const claude = claudeLive();
+  const allowance = [...claude.allowance, ...(read(path.join(root, 'PUBLIC-ALLOWANCE.json')) || []).filter(a => a?.host !== 'claude' || !claude.allowance.length)];
+  const agentRegistry = [...claude.agents, ...(read(path.join(root, 'AGENTS-STATUS.json')) || []).filter(a => a?.id !== 'claude-code' && !(claude.agents.length && a?.id === 'claude-runtime'))];
+  const bundle = collectLive({ stateRoot: 'D:/harness-work/atlias-evolve', agentRegistry, allowance, messages: read(path.join(root, 'PUBLIC-COMMUNICATIONS.json')) || [] });
   const content = JSON.stringify(bundle);
   if (Buffer.byteLength(content) > 900000 || /[A-Za-z]:[\\/]|gh[pousr]_[a-zA-Z0-9]|sk-[a-zA-Z0-9]{10}|Bearer\s+[a-zA-Z0-9]/.test(content)) throw new Error('Atlias privacy/size gate refused publication');
   const payload = { files: { 'atlias-live.json': { content } } };

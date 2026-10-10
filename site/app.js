@@ -39,7 +39,7 @@ function showStatus(data) {
   $('allowance-list').replaceChildren();
   for (const a of data.allowance || []) {
     const age = (Date.now() - Date.parse(a.observedAt)) / 1000;
-    $('allowance-list').append(text('p', `${a.host}: ${count(a.usedPercent)}% used at ${a.observedAt ? new Date(a.observedAt).toLocaleString() : 'Unknown time'}${age > 180 || !Number.isFinite(age) ? ' (stale; current allowance unknown)' : ''}. Measured reset: ${a.resetsAt ? new Date(a.resetsAt).toLocaleString() : 'Unknown'}.`));
+    $('allowance-list').append(text('p', `${a.host}${a.window ? ' ' + a.window + ' window' : ''}: ${count(a.usedPercent)}% used at ${a.observedAt ? new Date(a.observedAt).toLocaleString() : 'Unknown time'}${age > 180 || !Number.isFinite(age) ? ' (stale; current allowance unknown)' : ''}. Measured reset: ${a.resetsAt ? new Date(a.resetsAt).toLocaleString() : 'Unknown'}.`));
   }
   $('message-list').replaceChildren();
   for (const m of data.communications || []) {
@@ -60,7 +60,34 @@ function showStatus(data) {
 }
 // What the coder is doing now, and each recent round as the recorded exchange
 // between controller, proposer and coder. Open rounds stay open across refreshes.
+function renderStats(data) {
+  const s = data.liveStats, box = $('live-stats');
+  box.replaceChildren();
+  if (!s) { box.append(text('p', 'Live statistics unavailable.')); return; }
+  const card = (title, ...lines) => { const c = text('article', '', 'stat'); c.append(text('h3', title), ...lines.filter(Boolean).map(l => text('p', l))); box.append(c); };
+  const st = s.stage || {};
+  const pct = (a, b) => Number.isSafeInteger(a) && Number.isSafeInteger(b) && b > 0 ? ` (${(a / b * 100).toFixed(1)}%)` : '';
+  if (st.variant) {
+    card('Current stage', `${st.variant} ${st.stage}: ${count(st.done)} of ${count(st.expected)} tasks done`, `${count(st.solved)} solved${pct(st.solved, st.done)}`);
+    card('Pace', st.elapsedMinutes != null ? `${count(st.elapsedMinutes)} minutes in` : 'Start time unknown', st.tasksPerHour != null ? `${st.tasksPerHour} tasks per hour` : null, st.finishEstimate ? `Estimated finish ${new Date(st.finishEstimate).toLocaleTimeString()}` : null);
+    card('Tokens this stage', `Prompt tokens per solve: ${count(st.promptTokensPerSolve)}`, `Output tokens so far: ${count(st.outputTokens)}`);
+    if (!st.sealed) {
+      card('How runs ended', ...(Object.entries(st.stopReasons || {}).map(([k, v]) => `${k}: ${count(v)}`)), Object.keys(st.stopReasons || {}).length ? null : 'No finished task yet');
+      card('By suite', ...(Object.entries(st.suites || {}).map(([k, v]) => `${k}: ${count(v.solved)} of ${count(v.n)}${pct(v.solved, v.n)}`)), Object.keys(st.suites || {}).length ? null : 'No finished task yet');
+    } else card('Sealed stage', 'Per-task results are withheld until the stage ends.');
+  } else card('Current stage', 'Between rounds: the controller is choosing the next change.');
+  const l = s.loop || {};
+  card('Loop pace', `${count(l.screensFinishedLast24h)} paired screens finished in the last 24 hours`, `Median smoke stage ${count(l.medianSmokeMinutes)} min, median screen ${count(l.medianScreenMinutes)} min`, l.modelServerHeld ? 'Holding: the model server is not answering' : null);
+  const p = s.proposals || {}, total = ['modelAnswered', 'unusableReply', 'unreachable', 'other'].reduce((n, k) => n + (Number.isSafeInteger(p[k]) ? p[k] : 0), 0);
+  card('Proposer replies', `Usable change: ${count(p.modelAnswered)}${pct(p.modelAnswered, total)}`, `No usable CHANGE line: ${count(p.unusableReply)}`, `Model server unreachable: ${count(p.unreachable)}`);
+}
+function renderGoals(data) {
+  const g = data.goals || {};
+  for (const [id, goal] of [['goal-tokens', g.totalNativeTokens], ['goal-peak', g.fullNativePeak]]) if ($(id)) $(id).textContent = goal?.proved === true ? 'Proved' : 'Unproved';
+}
 function renderModels(data) {
+  renderStats(data);
+  renderGoals(data);
   const a = data.activity;
   $('activity-now').textContent = a ? `${a.coder ? 'Coder ' + a.coder : 'The coder'} is ${a.phase === 'eval' ? 'working on' : 'at'} ${a.variant}, ${a.stageLabel}: ${count(a.completed)} of ${count(a.expected)} tasks done, ${count(a.passed)} solved. Change under test: ${a.change || 'withheld'}.${a.sealed ? ' Sealed stage: per-task results are withheld.' : ''}` : 'No current activity evidence.';
   const body = $('activity-tasks');

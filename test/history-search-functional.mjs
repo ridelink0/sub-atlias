@@ -65,6 +65,13 @@ assert.equal(live2.status.conversations.find(c => c.variant === 'v0005').live, t
 const t6 = turns('v0006');
 assert.ok(t6[0].text.includes('Search penalty active (3 completed rounds without a new champion)'));
 assert.equal(t6.at(-1).text, 'Superseded at a controller handoff; this change was never run.');
+const ls = live2.status.liveStats;
+assert.deepEqual([ls.stage.variant, ls.stage.done, ls.stage.solved, ls.stage.expected, ls.stage.elapsedMinutes], ['v0005', 2, 1, 60, 410]);
+assert.deepEqual(ls.stage.stopReasons, { 'ran out of rounds': 1, answered: 1 });
+assert.deepEqual(ls.stage.suites, { 'HumanEvalFix Python': { n: 1, solved: 1 }, 'CanItEdit lazy': { n: 1, solved: 0 } });
+assert.equal(ls.stage.promptTokensPerSolve, 49000); assert.equal(ls.stage.outputTokens, 3900);
+assert.ok(Date.parse(ls.stage.finishEstimate) > now.getTime());
+assert.equal(ls.proposals.modelAnswered, 4);
 const head = id => live2.status.conversations.find(c => c.variant === id).headline;
 assert.equal(head('v0003'), 'agent.evictBlock = 3: not promoted');
 assert.equal(head('v0005'), 'agent.evictBlock = 5: running now');

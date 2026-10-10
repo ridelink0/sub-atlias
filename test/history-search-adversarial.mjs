@@ -71,5 +71,11 @@ fs.writeFileSync(path.join(r4, 'HEARTBEAT.json'), JSON.stringify({ at: now.toISO
 fs.writeFileSync(path.join(r4, 'variants', 'v0002', 'c250.json'), JSON.stringify({ partial: true, results: [{ id: 'humanevalfix-python-9', pass: true, stop: 'answered', rounds: 4, promptTotal: 100, outputTotal: 10 }] }));
 const sealed = collectLive({ stateRoot: r4, now }).status.activity;
 assert.equal(sealed.sealed, true); assert.deepEqual(sealed.recent, []); assert.equal(sealed.stageLabel, 'sealed confirmation (250 tasks)');
+// Live numbers: a sealed stage keeps its tallies private, and with no start line
+// in the log there is no elapsed time, pace or finish estimate, never a guess.
+const sealedStats = collectLive({ stateRoot: r4, now }).status.liveStats;
+assert.deepEqual(sealedStats.stage.stopReasons, {}); assert.deepEqual(sealedStats.stage.suites, {});
+assert.equal(sealedStats.stage.elapsedMinutes, null); assert.equal(sealedStats.stage.tasksPerHour, null); assert.equal(sealedStats.stage.finishEstimate, null);
+assert.deepEqual(sealedStats.proposals, { modelAnswered: 0, unusableReply: 0, unreachable: 1, other: 1 });
 for (const r of roots) fs.rmSync(r, { recursive: true, force: true });
 console.log('PASS history search separate adversarial: malformed and missing counters stay Unknown, zero-solve stages have no ratio, unknown outcomes/policies/routes dropped, no-champion archive has no penalty, private senders/recipients/text withheld');
