@@ -13,6 +13,7 @@
 //   atlias graph query|affected|explain|update <arg> | config [set <section.key> <value>]
 import fs from 'node:fs';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import { VERSION, STATE_DIR, ROOT, readJson, writeJson, DEFAULTS, config, parseSetting, writeLauncher, flagStamp, flagLine, flagEnvName, sameFlags } from '../lib/core.mjs';
 import * as hosts from '../lib/hosts.mjs';
@@ -113,7 +114,6 @@ else switch (cmd) {
       setInterval(stopIfOrphaned, 2000).unref();
     }
     const evals = await import('../lib/eval.mjs');
-    const loopMod = await import('../lib/loop.mjs');
     const cfg = config().agent;
     // Positional task ids only: the value after --engine or --only belongs to
     // that flag, not to the task list.
@@ -150,7 +150,8 @@ else switch (cmd) {
     if (!tasks.length) { say(tierName ? `no tasks in the ${tierName} tier` : 'no tasks; the corpus is in evals/*.json'); process.exitCode = 2; break; }
     if (chosen) say(`tier ${chosen.name}: ${chosen.tier.what}`);
     if (sample > 0 && tasks.length < before) say(`sampled ${tasks.length} of ${before} task(s) with seed "${seed}"; the same seed picks the same tasks again.`);
-    const engine = optVal('--engine') || (cfg.openaiModel ? 'openai' : 'ollama');
+    const engine = optVal('--engine') || 'opencode';
+    if (!['opencode', 'ollama', 'echo'].includes(engine)) { say('eval uses the pinned local OpenCode runtime (--engine opencode or ollama); echo is a no-model dry run.'); process.exitCode = 2; break; }
     // echo is the dry run: it exercises the harness without a model, so a
     // broken corpus or checker shows up before any tokens are spent.
     // --model scores a named model without editing the machine's settings, so
@@ -159,13 +160,13 @@ else switch (cmd) {
     // An eval run keeps the local model loaded between tasks, so no task pays a
     // reload the one before it did not, unless the machine's settings say otherwise.
     const cfgFor = { ...cfg, ...(picked ? { ollamaModel: picked, openaiModel: picked } : {}), ollamaKeepAlive: cfg.ollamaKeepAlive || '30m' };
-    if (engine === 'openai' && loopMod.v1ContextWarning(cfgFor.openaiUrl)) say(loopMod.v1ContextWarning(cfgFor.openaiUrl));
-    const chat = engine === 'echo' ? async () => ({ content: 'echo: no work done' })
-      : engine === 'openai' ? loopMod.openaiChat(cfgFor) : loopMod.ollamaChat(cfgFor);
+    const localRuntime = await import('../lib/opencode-agent.mjs');
+    const chat = engine === 'echo' ? async () => ({ content: 'echo: no work done' }) : undefined;
+    const runtime = engine === 'echo' ? undefined : localRuntime.taskRuntime(cfgFor);
     // One run of a sampling process is not a result: --repeat 3 runs each task
     // three times and reports pass^3 beside pass@3.
     const repeat = Math.max(1, parseInt(optVal('--repeat') || '1', 10) || 1);
-    const model = picked || (engine === 'openai' ? cfg.openaiModel : engine === 'ollama' ? cfg.ollamaModel : '');
+    const model = engine === 'echo' ? '' : picked || cfg.ollamaModel;
     say(`${tasks.length} task(s) against ${engine}${repeat > 1 ? `, ${repeat} attempts each` : ''}. The check command decides, not the model.`);
     // What corpus produced the score, in the report itself: a saved report that
     // does not say which tier and which sample it ran cannot be the A in an A/B.
@@ -194,6 +195,9 @@ else switch (cmd) {
     // run that dies keeps what it did, and --resume carries on from it.
     const savePath = optVal('--save');
     const out = savePath ? path.resolve(savePath) : '';
+    if (runtime && out && fs.existsSync(out) && !flag('--resume')) {
+      say('an original report already exists at --save; use a fresh path or an exact-source --resume. Nothing ran.'); process.exitCode = 2; break;
+    }
     let prior = [];
     if (flag('--resume')) {
       if (!out) { say('--resume needs --save <file>: it carries on from the report in that file.'); process.exitCode = 2; break; }
@@ -207,11 +211,36 @@ else switch (cmd) {
       prior = old ? (old.results || []).filter((r) => want.has(r.id)) : [];
       say(prior.length ? `--resume: ${prior.length} of ${tasks.length} task(s) already in ${out}; running the other ${tasks.length - prior.length}.` : `--resume: nothing to carry on from in ${out}; starting fresh.`);
     }
-    const save = (rep) => { fs.mkdirSync(path.dirname(out), { recursive: true }); fs.writeFileSync(out, `${JSON.stringify(rep, null, 2)}\n`); };
+    const save = (rep) => {
+      fs.mkdirSync(path.dirname(out), { recursive: true });
+      const tmp = `${out}.${crypto.randomBytes(12).toString('hex')}.tmp`;
+      const fd = fs.openSync(tmp, 'wx');
+      try { fs.writeFileSync(fd, `${JSON.stringify(rep, null, 2)}\n`); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }
+      try { fs.renameSync(tmp, out); } catch (e) { fs.unlinkSync(tmp); throw e; }
+    };
     // The stamp is taken once, at the start: it names the code that is running.
-    const stampNow = out ? evals.harnessStamp() : null;
-    const partial = (rows) => { if (out) save({ partial: true, results: rows, engine, model, tries: repeat, corpus: corpusInfo, stamp: stampNow, flags: flagsNow }); };
-    const report = await evals.runSuite(tasks, { chat, state: agent.newState(cwd, engine), repeat, engineName: engine, model, corpus: corpusInfo, budget: roundsArg, beforeAttempt: stopIfOrphaned, work, prior, onResult: partial, flags: flagsNow });
+    const nativeFiles = ['bin/atlias.mjs', 'lib/core.mjs', 'lib/agent.mjs', 'lib/eval.mjs', 'lib/opencode-agent.mjs', 'lib/opencode-runtime.mjs', 'lib/opencode-provider-ledger.mjs'];
+    const sourceDigest = () => crypto.createHash('sha256').update(JSON.stringify(nativeFiles.map((f) => [f, crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, f))).digest('hex')]))).digest('hex');
+    const nativeSource = runtime ? sourceDigest() : null;
+    const stampNow = out ? evals.harnessStamp(undefined, runtime ? nativeFiles : undefined) : null;
+    let nativeProfile = null;
+    try { if (runtime) nativeProfile = crypto.createHash('sha256').update(JSON.stringify(localRuntime.localOptions(cfgFor))).digest('hex'); }
+    catch (e) { say(e.message); process.exitCode = 2; break; }
+    const nativeCorpus = runtime ? crypto.createHash('sha256').update(JSON.stringify(tasks)).digest('hex') : null;
+    if (flag('--resume') && runtime) {
+      let old;
+      try { old = JSON.parse(fs.readFileSync(out, 'utf8')); } catch { say('--resume requires a readable original report; nothing ran.'); process.exitCode = 2; break; }
+      if (old.runtime !== localRuntime.LOCAL_RUNTIME || old.nativeSource !== nativeSource || old.nativeProfile !== nativeProfile || old.nativeCorpus !== nativeCorpus) {
+        say('--resume refuses a different runtime/source; original report is preserved.'); process.exitCode = 2; break;
+      }
+    }
+    const partial = (rows) => { if (out) save({ partial: true, results: rows, engine, model, tries: repeat, corpus: corpusInfo, stamp: stampNow, flags: flagsNow, ...(runtime ? { runtime: localRuntime.LOCAL_RUNTIME, nativeSource, nativeProfile, nativeCorpus } : {}) }); };
+    const beforeAttempt = () => { stopIfOrphaned(); if (runtime && sourceDigest() !== nativeSource) throw new Error('native source changed; prior report is preserved, no next inference'); };
+    const report = await evals.runSuite(tasks, { chat, runtime, state: agent.newState(cwd, engine), repeat, engineName: engine, model, corpus: corpusInfo, budget: roundsArg, beforeAttempt, work, prior, onResult: partial, flags: flagsNow });
+    if (runtime) {
+      report.runtime = localRuntime.LOCAL_RUNTIME; report.stamp = stampNow; report.nativeSource = nativeSource; report.nativeProfile = nativeProfile; report.nativeCorpus = nativeCorpus;
+      Object.assign(report, localRuntime.nativeSuiteAccounting(report.results));
+    }
     say(evals.format(report));
     if (out) { save(report); say(`saved to ${out}`); }
     process.exitCode = report.passed === report.total ? 0 : 1;

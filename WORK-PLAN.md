@@ -1,6 +1,26 @@
 # Gev's OpenCode migration checkpoint
 
-Updated October9,2026,15:43 America/Chicago. Work is ongoing. Download restrictions were explicitly removed by Gev: "destroy the download restriction and run it all". No paid calls, credits or purchases. Only the requested Atlias website publication and Claude communication are authorized externally.
+Updated October9,2026,19:56 America/Chicago. Work is ongoing. Download restrictions were explicitly removed by Gev: "destroy the download restriction and run it all". No paid calls, credits or purchases. Only the requested Atlias website publication and Claude communication are authorized externally.
+
+## Latest Gev priority and current integration checkpoint
+
+October9,20:14 checkpoint: actual Codex app93% primary/77% weekly, measured reset1791609078; no credits. New native integration software checks exit0:8 functional plus25 separate adversarial,33/33, evidence ../checks/native-integration-YZ6xaD and ../checks/native-integration-checkpoint.json. Nine Node syntax checks exit0. Root-copy native adapter/eval integration is a reviewable checkpoint, not a qualified native migration. Full regression remains pending after correcting existing PID timeout fixture. Original owner41764 still alive at20:09, fresh HEARTBEAT.json v0003/s2 and matching lock; guards now include that ACTUAL filename. No new inference or original STOP.
+
+Actual pinned-help bootstrap was held at freeRAM508276736 bytes, below512MiB floor; dependency manifests are ready, but Bun version probe timed out during memory pressure and actual CLI did not launch. Later read-only sample20:09 freeRAM1179521024; rerun only after fresh reserve check, sampling and safe cancellation. Upstream/host enforcement and full context accounting remain unproved. Claude receives all collaboration priorities FIRST, website LAST, at20:17:02 after measured20:10 reset and actual quota confirmation. Pending computer-use helper limitation remains; established background CLI is available.
+
+Next exact engineering checks: register new integration suite only after runtime cancellation fixture corrected; qualify actual pinned import/config/tool schema while inference held; fix exclusive GPU lease and durable append-before-dispatch ledger; verify all failed costs stay unknown. Native source/profile/corpus-bound resume and atomic reports require fresh CLI edge-case checks, including malformed/duplicate prior rows and interruption. Native chat continuity, undo, compaction, held-execution exit status, and help strings still need implementation proof; current explicit-history is deliberately labeled limited. A new source-copy runtime/provider merge must preserve readiness/HEARTBEAT.json corrections and Codex adapter files. Reuse new-runtime-api-check.md and new-runtime-api-independent.md; no unchanged research replay.
+
+Claude must help with the runtime, local models, execution benchmarks, recovery and all outstanding goals first. Website is LAST and exclusively Claude-owned, including statistics/data collection and Vercel. Codex stopped its exact publisher tool session; PUBLIC-PUBLISHER.STOP exists and publisher owner17736 was absent. No website implementation or publication after this ownership instruction. Full handoff: ../CLAUDE-COLLABORATION-DIRECTIVES.md and ../CLAUDE-WEBSITE-DIRECTIVES.md.
+
+Actual Claude allowance was100%, next measured reset October9,20:10:00.650533 Chicago. One-time handoff20:17:02 requires fresh quota confirmation before delivery, Opus5.5 xhigh and Ultrathink. Daily21:20 remains. Actual Codex five-hour usage24% at19:52, approximately182 xhigh turns; no credits. Fresh window reset measured1791609078. The earlier one-time Codex wake was fulfilled and deleted.
+
+Bun1.4.2 frozen production filtered install completed exit0,630 packages. Upstream Git tree was clean, free RAM1099038720 bytes. CLI-local effect and @opentui/solid junctions exist; readiness was incorrectly checking only root effect and is now corrected in the source copy. Actual pinned CLI execution remains pending, not proved by installation.
+
+Claude commitb88221fed9c51ae1fd5ee052ea79652350de9519 independently ran64/64 checks and was cherry-picked as7b92928. Subsequent review found PID-based cancellation in that runtime; do not execute its timeout fixture again until cancellation respects Gev's rule. Claude owns corrections in ../claude-runtime; source copy contains the readiness fix. Original codebase/protected dirty files remain separate.
+
+Codex has uncommitted integration in lib/opencode-agent.mjs, agent/core/settings/eval and bin/atlias.mjs, wiring local production paths to OpenCode and retaining legacy loops only for scripted fixtures. Native unknown accounting stays null; immutable native resume is bound to actual source/profile/corpus hashes. Six syntax checks passed before latest small patches; new functional and separate adversarial execution checks are still required. Do not treat this checkpoint as completed migration.
+
+Original evolution owner41764 remains running loaded old code. At19:30 it was evaluating v0003/s2. Completed v0002 Qwen3.5:9b s3=88/120 versus v0000=28/120,61 paired gains/1 loss; peak prompt7213 versus6210, full native context/output costs unproved. These are original-runtime evidence, not OpenCode proof. No STOP during eval or model calls, no concurrent inference. Current and original stages/results remain immutable; a new250 confirmation requires its own versioned stage/runtime.
 
 ## Completed and actually verified
 
