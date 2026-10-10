@@ -10,8 +10,9 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startProviderLedger, toNativeRequest, summarize, overflowOf, loopbackHttpUrl } from '../lib/opencode-provider-ledger.mjs';
-import { runOpenCode, opencodeConfig, isolatedEnv, buildCommand, contextProfile, gpuOwnership, parseRunEvents, reconcile, verifySource, OPENCODE_PIN, DEFAULTS } from '../lib/opencode-runtime.mjs';
+import { spawnSync } from 'node:child_process';
+import { startProviderLedger, toNativeRequest, summarize, overflowOf, loopbackHttpUrl, readLedgerFile } from '../lib/opencode-provider-ledger.mjs';
+import { runOpenCode, opencodeConfig, isolatedEnv, buildCommand, contextProfile, gpuOwnership, parseRunEvents, reconcile, verifySource, acquireGpuLease, leaseHeld, releaseGpuLease, OPENCODE_PIN, DEFAULTS } from '../lib/opencode-runtime.mjs';
 
 const MODEL = 'qwen2.5-coder:7b';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -109,7 +110,8 @@ export default async function opencodeRuntimeSuites({ asyncSuite, check, TMP }) 
       const s = L.summary();
       c('a child session is its own line and a repeat is flagged', r2.status === 200 && s.sessions.ses_child.parentId === 'ses_main' && s.repeats === 1 && s.calls === 2 && s.total === 1752 && s.peakPrompt === 812 && s.peakWindow === 876 && s.complete, JSON.stringify(s), 'Child and retried calls are exactly what the CLI JSON leaves out.');
       const lines = fs.readFileSync(ledgerFile, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
-      c('every record is on disk as JSONL', lines.length === L.records.length && lines.every((l) => l.schema === 'atlias.opencode.provider-ledger/1'), `${lines.length} lines, ${L.records.length} records`, 'A crash must not lose the calls already made.');
+      const intents = lines.filter((l) => l.kind === 'dispatch-intent');
+      c('every record is on disk as JSONL, with one dispatch intent per sent call', lines.length - intents.length === L.records.length && intents.length === L.records.filter((r) => r.dispatched).length && lines.every((l) => l.schema === 'atlias.opencode.provider-ledger/1'), `${lines.length} lines, ${intents.length} intents, ${L.records.length} records`, 'A crash must not lose the calls already made.');
       const ns = await post(`${L.url}/v1/chat/completions`, opencodeBody({ stream: false }));
       c('a non-streaming client gets one chat.completion', ns.status === 200 && ns.json.choices[0].message.content === 'Hello' && ns.json.usage.total_tokens === 876, ns.text.slice(0, 200), 'Some callers do not stream.');
     } finally { await L.close(); await up.close(); }
@@ -157,8 +159,8 @@ const call = async (h) => { const t = await (await fetch(base + '/chat/completio
   return t.split('\\n').filter((l) => l.startsWith('data: {')).map((l) => JSON.parse(l.slice(6))).find((e) => e.usage).usage; };
 const u = await call({ 'x-opencode-session-id': 'ses_main' });
 await call({ 'x-opencode-session-id': 'ses_child', 'x-opencode-parent-session-id': 'ses_main' });
-const p = new URL(process.env.HTTP_PROXY);
-await new Promise((r) => { const q = http.request({ host: p.hostname, port: p.port, method: 'GET', path: 'http://example.com/' }, (res) => { res.resume(); res.on('end', r); }); q.on('error', r); q.end(); });
+if (prompt.includes('egress')) { const p = new URL(process.env.HTTP_PROXY);
+await new Promise((r) => { const q = http.request({ host: p.hostname, port: p.port, method: 'GET', path: 'http://example.com/' }, (res) => { res.resume(); res.on('end', r); }); q.on('error', r); q.end(); }); }
 fs.writeFileSync(path.join(process.env.PWD, 'env-seen.json'), JSON.stringify({ keys: Object.keys(process.env), home: process.env.HOME, key: process.env.OPENAI_API_KEY ?? null }));
 const cached = u.prompt_tokens_details ? u.prompt_tokens_details.cached_tokens : 0;
 for (const e of [{ type: 'step_start', sessionID: 'ses_main', part: {} }, { type: 'text', sessionID: 'ses_main', part: { text: 'done' } }, { type: 'step_finish', sessionID: 'ses_main', part: { tokens: { input: u.prompt_tokens - cached, output: u.completion_tokens, reasoning: 0, cache: { read: cached, write: 0 } }, cost: 0 } }]) console.log(JSON.stringify({ timestamp: Date.now(), ...e }));
@@ -167,15 +169,19 @@ for (const e of [{ type: 'step_start', sessionID: 'ses_main', part: {} }, { type
     const stateRoot = path.join(W, 'run1');
     process.env.OPENAI_API_KEY = 'sk-should-not-pass';
     let rc;
+    let rcE;
+    const run = { taskDir: task, model: MODEL, numCtx: 8192, upstream: up.url, gpuLocks: [], leaseFile: path.join(W, 'run1.lease'), ramFloorBytes: 1, command: { file: process.execPath, args: [cli], cwd: W }, timeoutMs: 60000 };
     try {
-      rc = await runOpenCode({ prompt: 'write a.txt', taskDir: task, model: MODEL, numCtx: 8192, stateRoot, upstream: up.url, gpuLocks: [], ramFloorBytes: 1, command: { file: process.execPath, args: [cli], cwd: W }, timeoutMs: 60000 });
+      rc = await runOpenCode({ ...run, prompt: 'write a.txt', stateRoot });
+      rcE = await runOpenCode({ ...run, prompt: 'write a.txt egress', stateRoot: path.join(W, 'run1e') });
     } finally { delete process.env.OPENAI_API_KEY; await up.close(); }
     const seenFile = path.join(task, 'env-seen.json');
     const seen = fs.existsSync(seenFile) ? JSON.parse(fs.readFileSync(seenFile, 'utf8')) : { keys: ['(missing)'], key: '(missing)', home: '' };
     c('the run completes and says it was not the pinned CLI', rc.status === 'completed' && rc.runtime === 'custom-command' && rc.exit.code === 0, JSON.stringify({ s: rc.status, e: rc.exit, p: rc.problems, err: rc.stderrTail }), 'A stand-in run must never read as an OpenCode run.');
     c('the parent\'s provider key never reaches the run', seen.key === null && !seen.keys.includes('OPENAI_API_KEY') && path.resolve(seen.home).startsWith(path.resolve(stateRoot)), JSON.stringify(seen).slice(0, 400), 'No cloud credential in a local run.');
     c('the ledger has both sessions, the CLI only the main one', rc.ledger && rc.ledger.calls === 2 && rc.ledger.total === 1752 && rc.reconciliation.sessions.ses_main && rc.reconciliation.sessions.ses_main.match && rc.reconciliation.ledgerOnly.join() === 'ses_child' && rc.reconciliation.unreportedByCli === 876, JSON.stringify(rc.reconciliation), 'The capture the CLI JSON cannot give.');
-    c('the egress attempt through the proxy env is recorded and refused', rc.ledger && rc.ledger.egressAttempts === 1, JSON.stringify(rc.ledger), 'Any request leaving the machine must show up, not pass.');
+    c('a clean run has separate verdicts and leaves task success to the oracle', rc.ledger && rc.ledger.egressAttempts === 0 && rc.verdicts && rc.verdicts.accounting === 'complete and reconciled with the CLI' && /not judged here/.test(rc.verdicts.task) && rc.lease && rc.lease.ok && rc.lease.released === true && rc.ledgerFileMatchesMemory === true, JSON.stringify({ v: rc.verdicts, l: rc.lease, m: rc.ledgerFileMatchesMemory }), 'Process exit, accounting and task success are different questions.');
+    c('an egress attempt through the proxy env is recorded, refused, and the run is not completed', rcE && rcE.ledger.egressAttempts === 1 && rcE.status === 'egress-attempted' && rcE.exit.code === 0, JSON.stringify({ s: rcE && rcE.status, e: rcE && rcE.ledger && rcE.ledger.egressAttempts }), 'Exit 0 with a network attempt is not a clean run.');
     c('preflight saw the model installed with a trained length above the window', rc.preflight && rc.preflight.ok && rc.preflight.trainedContext === 32768 && rc.preflight.digest === 'dae161e2', JSON.stringify(rc.preflight), 'The run checks the model before it starts.');
     c('the receipt, config, ledger and CLI output are on disk; the real profile is unchanged', ['receipt.json', 'opencode-config.json', 'ledger.jsonl', 'stdout.jsonl'].every((f) => fs.existsSync(path.join(stateRoot, f))) && rc.globalProfileUnchanged === true, JSON.stringify(fs.readdirSync(stateRoot)), 'Receipts are the evidence; the user\'s own opencode roots must not move.');
   });
@@ -200,7 +206,7 @@ for (const e of [{ type: 'step_start', sessionID: 'ses_main', part: {} }, { type
       const o = await post(`${L.url}/v1/chat/completions`, opencodeBody());
       const orec = L.records.at(-1);
       c('an overflow comes back as context_length_exceeded with Ollama\'s words', o.status === 400 && o.json.error.code === 'context_length_exceeded' && /exceeds the available context size/.test(o.json.error.message), o.text, 'OpenCode compacts and retries only on a recognised overflow (provider-error.ts:36,251).');
-      c('the overflow is a recorded call with the rejected size, not a count', orec.status === 'overflow' && orec.overflow.promptTokens === 9100 && orec.countersExpected === false && orec.tokens.input === null && L.summary().largestRejectedPrompt === 9100, JSON.stringify(orec), 'The model never processed it; inventing a count would be fabrication.');
+      c('the overflow is a sent call of unknown cost; its rejected size is only a lower bound', orec.status === 'overflow' && orec.overflow.promptTokens === 9100 && orec.dispatched === true && orec.countersExpected === true && orec.tokens.input === null && L.summary().largestRejectedPrompt === 9100 && L.summary().unknownInputLowerBound === 9100 && L.summary().total === null, JSON.stringify({ r: orec.status, s: L.summary() }), 'What the server spent on a rejected call is unknown; zero would be fabrication.');
       mode = 'nocount';
       await post(`${L.url}/v1/chat/completions`, opencodeBody());
       const nrec = L.records.at(-1);
@@ -254,7 +260,7 @@ for (const e of [{ type: 'step_start', sessionID: 'ses_main', part: {} }, { type
 
   await asyncSuite('local runtime adversary', 'opencode runtime: guards stop a run before it starts (adversarial)', async () => {
     const task = fs.mkdtempSync(path.join(W, 'guard-'));
-    const base = { prompt: 'x', taskDir: task, model: MODEL, upstream: 'http://127.0.0.1:9', ramFloorBytes: 1, command: { file: process.execPath, args: ['-e', ''], cwd: W } };
+    const base = { prompt: 'x', taskDir: task, model: MODEL, upstream: 'http://127.0.0.1:9', ramFloorBytes: 1, leaseFile: path.join(W, 'guard.lease'), command: { file: process.execPath, args: ['-e', ''], cwd: W } };
     const lock = path.join(W, 'GPU.lock');
     fs.writeFileSync(lock, JSON.stringify({ pid: process.pid }));
     const g = await runOpenCode({ ...base, stateRoot: path.join(W, 'g1'), gpuLocks: [lock] });
@@ -280,6 +286,135 @@ for (const e of [{ type: 'step_start', sessionID: 'ses_main', part: {} }, { type
     const hp = fs.existsSync(pidFile) ? Number(fs.readFileSync(pidFile, 'utf8')) : 0;
     for (let i = 0; i < 50 && hp && alive(hp); i++) await sleep(100);
     c('the wall-clock limit ends the whole tree and closes the ledger', t.status === 'timed-out' && hp > 0 && !alive(hp) && t.ledger && t.ledger.calls === 0, JSON.stringify({ s: t.status, hp, alive: hp && alive(hp) }), 'A hung run must not hold the GPU or a port.');
+  });
+
+  await asyncSuite('local runtime adversary', 'opencode ledger: sent calls without counters stay unknown; gate and durable intent (adversarial)', async () => {
+    let mode = 'e500';
+    const lf = path.join(W, 'corr-ledger.jsonl');
+    let intentFirst = null;
+    const up = await fakeOllama((body, res) => {
+      // The intent line must already be on disk when the model server sees the call.
+      intentFirst = fs.existsSync(lf) && readLedgerFile(lf).some((r) => r && r.kind === 'dispatch-intent');
+      if (mode === 'e500') { res.writeHead(500, { 'content-type': 'application/json' }); res.end(JSON.stringify({ error: 'runner crashed' })); return; }
+      if (mode === 'garbage') { res.writeHead(200, { 'content-type': 'application/x-ndjson' }); res.write(JSON.stringify({ message: { role: 'assistant', content: 'a' }, done: false }) + '\n'); res.end('<html>oops</html>\n'); return; }
+      if (mode === 'negative') { ndjson(res, [{ ...FINAL, prompt_eval_count: -5 }]); return; }
+      if (mode === 'fraction') { ndjson(res, [{ ...FINAL, eval_count: 12.5 }]); return; }
+      standard(body, res);
+    });
+    let gateWhy = null;
+    let gateThrows = false;
+    const L = await startProviderLedger({ upstream: up.url, model: MODEL, numCtx: 8192, numPredict: 2048, ledgerFile: lf, beforeDispatch: () => { if (gateThrows) throw new Error('lock unreadable'); return gateWhy; } });
+    try {
+      const r500 = await post(`${L.url}/v1/chat/completions`, opencodeBody());
+      const a = L.records.at(-1);
+      c('an HTTP 500 after dispatch is unknown, not zero', r500.status === 500 && a.dispatched === true && a.tokens.input === null && L.summary().unknown === 1 && L.summary().total === null && L.summary().complete === false, JSON.stringify({ st: a.status, s: L.summary() }), 'A failed call may still have evaluated the prompt (routes.go:2956-2963 sends no counters).');
+      c('the dispatch intent is on disk before the model server sees the call', intentFirst === true, intentFirst, 'Append before dispatch: a crash after sending cannot lose the call.');
+      mode = 'garbage';
+      const g = await post(`${L.url}/v1/chat/completions`, opencodeBody());
+      c('a stream line that is not JSON fails the call as malformed-stream with unknown cost', L.records.at(-1).status === 'malformed-stream' && L.records.at(-1).tokens.input === null && /not a JSON object/.test(g.text), `${L.records.at(-1).status} ${g.text.slice(0, 200)}`, 'A broken stream must not read as a finished answer.');
+      mode = 'negative';
+      await post(`${L.url}/v1/chat/completions`, opencodeBody());
+      const neg = L.records.at(-1);
+      mode = 'fraction';
+      await post(`${L.url}/v1/chat/completions`, opencodeBody());
+      const fr = L.records.at(-1);
+      c('negative and fractional counters are invalid and not counted', neg.tokens.input === null && neg.tokens.invalid.includes('prompt_eval_count') && fr.tokens.output === null && fr.tokens.invalid.includes('eval_count') && L.summary().invalidCounters === 2 && L.summary().unknown === 4, JSON.stringify({ n: neg.tokens, f: fr.tokens, s: L.summary() }), 'A counter that is not a whole number is not a count.');
+      mode = 'ok';
+      const before = up.seen.chat.length;
+      gateWhy = 'the original GPU owner is live';
+      const gated = await post(`${L.url}/v1/chat/completions`, opencodeBody());
+      gateWhy = null; gateThrows = true;
+      const thrown = await post(`${L.url}/v1/chat/completions`, opencodeBody());
+      gateThrows = false;
+      c('the dispatch gate refuses before anything is sent, also when it throws', gated.status === 503 && thrown.status === 503 && up.seen.chat.length === before && L.records.at(-1).dispatched === false && /gate failed/.test(L.records.at(-1).error) && L.summary().refusedBeforeDispatch === 2, JSON.stringify({ g: gated.status, t: thrown.status, s: L.summary().refusedBeforeDispatch }), 'The owner, lease and RAM are rechecked through every inference.');
+      await post(`${L.url}/v1/chat/completions`, opencodeBody());
+      const s = summarize(readLedgerFile(lf));
+      c('the ledger file read back agrees with memory', s.calls === L.summary().calls && s.countedTotal === L.summary().countedTotal && s.countedTotal === 876 && s.unknown === L.summary().unknown && s.interrupted === 0 && s.malformed === 0, JSON.stringify({ file: s, mem: L.summary() }), 'The file is the durable record.');
+    } finally { await L.close(); await up.close(); }
+    const crashed = summarize([{ kind: 'dispatch-intent', runId: 'r1', seq: 1, session: { id: 's' } }, { kind: 'chat', runId: 'r1', seq: 2, dispatched: true, status: 'ok', session: { id: 's' }, tokens: { input: 10, output: 2 } }]);
+    c('an intent without its answer line is an interrupted call of unknown cost', crashed.interrupted === 1 && crashed.unknown === 1 && crashed.counted === 1 && crashed.total === null && crashed.countedTotal === 12 && crashed.lowerBound, JSON.stringify(crashed), 'Crash recovery never turns a sent call into zero.');
+    const mal = summarize([null, { kind: 'chat', dispatched: true, status: 'ok', tokens: { input: 1, output: 1 } }]);
+    c('a malformed ledger line makes the totals incomplete', mal.malformed === 1 && mal.complete === false && mal.total === null && mal.countedTotal === 2, JSON.stringify(mal), 'A line that cannot be read may have been a call.');
+    const legacy = summarize([{ kind: 'chat', status: 'upstream-error', countersExpected: false, tokens: {} }]);
+    c('a record that does not say it was refused is treated as sent', legacy.unknown === 1 && legacy.total === null && legacy.refusedBeforeDispatch === 0, JSON.stringify(legacy), 'A missing field must not hide a cost.');
+    const lie = summarize([{ kind: 'chat', dispatched: true, status: 'ok', tokens: { input: 5, output: -1 } }, { kind: 'chat', dispatched: true, status: 'ok', tokens: { input: '7', output: 1 } }, { kind: 'chat', dispatched: true, status: 'ok', tokens: { input: Infinity, output: 1 } }]);
+    c('summarize rejects negative, string and infinite counters at its own boundary', lie.invalidCounters === 3 && lie.unknown === 3 && lie.counted === 0 && lie.total === null && lie.peakPrompt === null, JSON.stringify(lie), 'Records read back from disk are validated again.');
+    const bad = parseRunEvents([JSON.stringify({ type: 'step_finish', sessionID: 's', part: { tokens: { input: -1, output: 2, reasoning: 0, cache: { read: 0, write: 0 } } } }), JSON.stringify({ type: 'step_finish', sessionID: 's', part: {} }), '[1,2]'].join('\n'));
+    const rcb = reconcile(bad, summarize([{ kind: 'chat', dispatched: true, status: 'ok', session: { id: 's' }, tokens: { input: 0, output: 0 } }]));
+    c('CLI steps with bad or missing counters are invalid and cannot reconcile', bad.sessions.s.invalid === 2 && bad.unparsed.length === 1 && rcb.sessions.s.match === false && rcb.cliTotal === null && rcb.unreportedByCli === null, JSON.stringify({ b: bad.sessions, r: rcb }), 'Missing CLI metadata is never counted as zero.');
+  });
+
+  await asyncSuite('local runtime adversary', 'opencode runtime: exclusive lease, PID-free cancellation and source identity (adversarial)', async () => {
+    const lf = path.join(W, 'gpu.lease');
+    const a = acquireGpuLease(lf, { runId: 'A' });
+    const b = acquireGpuLease(lf, { runId: 'B' });
+    c('the GPU lease is exclusive', a.ok && !b.ok && /live process/.test(b.problem) && leaseHeld(a) && !leaseHeld(b), JSON.stringify({ a: a.ok, b }), 'Two runs must never both own the GPU.');
+    c('only the holder can release the lease', !releaseGpuLease({ ...a, runId: 'X' }) && releaseGpuLease(a) && !fs.existsSync(lf), fs.existsSync(lf), 'Another run cannot drop a lease it does not hold.');
+    const deadPid = spawnSync(process.execPath, ['-e', '0']).pid;
+    fs.writeFileSync(lf, JSON.stringify({ pid: deadPid, runId: 'old' }));
+    const s2 = acquireGpuLease(lf, { runId: 'C' });
+    c('a lease whose owner is gone is moved aside, not deleted, and taken', s2.ok && fs.readdirSync(W).some((f) => f.startsWith('gpu.lease.stale-')), JSON.stringify(s2), 'A crashed run must not block forever, and its lease stays readable.');
+    releaseGpuLease(s2);
+    fs.writeFileSync(lf, 'not json');
+    const s3 = acquireGpuLease(lf, { runId: 'D' });
+    c('a fresh unreadable lease is not taken', !s3.ok && /cannot be read/.test(s3.problem), JSON.stringify(s3), 'An owner that cannot be read is not proof of a free GPU.');
+    fs.unlinkSync(lf);
+    const task = fs.mkdtempSync(path.join(W, 'lease-task-'));
+    let mode = 'ok';
+    let hangRes = null;
+    const up = await fakeOllama((body, res) => { if (mode === 'hang') { hangRes = res; ndjson(res, [{ message: { role: 'assistant', content: 'par' }, done: false }], false); return; } standard(body, res); });
+    const base = { prompt: 'x', taskDir: task, model: MODEL, numCtx: 8192, upstream: up.url, ramFloorBytes: 1, leaseFile: lf };
+    try {
+      fs.writeFileSync(lf, JSON.stringify({ pid: process.pid, runId: 'someone-else' }));
+      const busy = await runOpenCode({ ...base, stateRoot: path.join(W, 'lb'), gpuLocks: [], command: { file: process.execPath, args: ['-e', ''], cwd: W } });
+      c('a run that cannot win the lease does not start', busy.status === 'gpu-lease-busy' && !busy.ledgerUrl && fs.existsSync(lf), JSON.stringify({ s: busy.status, p: busy.problems }), 'No second owner, and the other lease is left alone.');
+      fs.unlinkSync(lf);
+      // The original owner appears after the run started: the next call is refused before dispatch.
+      const ownerLock = path.join(W, 'late-owner.lock');
+      const late = path.join(W, 'late.mjs');
+      fs.writeFileSync(late, `import fs from 'node:fs';
+const cfg = JSON.parse(process.env.OPENCODE_CONFIG_CONTENT); const base = cfg.providers.ollama.settings.baseURL;
+fs.writeFileSync(${JSON.stringify(ownerLock)}, JSON.stringify({ pid: process.pid }));
+const r = await fetch(base + '/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', 'x-opencode-session-id': 'ses_main' }, body: JSON.stringify({ model: cfg.model.slice(7), messages: [{ role: 'user', content: 'x' }], stream: true }) });
+await r.text();
+console.log(JSON.stringify({ type: 'step_start', sessionID: 'ses_main', part: {} }));`);
+      const before = up.seen.chat.length;
+      const lr = await runOpenCode({ ...base, stateRoot: path.join(W, 'late'), gpuLocks: [ownerLock], command: { file: process.execPath, args: [late], cwd: W } });
+      c('an original owner that appears mid-run blocks the next call before dispatch', lr.ledger && lr.ledger.refusedBeforeDispatch === 1 && lr.ledger.dispatched === 0 && up.seen.chat.length === before && lr.status === 'no-successful-inference' && lr.lease.released === true, JSON.stringify({ s: lr.status, l: lr.ledger && lr.ledger.byStatus, p: lr.problems }), 'Ownership is rechecked through every inference, not only at start.');
+      // Cancellation: a hung CLI with a call in flight and a grandchild of its own.
+      mode = 'hang';
+      const pids = path.join(W, 'hang2.json');
+      const hang = path.join(W, 'hang2.mjs');
+      fs.writeFileSync(hang, `import fs from 'node:fs'; import { spawn } from 'node:child_process';
+// detached: a non-detached Node child sits in libuv's kill-on-close job and
+// ends with its parent, which would hide what the survey is for.
+const gc = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 5000)'], { stdio: 'ignore', windowsHide: true, detached: true });
+gc.unref();
+fs.writeFileSync(${JSON.stringify(pids)}, JSON.stringify({ child: process.pid, grandchild: gc.pid }));
+const cfg = JSON.parse(process.env.OPENCODE_CONFIG_CONTENT);
+fetch(cfg.providers.ollama.settings.baseURL + '/chat/completions', { method: 'POST', headers: { 'content-type': 'application/json', 'x-opencode-session-id': 'ses_main' }, body: JSON.stringify({ model: cfg.model.slice(7), messages: [{ role: 'user', content: 'x' }], stream: true }) }).then((r) => r.text()).catch(() => {});
+setInterval(() => {}, 1000);`);
+      const t = await runOpenCode({ ...base, stateRoot: path.join(W, 'cancel'), gpuLocks: [], command: { file: process.execPath, args: [hang], cwd: W }, timeoutMs: 2500 });
+      const ids = fs.existsSync(pids) ? JSON.parse(fs.readFileSync(pids, 'utf8')) : {};
+      for (let i = 0; i < 50 && ids.child && alive(ids.child); i++) await sleep(100);
+      const gcAliveAfter = ids.grandchild ? alive(ids.grandchild) : null;
+      const reported = t.descendants && t.descendants.checked && t.descendants.survivors.some((p) => p.pid === ids.grandchild);
+      c('a timed-out run is cancelled by ledger hold then its own handle, never by PID', t.status === 'timed-out' && t.exit.cancel && t.exit.cancel.method === 'ledger-hold-then-owned-handle' && t.exit.cancel.ledgerHeld === true && t.exit.cancel.signalled === true && ids.child > 0 && !alive(ids.child), JSON.stringify({ s: t.status, c: t.exit && t.exit.cancel, ids }), 'Gev: never end a Windows process by PID.');
+      c('the call in flight at cancellation is aborted and stays unknown', t.ledger.byStatus.aborted === 1 && t.ledger.unknown === 1 && t.ledger.total === null, JSON.stringify(t.ledger.byStatus), 'Tokens spent on a cut call are not zero.');
+      if (process.platform === 'win32') c('a grandchild is surveyed and reported, not ended', reported && gcAliveAfter === true && /left running/.test(t.verdicts.processes), JSON.stringify({ d: t.descendants, gcAliveAfter, v: t.verdicts && t.verdicts.processes }), 'Only the owned handle is ended; anything else is reported for a person to judge.');
+      const srcText = fs.readFileSync(fileURLToPath(new URL('../lib/opencode-runtime.mjs', import.meta.url)), 'utf8');
+      c('the runtime has no PID-based kill path', !/taskkill|endTree|process\.kill\(\s*-/.test(srcText), 'source scan', 'The rule holds in the code, not only in this test.');
+      for (let i = 0; i < 70 && ids.grandchild && alive(ids.grandchild); i++) await sleep(100);
+    } finally { if (hangRes) hangRes.destroy(); await up.close(); }
+    const fake = fs.mkdtempSync(path.join(W, 'pinonly-'));
+    fs.writeFileSync(path.join(fake, 'package.json'), JSON.stringify({ version: OPENCODE_PIN.version, packageManager: OPENCODE_PIN.packageManager }));
+    fs.writeFileSync(path.join(fake, 'PIN.json'), JSON.stringify({ commit: OPENCODE_PIN.commit }));
+    const vf = verifySource(fake, process.execPath);
+    c('a self-written PIN.json is not accepted as the source identity', !vf.ok && vf.commit === null && vf.problems.some((p) => /not a readable git checkout/.test(p)), JSON.stringify(vf.problems), 'Identity comes from the checkout, not from a file anyone can write.');
+    if (fs.existsSync(DEFAULTS.sourceRoot)) {
+      const src = verifySource();
+      c('the real upstream checkout matches the pinned commit, the GitHub tree and the lockfile, with no tracked change', src.commit === OPENCODE_PIN.commit && src.tree === OPENCODE_PIN.tree && src.trackedClean === true && src.bunLockSha256 === OPENCODE_PIN.bunLockSha256 && src.depsReady, JSON.stringify({ ok: src.ok, p: src.problems, d: src.deps, b: src.bun }), 'The runtime must run exactly the source it claims.');
+    }
   });
 
   try { fs.rmSync(W, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); } catch { /* temp tree */ }
