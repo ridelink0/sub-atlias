@@ -6,7 +6,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { collectLive } from '../lib/live-status.mjs';
-const source = fileURLToPath(new URL('..', import.meta.url)), root = path.dirname(source);
+const source = fileURLToPath(new URL('..', import.meta.url)), root = 'D:/harness-work/atlias-opencode-1009';
 const gh = 'C:/Program Files/GitHub CLI/gh.exe';
 const read = file => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
 const description = 'Atlias by Gev: reviewed live benchmark aggregates and recorded typed proposals';
@@ -66,7 +66,23 @@ function publish() {
   const claude = claudeLive(), codex = codexLive();
   const allowance = [...claude.allowance, ...codex, ...(read(path.join(root, 'PUBLIC-ALLOWANCE.json')) || []).filter(a => (a?.host !== 'claude' || !claude.allowance.length) && (a?.host !== 'codex' || !codex.length))];
   const agentRegistry = [...claude.agents, ...(read(path.join(root, 'AGENTS-STATUS.json')) || []).filter(a => a?.id !== 'claude-code' && !(claude.agents.length && a?.id === 'claude-runtime'))];
-  const bundle = collectLive({ stateRoot: 'D:/harness-work/atlias-evolve', agentRegistry, allowance, messages: read(path.join(root, 'PUBLIC-COMMUNICATIONS.json')) || [] });
+  const originalRoot = 'D:/harness-work/atlias-evolve', openCodeRoot = 'D:/harness-work/atlias-evolve-opencode';
+  const activeRoot = read(path.join(openCodeRoot, 'ARCHIVE.json'))?.engine === 'opencode' ? openCodeRoot : originalRoot;
+  const bundle = collectLive({ stateRoot: activeRoot, agentRegistry, allowance, messages: read(path.join(root, 'PUBLIC-COMMUNICATIONS.json')) || [] });
+  // Separate history objects: variant numbers are never joined across engines.
+  const original = collectLive({ stateRoot: originalRoot });
+  const openCode = collectLive({ stateRoot: openCodeRoot });
+  bundle.history.series = [
+    { id: 'original', name: 'Original runtime', history: original.history },
+    { id: 'opencode', name: 'OpenCode v2', history: openCode.history },
+  ];
+  const comparison = read(path.join(openCodeRoot, 'v0000', 's1.json'));
+  if (Array.isArray(comparison?.results)) {
+    const rows = comparison.results;
+    bundle.history.openCodeComparison = { partial: comparison.partial === true, n: rows.length, solved: rows.filter(r => r.pass === true).length, expected: 10,
+      totalTokens: comparison.accountingComplete === true ? comparison.totalNativeTokens : null,
+      seconds: rows.every(r => Number.isFinite(r.ms)) ? rows.reduce((n,r) => n+r.ms,0)/1000 : null };
+  }
   const content = JSON.stringify(bundle);
   if (Buffer.byteLength(content) > 900000 || /[A-Za-z]:[\\/]|gh[pousr]_[a-zA-Z0-9]|sk-[a-zA-Z0-9]{10}|Bearer\s+[a-zA-Z0-9]/.test(content)) throw new Error('Atlias privacy/size gate refused publication');
   const payload = { files: { 'atlias-live.json': { content } } };

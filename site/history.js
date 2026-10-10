@@ -148,11 +148,25 @@ function renderLegacy() {
   const box = $('legacy');
   box.replaceChildren();
   for (const g of H.legacy || []) {
+    if (g.group === 'OpenCode rounds') continue;
     const sec = el('article', { class: 'legacy-group' }, el('h3', { text: g.group }), el('p', { class: 'note', text: g.note }));
     if (!g.rounds?.length) sec.append(el('p', { text: 'No rounds yet.' }));
     else { const ul = el('ul'); for (const r of g.rounds) ul.append(el('li', {}, el('strong', { text: `Round ${r.id}: ` }), r.outcome)); sec.append(ul); }
     box.append(sec);
   }
+  const section = el('article', { class: 'legacy-group' }, el('h3', { text: 'OpenCode v2 rounds' }));
+  const comparison = H.openCodeComparison;
+  if (comparison) section.append(el('p', { text: `Same-task comparison: ${comparison.solved}/${comparison.n} solved; ${comparison.n}/${comparison.expected} tasks recorded${comparison.partial ? ' (running)' : ' (complete)'}. Total native tokens ${num(comparison.totalTokens)}; seconds ${Number.isFinite(comparison.seconds) ? Math.round(comparison.seconds).toLocaleString() : 'Unknown'}.` }));
+  const native = (H.series || []).find(s => s.id === 'opencode')?.history;
+  if (native?.variants?.length) {
+    const list = el('ul');
+    for (const v of native.variants) {
+      const s = v.stages?.s2 || v.stages?.s1;
+      list.append(el('li', { text: `${v.id}: ${v.model || 'Unknown'}, ${v.numCtx || 'Unknown'} context; ${s ? `${s.passed}/${s.n} solved, ${num(s.totalPerPass)} native tokens per solve, ${num(s.secondsPerPass)} seconds per solve` : 'baseline in progress'}. ${v.status}.` }));
+    }
+    section.append(list);
+  } else section.append(el('p', { text: 'The separate OpenCode evolution archive is being prepared. Original-runtime scores stay in their own series.' }));
+  box.append(section);
 }
 
 function fillSelect(id, values, keep, label = x => x) {

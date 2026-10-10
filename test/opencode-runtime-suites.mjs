@@ -403,11 +403,12 @@ console.log(JSON.stringify({ type: 'step_start', sessionID: 'ses_main', part: {}
       // Cancellation: a hung CLI with a call in flight and a grandchild of its own.
       mode = 'hang';
       const pids = path.join(W, 'hang2.json');
+      const release = path.join(W, 'grandchild-release');
       const hang = path.join(W, 'hang2.mjs');
       fs.writeFileSync(hang, `import fs from 'node:fs'; import { spawn } from 'node:child_process';
 // detached: a non-detached Node child sits in libuv's kill-on-close job and
 // ends with its parent, which would hide what the survey is for.
-const gc = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 5000)'], { stdio: 'ignore', windowsHide: true, detached: true });
+const gc = spawn(process.execPath, ['-e', ${JSON.stringify(`const fs=require('fs'); const timer=setInterval(()=>{if(fs.existsSync(${JSON.stringify(release)})){clearInterval(timer);process.exit(0);}},100);setTimeout(()=>process.exit(0),90000);`)}], { stdio: 'ignore', windowsHide: true, detached: true });
 gc.unref();
 fs.writeFileSync(${JSON.stringify(pids)}, JSON.stringify({ child: process.pid, grandchild: gc.pid }));
 const cfg = JSON.parse(process.env.OPENCODE_CONFIG_CONTENT);
@@ -423,6 +424,7 @@ setInterval(() => {}, 1000);`);
       if (process.platform === 'win32') c('a grandchild is surveyed and reported, not ended', reported && gcAliveAfter === true && /left running/.test(t.verdicts.processes), JSON.stringify({ d: t.descendants, gcAliveAfter, v: t.verdicts && t.verdicts.processes }), 'Only the owned handle is ended; anything else is reported for a person to judge.');
       const srcText = fs.readFileSync(fileURLToPath(new URL('../lib/opencode-runtime.mjs', import.meta.url)), 'utf8');
       c('the runtime has no PID-based kill path', !/taskkill|endTree|process\.kill\(\s*-/.test(srcText), 'source scan', 'The rule holds in the code, not only in this test.');
+      fs.writeFileSync(release, 'finished');
       for (let i = 0; i < 70 && ids.grandchild && alive(ids.grandchild); i++) await sleep(100);
     } finally { if (hangRes) hangRes.destroy(); await up.close(); }
     const fake = fs.mkdtempSync(path.join(W, 'pinonly-'));
