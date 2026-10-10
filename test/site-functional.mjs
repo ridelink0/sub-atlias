@@ -20,6 +20,10 @@ try {
   browser = await chromium.launch({ channel: 'msedge', headless: true });
   const page = await browser.newPage();
   await page.route('**/live-config.json',route=>route.fulfill({status:200,contentType:'application/json',body:'{"endpoint":null}'}));
+  // The live snapshot ages between publisher cycles; serve it with fresh
+  // timestamps so the functional pass does not depend on publisher timing.
+  // The stale and failure cases below install their own fixtures.
+  await page.route('**/status.json', route => { const s = JSON.parse(fs.readFileSync(path.join(root, 'status.json'), 'utf8')); const at = new Date().toISOString(); s.generatedAt = at; for (const a of s.agents || []) if (a.state !== 'completed') a.observedAt = at; if (s.progress) s.progress.observedAt = at; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(s) }); });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   for (const width of [390, 1440]) {

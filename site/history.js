@@ -64,7 +64,7 @@ function detailRow(v) {
     const r = v.stages?.[s];
     if (!r) continue;
     const suites = Object.entries(r.suites || {}).map(([k, x]) => `${k} ${x.passed}/${x.n}`).join(', ');
-    cell.append(el('p', { text: `${s.toUpperCase()}${r.sealed ? ' (sealed confirmation)' : ''}: ${r.passed}/${r.n} passed, ${pct(r.rate)}, 95% interval ${pct(r.interval?.lower)} to ${pct(r.interval?.upper)}. Prompt tokens ${num(r.promptTokens)}, prompt tokens per pass ${num(r.tokensPerPass)}, largest prompt ${num(r.peakPrompt)}, output tokens ${num(r.outputTokens)}, input+output per pass ${num(r.totalPerPass)}.${r.partial ? ' Partial stage.' : ''}${suites ? ' By suite: ' + suites + '.' : ''}` }));
+    cell.append(el('p', { text: `${s.toUpperCase()}${r.sealed ? ' (sealed confirmation)' : ''}: ${r.passed}/${r.n} passed, ${pct(r.rate)}, 95% interval ${pct(r.interval?.lower)} to ${pct(r.interval?.upper)}. Prompt tokens ${num(r.promptTokens)}, prompt tokens per pass ${num(r.tokensPerPass)}, largest prompt ${num(r.peakPrompt)}, output tokens ${num(r.outputTokens)}, input+output per pass ${num(r.totalPerPass)}, wall-clock seconds per pass ${num(r.secondsPerPass)}.${r.partial ? ' Partial stage.' : ''}${suites ? ' By suite: ' + suites + '.' : ''}` }));
   }
   return el('tr', { class: 'detail-row' }, cell);
 }
