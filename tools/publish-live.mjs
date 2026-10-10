@@ -82,6 +82,14 @@ function publish() {
     bundle.history.openCodeComparison = { partial: comparison.partial === true, n: rows.length, solved: rows.filter(r => r.pass === true).length, expected: 10,
       totalTokens: comparison.accountingComplete === true ? comparison.totalNativeTokens : null,
       seconds: rows.every(r => Number.isFinite(r.ms)) ? rows.reduce((n,r) => n+r.ms,0)/1000 : null };
+    const championReport = read(path.join(originalRoot, 'variants', original.history.champion || '', 's1.json'));
+    if (Array.isArray(championReport?.results) && rows.length === 10 && championReport.results.length === 10 && rows.every((r,i) => r.id === championReport.results[i].id)) {
+      const solved = championReport.results.filter(r => r.pass === true).length;
+      const tokens = Number.isSafeInteger(championReport.promptTotal) && Number.isSafeInteger(championReport.outputTotal) ? championReport.promptTotal + championReport.outputTotal : null;
+      const seconds = championReport.results.every(r => Number.isFinite(r.ms)) ? championReport.results.reduce((n,r) => n+r.ms,0)/1000 : null;
+      bundle.history.openCodeComparison.champion = { id: original.history.champion, solved, n: 10, totalTokens: tokens, seconds };
+      bundle.history.openCodeComparison.held = rows.filter(r => r.stop === 'runtime-held').length;
+    }
   }
   const content = JSON.stringify(bundle);
   if (Buffer.byteLength(content) > 900000 || /[A-Za-z]:[\\/]|gh[pousr]_[a-zA-Z0-9]|sk-[a-zA-Z0-9]{10}|Bearer\s+[a-zA-Z0-9]/.test(content)) throw new Error('Atlias privacy/size gate refused publication');

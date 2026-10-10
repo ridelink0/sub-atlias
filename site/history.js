@@ -157,6 +157,11 @@ function renderLegacy() {
   const section = el('article', { class: 'legacy-group' }, el('h3', { text: 'OpenCode v2 rounds' }));
   const comparison = H.openCodeComparison;
   if (comparison) section.append(el('p', { text: `Same-task comparison: ${comparison.solved}/${comparison.n} solved; ${comparison.n}/${comparison.expected} tasks recorded${comparison.partial ? ' (running)' : ' (complete)'}. Total native tokens ${num(comparison.totalTokens)}; seconds ${Number.isFinite(comparison.seconds) ? Math.round(comparison.seconds).toLocaleString() : 'Unknown'}.` }));
+  if (comparison?.champion) {
+    const c = comparison.champion;
+    const perSolve = (total, solved) => solved > 0 && Number.isFinite(total) ? num(Math.round(total / solved)) : 'Unknown';
+    section.append(el('p', { text: `Original champion ${c.id}: ${c.solved}/${c.n} solved. Tokens per solve: OpenCode ${perSolve(comparison.totalTokens, comparison.solved)}, champion ${perSolve(c.totalTokens, c.solved)}. Seconds per solve: OpenCode ${perSolve(comparison.seconds, comparison.solved)}, champion ${perSolve(c.seconds, c.solved)}. ${comparison.held} OpenCode attempts were held by the runtime; their measured costs remain included.` }));
+  }
   const native = (H.series || []).find(s => s.id === 'opencode')?.history;
   if (native?.variants?.length) {
     const list = el('ul');
@@ -165,8 +170,18 @@ function renderLegacy() {
       list.append(el('li', { text: `${v.id}: ${v.model || 'Unknown'}, ${v.numCtx || 'Unknown'} context; ${s ? `${s.passed}/${s.n} solved, ${num(s.totalPerPass)} native tokens per solve, ${num(s.secondsPerPass)} seconds per solve` : 'baseline in progress'}. ${v.status}.` }));
     }
     section.append(list);
-  } else section.append(el('p', { text: 'The separate OpenCode evolution archive is being prepared. Original-runtime scores stay in their own series.' }));
+  } else section.append(el('p', { text: 'The separate OpenCode evolution series has not started. Original-runtime scores stay in their own series.' }));
   box.append(section);
+  const original = (H.series || []).find(s => s.id === 'original')?.history;
+  if (original?.variants?.length) {
+    const sec = el('article', { class: 'legacy-group' }, el('h3', { text: 'Original runtime series' }), el('p', { text: `Champion ${original.champion || 'Unknown'}. Original results are preserved as recorded.` }));
+    const list = el('ul');
+    for (const v of original.variants) {
+      const s = v.stages?.s2 || v.stages?.s1;
+      list.append(el('li', { text: `${v.id}: ${s ? `${s.passed}/${s.n} solved` : 'not measured'}. ${v.status}.` }));
+    }
+    sec.append(list); box.append(sec);
+  }
 }
 
 function fillSelect(id, values, keep, label = x => x) {
