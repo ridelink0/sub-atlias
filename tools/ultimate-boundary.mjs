@@ -20,20 +20,24 @@ export function sweepOrphans(journal) {
 
 // A suite runs once; a suite whose only jobs were orphaned gets one retry, so a
 // corpus that ends its controller cannot repeat forever.
-export function nextSuite(catalog, journal) {
+// `prefer` names suites to run before the rest, in that order. The evolution
+// loop asks first for the corpus its screen tasks come from: a completed
+// champion run on those tasks is what its screen is pooled with.
+export function nextSuite(catalog, journal, prefer = []) {
   const orphaned = id => journal.jobs.filter(j => j.id === id && j.reason === ORPHANED).length;
-  return catalog.suites.find(s => s.kind === 'corpus' && s.availability === 'data-ready-runtime-unverified' && !journal.jobs.some(j => j.id === s.id && j.reason !== ORPHANED) && orphaned(s.id) < 2);
+  const open = catalog.suites.filter(s => s.kind === 'corpus' && s.availability === 'data-ready-runtime-unverified' && !journal.jobs.some(j => j.id === s.id && j.reason !== ORPHANED) && orphaned(s.id) < 2);
+  return (Array.isArray(prefer) ? prefer : []).map(id => open.find(s => s.id === id)).find(Boolean) || open[0];
 }
 
 // The evolution controller awaits one full corpus at a round boundary.
 // Every run has its own immutable report; unavailable adapters remain held.
-export async function runUltimateBoundary({ root, champion, heartbeat = () => {}, stopRequested = () => false, engine = 'ollama' }) {
+export async function runUltimateBoundary({ root, champion, heartbeat = () => {}, stopRequested = () => false, engine = 'ollama', prefer = [] }) {
   if (!root || !champion?.config || engine !== 'ollama') throw Error('Gev boundary benchmark requires the original champion and an explicit root');
   const file = path.join(root, 'ULTIMATE-RUNS.json');
   const catalog = inspectCatalog({ corpusRoot: source });
   const journal = sweepOrphans(fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { schema: 'atlias.ultimate.runs/1', jobs: [], unavailable: [] });
   journal.unavailable = catalog.suites.filter(s => s.availability === 'execution-evidence-required' || s.availability === 'corpus-unavailable-or-incomplete').map(s => ({ id: s.id, reason: s.availability }));
-  const suite = nextSuite(catalog, journal);
+  const suite = nextSuite(catalog, journal, prefer);
   if (!suite || stopRequested()) { write(file, journal); return null; }
   const corpus = path.join(source, suite.directory);
   const tasks = fs.readdirSync(corpus).filter(f => f.endsWith('.json')).sort().map(f => JSON.parse(fs.readFileSync(path.join(corpus, f), 'utf8')));

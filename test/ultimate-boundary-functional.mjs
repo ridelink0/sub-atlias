@@ -35,5 +35,12 @@ try {
   assert.equal(nextSuite(catalog, journal), undefined);
   assert.equal(nextSuite(catalog, { jobs: [{ id: 'a', status: 'held', exit: 1 }] }).id, 'b');
   assert.equal(nextSuite({ suites: [catalog.suites[2]] }, { jobs: [] }), undefined);
+  // A preferred suite goes first while it is still open; preferring a finished, unavailable or unknown suite changes nothing.
+  assert.equal(nextSuite(catalog, { jobs: [] }).id, 'a');
+  assert.equal(nextSuite(catalog, { jobs: [] }, ['b']).id, 'b');
+  assert.equal(nextSuite(catalog, { jobs: [] }, ['zzz', 'c', 'b', 'a']).id, 'b');
+  assert.equal(nextSuite(catalog, { jobs: [done] }, ['b']).id, 'a');
+  assert.equal(nextSuite(catalog, { jobs: [] }, 'b').id, 'a');
+  assert.equal(nextSuite(catalog, journal, ['a', 'b']), undefined);
   console.log('PASS finished jobs unchanged, retry capped at one, real holds and unavailable suites never run');
 }
