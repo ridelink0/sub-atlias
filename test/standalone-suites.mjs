@@ -11,6 +11,8 @@ export default async function ({ asyncSuite, check: record, TMP }) {
     check('an undated archive holds the search', held);
     check('a dated champion starts without a plateau penalty', plateauState({ variants: [{ id: 'v0002', born: '2026-10-10T00:00:00Z' }], champion: 'v0002' }).penalty.active === false);
     check('only typed public settings survive hostile changes', safeChange({ 'unsafe.command': 'run', 'agent.ollamaModel': 'C:/private', 'agent.ollamaNumCtx': 16384 }) === 'agent.ollamaNumCtx = 16384');
+    check('the sampling and paragraph choices are published as typed', safeChange({ 'agent.ollamaTemperature': 0.6 }) === 'agent.ollamaTemperature = 0.6' && safeChange({ 'agent.ollamaPresencePenalty': 0 }) === 'agent.ollamaPresencePenalty = 0' && safeChange({ 'agent.ollamaPresencePenalty': 0.5 }) === 'agent.ollamaPresencePenalty = 0.5' && safeChange({ 'agent.ollamaThink': 'off' }) === 'agent.ollamaThink = "off"' && safeChange({ 'flags.impliedChanges': true }) === 'flags.impliedChanges = true');
+    check('a number that is negative or not finite, and any value that is not a plain scalar, stays unpublished', [-1, -0.5, NaN, Infinity, -Infinity, null, undefined, {}, [0.6], '0.6/..', 'C:/private'].every(v => safeChange({ 'agent.ollamaTemperature': v }) === '') && safeChange({ 'agent.ollamaThink': 'D:/secret/off' }) === '' && safeChange({ 'agent.ollamaSeed': 7 }) === '');
     const root = path.join(TMP, 'history-helper');
     fs.mkdirSync(root, { recursive: true });
     const destination = path.join(root, 'public.json');
