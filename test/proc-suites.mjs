@@ -232,10 +232,13 @@ export default async function procSuites({ asyncSuite, check, skip, TMP, ROOT, f
 
     const overPid = pidFile();
     const t0 = Date.now();
-    const over = await proc.runAsync(hog(640, 60000, overPid), [], { shell: true, timeoutMs: 90000, memoryMB: 300 });
+    // Generous clocks: on a PC busy with a benchmark and this whole suite the
+    // helper's first reading took 50 s once. What is checked is that memory
+    // stopped it, not the time limit; the program holds on longer than that limit.
+    const over = await proc.runAsync(hog(640, 300000, overPid), [], { shell: true, timeoutMs: 240000, memoryMB: 300 });
     const took = Date.now() - t0;
     const overChild = readPid(overPid);
-    check('a command holding 640 MiB against a 300 MiB limit is stopped long before its time limit, and the result says memory', over.overMemory === true && over.timedOut === false && over.status === null && over.error && over.error.code === 'EMEMORY' && /held more than 300 MiB/.test(over.error.message) && took < 45000,
+    check('a command holding 640 MiB against a 300 MiB limit is stopped before its time limit, and the result says memory', over.overMemory === true && over.timedOut === false && over.status === null && over.error && over.error.code === 'EMEMORY' && /held more than 300 MiB/.test(over.error.message) && took < 200000,
       { happened: `${took} ms: ${brief(over)}`, why: 'Inside its time limit a model-written memory bomb took 8 GB twice and the PC ran out of committed memory; programs that had nothing to do with the run ended.', fix: 'lib/watchdog.mjs watchMemory, started by a memoryMB in the spec.' });
     check('and the program under the shell is gone, not left holding the memory', overChild > 0 && await goneWithin(overChild, 8000),
       { happened: `program pid ${overChild}, alive=${overChild ? alive(overChild) : 'never started'}`, why: 'Ending only the shell would leave the memory held.', fix: 'watchMemory ends the tree with endTree, as the time limit does.' });
@@ -245,10 +248,10 @@ export default async function procSuites({ asyncSuite, check, skip, TMP, ROOT, f
     const parent = path.join(W, 'memory-parent.js');
     fs.writeFileSync(parent, [
       "const { spawn } = require('child_process');",
-      `spawn(process.execPath, ['-e', ${JSON.stringify(`require('fs').writeFileSync(${JSON.stringify(kidPid)}, String(process.pid)); const a=[]; const t=setInterval(() => { if (a.length*32 < 640) a.push(Buffer.alloc(32*1024*1024, 1)); }, 100); setTimeout(() => process.exit(0), 60000)`)}], { stdio: 'ignore' });`,
-      'setTimeout(() => process.exit(0), 60000);',
+      `spawn(process.execPath, ['-e', ${JSON.stringify(`require('fs').writeFileSync(${JSON.stringify(kidPid)}, String(process.pid)); const a=[]; const t=setInterval(() => { if (a.length*32 < 640) a.push(Buffer.alloc(32*1024*1024, 1)); }, 100); setTimeout(() => process.exit(0), 300000)`)}], { stdio: 'ignore' });`,
+      'setTimeout(() => process.exit(0), 300000);',
     ].join(NL));
-    const tree = await proc.runAsync(process.execPath, [parent], { timeoutMs: 90000, memoryMB: 300 });
+    const tree = await proc.runAsync(process.execPath, [parent], { timeoutMs: 240000, memoryMB: 300 });
     const kid = readPid(kidPid);
     check('memory held by a process the command started counts against the command', tree.overMemory === true && tree.status === null && kid > 0 && await goneWithin(kid, 8000),
       { happened: `${brief(tree)}; child pid ${kid}, alive=${kid ? alive(kid) : 'never started'}`, why: 'A test runner holds little itself; the program it starts is what grows.', fix: 'The helper adds up the whole tree under the command, not the command alone.' });
@@ -271,7 +274,7 @@ export default async function procSuites({ asyncSuite, check, skip, TMP, ROOT, f
     let fromRun, given;
     try {
       process.env.ATLIAS_COMMAND_MEMORY_MB = '300';
-      fromRun = proc.runSync(process.execPath, ['-e', 'const a=[]; const t=setInterval(() => { if (a.length*32 < 640) a.push(Buffer.alloc(32*1024*1024, 1)); }, 100); setTimeout(() => process.exit(0), 60000)'], { timeoutMs: 90000 });
+      fromRun = proc.runSync(process.execPath, ['-e', 'const a=[]; const t=setInterval(() => { if (a.length*32 < 640) a.push(Buffer.alloc(32*1024*1024, 1)); }, 100); setTimeout(() => process.exit(0), 300000)'], { timeoutMs: 240000 });
       // A limit given for one command wins over the one set for the run.
       given = proc.runSync(process.execPath, ['-e', 'const a=[]; const t=setInterval(() => { if (a.length*32 < 640) a.push(Buffer.alloc(32*1024*1024, 1)); }, 100); setTimeout(() => process.exit(0), 6000)'], { timeoutMs: 90000, memoryMB: 4000 });
     } finally { if (before === undefined) delete process.env.ATLIAS_COMMAND_MEMORY_MB; else process.env.ATLIAS_COMMAND_MEMORY_MB = before; }
