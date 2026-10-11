@@ -9,6 +9,21 @@ import { direction } from '../lib/benchmark-oracle.mjs';
 const source = fileURLToPath(new URL('..', import.meta.url));
 const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const write = (file, value) => { fs.mkdirSync(path.dirname(file), { recursive: true }); fs.writeFileSync(file + '.tmp', JSON.stringify(value, null, 2) + '\n'); fs.renameSync(file + '.tmp', file); };
+export const ORPHANED = 'controller-ended-before-completion';
+
+// The controller awaits each job, so a job still marked running at entry was
+// left by a controller that ended mid-corpus: it is held, never counted solved.
+export function sweepOrphans(journal) {
+  for (const job of journal.jobs) if (job.status === 'running') Object.assign(job, { status: 'held', reason: ORPHANED });
+  return journal;
+}
+
+// A suite runs once; a suite whose only jobs were orphaned gets one retry, so a
+// corpus that ends its controller cannot repeat forever.
+export function nextSuite(catalog, journal) {
+  const orphaned = id => journal.jobs.filter(j => j.id === id && j.reason === ORPHANED).length;
+  return catalog.suites.find(s => s.kind === 'corpus' && s.availability === 'data-ready-runtime-unverified' && !journal.jobs.some(j => j.id === s.id && j.reason !== ORPHANED) && orphaned(s.id) < 2);
+}
 
 // The evolution controller awaits one full corpus at a round boundary.
 // Every run has its own immutable report; unavailable adapters remain held.
@@ -16,9 +31,9 @@ export async function runUltimateBoundary({ root, champion, heartbeat = () => {}
   if (!root || !champion?.config || engine !== 'ollama') throw Error('Gev boundary benchmark requires the original champion and an explicit root');
   const file = path.join(root, 'ULTIMATE-RUNS.json');
   const catalog = inspectCatalog({ corpusRoot: source });
-  const journal = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { schema: 'atlias.ultimate.runs/1', jobs: [], unavailable: [] };
+  const journal = sweepOrphans(fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : { schema: 'atlias.ultimate.runs/1', jobs: [], unavailable: [] });
   journal.unavailable = catalog.suites.filter(s => s.availability === 'execution-evidence-required' || s.availability === 'corpus-unavailable-or-incomplete').map(s => ({ id: s.id, reason: s.availability }));
-  const suite = catalog.suites.find(s => s.kind === 'corpus' && s.availability === 'data-ready-runtime-unverified' && !journal.jobs.some(j => j.id === s.id));
+  const suite = nextSuite(catalog, journal);
   if (!suite || stopRequested()) { write(file, journal); return null; }
   const corpus = path.join(source, suite.directory);
   const tasks = fs.readdirSync(corpus).filter(f => f.endsWith('.json')).sort().map(f => JSON.parse(fs.readFileSync(path.join(corpus, f), 'utf8')));
