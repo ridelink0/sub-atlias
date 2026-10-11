@@ -24,6 +24,8 @@ try {
   // timestamps so the functional pass does not depend on publisher timing.
   // The stale and failure cases below install their own fixtures.
   await page.route('**/status.json', route => { const s = JSON.parse(fs.readFileSync(path.join(root, 'status.json'), 'utf8')); const at = new Date().toISOString(); s.generatedAt = at; for (const a of s.agents || []) if (a.state !== 'completed') a.observedAt = at; if (s.progress) s.progress.observedAt = at; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(s) }); });
+  // Every round in this fixture carries a pooled screen, so its line is rendered and read below.
+  await page.route('**/history.json', route => { const h = JSON.parse(fs.readFileSync(path.join(root, 'history.json'), 'utf8')); for (const v of h.variants) v.screen = { rule: 'pooled', championMean: 41.3, net: 3.7, p: 0.2031, runsPerTask: [1, 2], leads: false }; return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(h) }); });
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   for (const width of [390, 1440]) {
@@ -42,6 +44,7 @@ try {
     assert.ok((await page.locator('#compare-out').innerText()).includes('61'));
     await page.selectOption('#c-a','v0002');assert.ok((await page.locator('#compare-out').innerText()).includes('two different'));
     await page.locator('#round-list button').first().click();assert.equal(await page.locator('.detail-row').count(),1);
+    assert.ok((await page.locator('.detail-row').innerText()).includes('Against the champion\'s mean of 41.3 over 1 to 2 runs a task: net +3.7, exact p = '));
     assert.ok((await page.locator('#legacy').innerText()).includes('HTTP 500'));
     assert.ok((await page.locator('#live-progress').innerText()).includes('task results recorded'));
     assert.equal(await page.locator('#message-list .message').count(),snapshot.communications.length);

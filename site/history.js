@@ -56,6 +56,8 @@ function detailRow(v) {
     ['Reason given', v.reason || (v.proposedBy ? 'withheld: the proposer\'s own words can quote task text, so only the typed change is public' : 'none recorded')], ['Runtime', v.runtime], ['Born', when(v.born)],
   ];
   if (v.outcome) facts.push(['Round outcome', OUTCOMES[v.outcome] || v.outcome]);
+  // A round screened against every run of the champion, not only its first.
+  if (v.screen) facts.push(['Screen', `Against the champion's mean of ${v.screen.championMean} over ${v.screen.runsPerTask[0] === v.screen.runsPerTask[1] ? v.screen.runsPerTask[0] : `${v.screen.runsPerTask[0]} to ${v.screen.runsPerTask[1]}`} runs a task: net ${v.screen.net > 0 ? '+' : ''}${v.screen.net}, exact p = ${pfmt(v.screen.p)}${v.screen.leads ? '; it went on to the 250-task confirmation' : ''}`]);
   if (v.searchPolicy) facts.push(['Search policy when proposed', POLICIES[v.searchPolicy] || v.searchPolicy]);
   if (v.broken) facts.push(['Broken', v.broken]);
   const dl = el('dl');
