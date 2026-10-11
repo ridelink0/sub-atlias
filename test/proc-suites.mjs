@@ -222,6 +222,70 @@ export default async function procSuites({ asyncSuite, check, skip, TMP, ROOT, f
       { happened: `action pid ${idlePid}, alive=${idlePid ? alive(idlePid) : 'never started'}`, why: 'An orphaned runner kept starting tasks for hours on 2026-09-26.', fix: 'watch_parent ends every live tree and exits when the parent is gone.' });
   });
 
+  await asyncSuite('process tree expert', 'a command that takes too much memory is stopped, and only when a limit is given', async () => {
+    if (!win) { skip('memory limit on a command', 'the limit is enforced on Windows only; nothing here measures a process tree elsewhere'); return; }
+    // A node program that takes 32 MiB ten times a second up to a ceiling, holds
+    // it, and exits 0 by itself: memory that is written to, as a model-written
+    // list over an endless iterator is (2026-10-11, 8 GB inside two minutes).
+    const hog = (mb, holdMs, file) => `${node} -e "${file ? `require('fs').writeFileSync(${JSON.stringify(file).replace(/"/g, "'")}, String(process.pid)); ` : ''}const a=[]; const t=setInterval(() => { if (a.length*32 < ${mb}) a.push(Buffer.alloc(32*1024*1024, 1)); }, 100); setTimeout(() => { clearInterval(t); process.exit(0); }, ${holdMs})"`;
+    const brief = (r) => JSON.stringify({ status: r.status, overMemory: r.overMemory, timedOut: r.timedOut, code: r.error && r.error.code, error: r.error && r.error.message });
+
+    const overPid = pidFile();
+    const t0 = Date.now();
+    const over = await proc.runAsync(hog(640, 60000, overPid), [], { shell: true, timeoutMs: 90000, memoryMB: 300 });
+    const took = Date.now() - t0;
+    const overChild = readPid(overPid);
+    check('a command holding 640 MiB against a 300 MiB limit is stopped long before its time limit, and the result says memory', over.overMemory === true && over.timedOut === false && over.status === null && over.error && over.error.code === 'EMEMORY' && /held more than 300 MiB/.test(over.error.message) && took < 45000,
+      { happened: `${took} ms: ${brief(over)}`, why: 'Inside its time limit a model-written memory bomb took 8 GB twice and the PC ran out of committed memory; programs that had nothing to do with the run ended.', fix: 'lib/watchdog.mjs watchMemory, started by a memoryMB in the spec.' });
+    check('and the program under the shell is gone, not left holding the memory', overChild > 0 && await goneWithin(overChild, 8000),
+      { happened: `program pid ${overChild}, alive=${overChild ? alive(overChild) : 'never started'}`, why: 'Ending only the shell would leave the memory held.', fix: 'watchMemory ends the tree with endTree, as the time limit does.' });
+
+    // The memory is held by a process the command started, not by the command.
+    const kidPid = pidFile();
+    const parent = path.join(W, 'memory-parent.js');
+    fs.writeFileSync(parent, [
+      "const { spawn } = require('child_process');",
+      `spawn(process.execPath, ['-e', ${JSON.stringify(`require('fs').writeFileSync(${JSON.stringify(kidPid)}, String(process.pid)); const a=[]; const t=setInterval(() => { if (a.length*32 < 640) a.push(Buffer.alloc(32*1024*1024, 1)); }, 100); setTimeout(() => process.exit(0), 60000)`)}], { stdio: 'ignore' });`,
+      'setTimeout(() => process.exit(0), 60000);',
+    ].join(NL));
+    const tree = await proc.runAsync(process.execPath, [parent], { timeoutMs: 90000, memoryMB: 300 });
+    const kid = readPid(kidPid);
+    check('memory held by a process the command started counts against the command', tree.overMemory === true && tree.status === null && kid > 0 && await goneWithin(kid, 8000),
+      { happened: `${brief(tree)}; child pid ${kid}, alive=${kid ? alive(kid) : 'never started'}`, why: 'A test runner holds little itself; the program it starts is what grows.', fix: 'The helper adds up the whole tree under the command, not the command alone.' });
+
+    const under = await proc.runAsync(hog(96, 7000), [], { shell: true, timeoutMs: 90000, memoryMB: 2000 });
+    check('a command under its limit runs to its own end', under.status === 0 && under.overMemory === false && !under.error,
+      { happened: brief(under), why: 'A limit that stops ordinary commands is worse than none.', fix: 'Compare the tree against memoryMB in MiB (the listing counts in KB).' });
+
+    const none = await proc.runAsync(hog(640, 6000), [], { shell: true, timeoutMs: 90000 });
+    check('with no limit given nothing is measured and nothing is stopped for memory', none.status === 0 && none.overMemory === false && !none.error,
+      { happened: brief(none), why: 'A build can rightly hold several GB: the limit is for benchmark runs, which ask for it.', fix: 'memoryLimit() returns 0 unless a limit is given or ATLIAS_COMMAND_MEMORY_MB is set.' });
+
+    const q0 = Date.now();
+    const quick = proc.runSync(process.execPath, ['-e', 'process.exit(0)'], { timeoutMs: 60000, memoryMB: 300 });
+    const quickMs = Date.now() - q0;
+    check('a command that ends at once never waits for the measuring to start', quick.status === 0 && quick.overMemory === false && quickMs < 2500,
+      { happened: `${quickMs} ms: ${brief(quick)}`, why: 'Measuring starts three seconds in; a watchdog that waited for that would add three seconds to every command of a run.', fix: 'finish() clears the timer that starts watchMemory.' });
+
+    const before = process.env.ATLIAS_COMMAND_MEMORY_MB;
+    let fromRun, given;
+    try {
+      process.env.ATLIAS_COMMAND_MEMORY_MB = '300';
+      fromRun = proc.runSync(process.execPath, ['-e', 'const a=[]; const t=setInterval(() => { if (a.length*32 < 640) a.push(Buffer.alloc(32*1024*1024, 1)); }, 100); setTimeout(() => process.exit(0), 60000)'], { timeoutMs: 90000 });
+      // A limit given for one command wins over the one set for the run.
+      given = proc.runSync(process.execPath, ['-e', 'const a=[]; const t=setInterval(() => { if (a.length*32 < 640) a.push(Buffer.alloc(32*1024*1024, 1)); }, 100); setTimeout(() => process.exit(0), 6000)'], { timeoutMs: 90000, memoryMB: 4000 });
+    } finally { if (before === undefined) delete process.env.ATLIAS_COMMAND_MEMORY_MB; else process.env.ATLIAS_COMMAND_MEMORY_MB = before; }
+    check('ATLIAS_COMMAND_MEMORY_MB sets the limit for every command of a run, synchronous ones too', fromRun.overMemory === true && fromRun.status === null && /held more than 300 MiB/.test(fromRun.error.message),
+      { happened: brief(fromRun), why: 'The evolution loop sets one variable for a whole benchmark run; the check that scores a task is synchronous.', fix: 'runSync and runAsync both pass memoryLimit() to the watchdog.' });
+    check('and a limit given for one command wins over it', given.status === 0 && given.overMemory === false,
+      { happened: brief(given), why: 'A caller that knows its command needs more must be able to say so.', fix: 'memoryLimit(given) reads the variable only when nothing is given.' });
+
+    const junk = [-5, 0, 0.4, NaN, Infinity, 'much', '', {}, []].map((x) => proc.memoryLimit(x));
+    const kept = [1, 300, '300', 4096.9].map((x) => proc.memoryLimit(x));
+    check('a limit that is not a positive number is no limit', junk.every((x) => x === 0) && JSON.stringify(kept) === '[1,300,300,4096]',
+      { happened: JSON.stringify({ junk, kept }), why: 'A mistyped variable must not stop every command at once, and must not pass NaN to the watchdog.', fix: 'memoryLimit() returns a whole number of MiB, or 0.' });
+  });
+
   await asyncSuite('command line expert', 'help runs nothing, and an eval stops when whatever started it is gone', async () => {
     const bin = path.join(ROOT, 'bin', 'atlias.mjs');
     // A dead port: if --help reached the engine, the run would say so here.

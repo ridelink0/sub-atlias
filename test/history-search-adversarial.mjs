@@ -77,5 +77,10 @@ const sealedStats = collectLive({ stateRoot: r4, now }).status.liveStats;
 assert.deepEqual(sealedStats.stage.stopReasons, {}); assert.deepEqual(sealedStats.stage.suites, {});
 assert.equal(sealedStats.stage.elapsedMinutes, null); assert.equal(sealedStats.stage.tasksPerHour, null); assert.equal(sealedStats.stage.finishEstimate, null);
 assert.deepEqual(sealedStats.proposals, { modelAnswered: 0, unusableReply: 0, unreachable: 1, other: 1 });
+// The two newer notes the controller writes on a held round are published as
+// written; anything that only looks like one is withheld.
+const notes = ['s1: this PC ran out of committed memory (300 MiB left)', 's1: too slow for the screen (300 of 360 min)', 's1: this PC ran out of committed memory (D:/private left)', 's1: too slow for the screen (300 of 360 min) at D:/private', 's1: this PC ran out of committed memory'];
+const r6 = write({ champion: 'v0000', iterations: 1, playbook: {}, variants: [{ id: 'v0000', parent: null, born: '2026-10-09T00:00:00Z', config: {} }, ...notes.map((broken, i) => ({ id: `v000${i + 1}`, parent: 'v0000', born: '2026-10-11T00:00:00Z', config: {}, broken }))] }); roots.push(r6);
+assert.deepEqual(collectHistory({ root: r6, now }).variants.slice(1).map(v => v.broken), [notes[0], notes[1], 'details withheld', 'details withheld', 'details withheld']);
 for (const r of roots) fs.rmSync(r, { recursive: true, force: true });
 console.log('PASS history search separate adversarial: malformed and missing counters stay Unknown, zero-solve stages have no ratio, unknown outcomes/policies/routes dropped, no-champion archive has no penalty, private senders/recipients/text withheld');
