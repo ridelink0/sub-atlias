@@ -45,6 +45,12 @@ No dependencies. Node 18 or newer.
 
 ### Benchmarks
 
+Use your own API endpoint, model and optional token prices with the native
+subharness: `atlias sub --host claude|codex --profile provider.json`. Follow-ups
+stay in the native session. See [API setup and measured cost estimates](docs/API-SUBHARNESS.md)
+for supported protocols, credentials and resume commands. These optional
+features do not establish a 20x benchmark result.
+
 Every number below was measured, on one consumer PC, with a local 9-billion-parameter model (`qwen3.5:9b` through Ollama, a 16,384-token window, replies capped at 2,048 tokens). A task counts as solved only when its hidden check, a command, exits 0; what the model says about its own work never scores. Tokens per solve is every prompt and output token of the run divided by the tasks solved.
 
 #### Against other harnesses

@@ -131,7 +131,10 @@ def main():
         with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as state:
             ws = pathlib.Path(state) / "ws"
             ws.mkdir()
-            a = argparse.Namespace(codex=CODEX, codex_home_from="", model="qwen3.5:9b", num_ctx=32768)
+            import codex_probe as P
+            skill_snapshot = pathlib.Path(state) / 'personal-skills.json'
+            skill_snapshot.write_text(json.dumps({'files': P.disabled_skills([pathlib.Path.home() / '.agents' / 'skills', pathlib.Path.home() / '.codex' / 'skills'])}), encoding='utf-8')
+            a = argparse.Namespace(codex=CODEX, codex_home_from="", model="qwen3.5:9b", num_ctx=32768, codex_disabled_skills=str(skill_snapshot))
             env = B.offline_env(state, door2, str(pathlib.Path(state) / "shims"))
             argv, cwd, stdin_text = B.codex_command(a, {"prompt": "CODEX_DOOR_SENTINEL_1012"}, ws, state, door2, 5, env)
             with open(pathlib.Path(state) / "out.txt", "wb") as buf:
@@ -141,7 +144,7 @@ def main():
             check("the bundled Codex CLI, in the harness environment, reaches the model only through the door, is counted, and ends by itself",
                   rc == 0 and why == "" and door2.calls == 1 and door2.usage == [(100, 5)] and door2.receipts[0]["outcome"] == "complete"
                   and "CODEX_DOOR_SENTINEL_1012" in json.dumps(got) and env["CODEX_HOME"].startswith(state) and '"turn.completed"' in said
-                  and ".agents/skills" not in json.dumps(got) and "skills_instructions" not in json.dumps(got),
+                  and "skills_instructions" in json.dumps(got) and "openai-docs" in json.dumps(got) and ".agents/skills" not in json.dumps(got),
                   (rc, why, door2.calls, door2.usage, door2.errors, door2.refused[:4], said[-300:]))
         door2.shutdown()
     up.shutdown()

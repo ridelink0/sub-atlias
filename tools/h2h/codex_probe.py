@@ -12,12 +12,37 @@ import hashlib
 import http.server
 import json
 import pathlib
+import shutil
 import threading
 
 import base_harness_runner as B
 
 CODEX = "C:/Users/OWNER/AppData/Local/OpenAI/Codex/bin/2e5e00daee91c61d/codex.exe"
 PROMPT = "Record this exact probe request. No edits. CODEX_AUTHORITY_SENTINEL_1012."
+
+
+def disabled_skills(roots):
+    """Exact personal skill files only; never disable native/project skill discovery."""
+    files = set()
+    for root in roots:
+        for file in pathlib.Path(root).resolve().rglob("SKILL.md"):
+            if ".system" not in file.parts:
+                files.add(file.resolve().as_posix())
+    return sorted(files)
+
+
+def disable_skill_args(files):
+    rows = ",".join("{path=" + json.dumps(p) + ",enabled=false}" for p in files)
+    return ["-c", "skills.config=[" + rows + "]"] if files else []
+
+
+def provider_args(base, configs=()):
+    p = "atlias_local_meter"
+    return ["-c", 'model="qwen3.5:9b"', "-c", f'model_provider="{p}"',
+            "-c", f'model_providers.{p}.name="Atlias local meter"', "-c", f'model_providers.{p}.base_url="{base}"',
+            "-c", f'model_providers.{p}.wire_api="responses"', "-c", f"model_providers.{p}.requires_openai_auth=false",
+            "-c", f"model_providers.{p}.supports_websockets=false", "-c", "model_context_window=32768", "-c", 'web_search="disabled"',
+            *[x for c in configs for x in ("-c", c)]]
 
 
 class Responses(http.server.BaseHTTPRequestHandler):
@@ -65,11 +90,20 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--codex", default=CODEX)
     ap.add_argument("--config", action="append", default=[], help="an extra -c key=value for Codex (repeatable), the same way each arm would get it")
+    ap.add_argument("--codex-home-from", help="copy an isolated prepared home and load its config; never changes the original")
+    ap.add_argument("--disable-skill-root", action="append", default=[], help="disable exact personal SKILL.md files under this root; native/project skills stay enabled")
+    ap.add_argument("--bypass-hook-trust", action="store_true", help="run pre-vetted hooks in this isolated automation")
     a = ap.parse_args()
     root = pathlib.Path(a.out).resolve()
     ws, home = root / "workspace", root / "codex-home"
     ws.mkdir(parents=True, exist_ok=True)
+    if a.codex_home_from:
+        prepared = pathlib.Path(a.codex_home_from).resolve()
+        if home == prepared or prepared in home.parents:
+            ap.error("the probe output home must be outside the prepared source home")
+        shutil.copytree(prepared, home, dirs_exist_ok=True)
     home.mkdir(parents=True, exist_ok=True)
+    Responses.seen = []
     fake = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Responses)
     threading.Thread(target=fake.serve_forever, daemon=True).start()
     door = B.Door(f"http://127.0.0.1:{fake.server_address[1]}", "qwen3.5:9b", 2048, 5)  # only its refusal of other hosts is used
@@ -77,12 +111,10 @@ def main():
     base = f"http://127.0.0.1:{fake.server_address[1]}/v1"
     env = B.offline_env(str(root / "state"), door, str(root / "shims"))
     env.update({"CODEX_HOME": str(home), "ATLIAS_HOME": str(root / "atlias-home")})
-    provider = "atlias_local_meter"
-    argv = [a.codex, "exec", "--ignore-user-config", "--ignore-rules", "--strict-config", "--json", "--skip-git-repo-check", "-C", str(ws),
-            "-c", 'model="qwen3.5:9b"', "-c", f'model_provider="{provider}"',
-            "-c", f'model_providers.{provider}.name="Atlias local meter"', "-c", f'model_providers.{provider}.base_url="{base}"',
-            "-c", f'model_providers.{provider}.wire_api="responses"', "-c", f"model_providers.{provider}.requires_openai_auth=false",
-            "-c", f"model_providers.{provider}.supports_websockets=false", "-c", "model_context_window=32768", "-c", 'web_search="disabled"', *[x for c in a.config for x in ("-c", c)], "-"]
+    files = disabled_skills(a.disable_skill_root)
+    argv = [a.codex, "exec", *([] if a.codex_home_from else ["--ignore-user-config"]), "--ignore-rules", "--strict-config", "--json", "--skip-git-repo-check",
+            *(["--dangerously-bypass-hook-trust"] if a.bypass_hook_trust else []), "-C", str(ws),
+            *provider_args(base, a.config), *disable_skill_args(files), "-"]
     try:
         with open(root / "native-output.txt", "wb") as out:
             rc, why = B.run_harness(argv, cwd=str(ws), env=env, door=door, start_limit=120, task_limit=120, stdout=out, stdin_text=PROMPT)
@@ -98,6 +130,7 @@ def main():
     tools = first.get("tools") or []
     summary = {"inference": False, "codex": a.codex, "sha256": hashlib.sha256(pathlib.Path(a.codex).read_bytes()).hexdigest(),
                "argv": argv[1:], "exit": rc, "stop": why, "refused": door.refused, "paths": [f"{s['method']} {s['path']}" for s in seen],
+               "preparedHome": a.codex_home_from, "disabledSkillFiles": files,
                "responsesCalls": len(calls), "authorityPresent": bool(calls) and all(PROMPT in json.dumps(c, ensure_ascii=False) for c in calls),
                "firstRequestChars": len(json.dumps(first, ensure_ascii=False)) if calls else None,
                "instructionsChars": len(first.get("instructions") or "") if calls else None,

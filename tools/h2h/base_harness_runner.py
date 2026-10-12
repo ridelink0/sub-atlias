@@ -702,12 +702,20 @@ def codex_command(a, task, ws, state, door, budget, env):
             "-c", f'model="{a.model}"', "-c", f'model_provider="{p}"', "-c", f'model_providers.{p}.name="Atlias local meter"',
             "-c", f'model_providers.{p}.base_url="{door.base}/v1"', "-c", f'model_providers.{p}.wire_api="responses"',
             "-c", f"model_providers.{p}.requires_openai_auth=false", "-c", f"model_providers.{p}.supports_websockets=false",
-            "-c", f"model_context_window={a.num_ctx}", "-c", 'web_search="disabled"',
-            # Codex finds the real C:/Users/OWNER/.agents/skills whatever HOME says, so its skill
-            # list would carry Gev's own skills into a clean arm (codex-probe-1, 2026-10-12). Both
-            # arms leave the list out; the five system skills go with it, in both, as a declared
-            # difference from a stock install, never an atlias saving.
-            "-c", "skills.include_instructions=false", "-"]
+            "-c", f"model_context_window={a.num_ctx}", "-c", 'web_search="disabled"']
+    # Disable only the pre-recorded personal skill files in both arms. Keep the
+    # native/system and project catalog, including explicit skill invocation.
+    skill_file = getattr(a, "codex_disabled_skills", "")
+    if skill_file:
+        snapshot = json.loads(pathlib.Path(skill_file).read_text(encoding="utf-8-sig"))
+        files = snapshot.get("files", []) if isinstance(snapshot, dict) else snapshot
+        if not isinstance(files, list) or any(not isinstance(f, str) for f in files):
+            raise ValueError("invalid frozen Codex skill exclusion list")
+        rows = ",".join("{path=" + json.dumps(f) + ",enabled=false}" for f in files)
+        argv += ["-c", "skills.config=[" + rows + "]"]
+    if getattr(a, "codex_bypass_hook_trust", False):
+        argv += ["--dangerously-bypass-hook-trust"]
+    argv += ["-"]
     return argv, str(ws), task["prompt"]
 
 
@@ -777,6 +785,8 @@ def provenance(a):
     return {"harness": a.harness, "client": {"path": str(client), "sha256": tree_digest(client),
                                              "version": run([client, "--version"]) if a.harness in ("claude", "codex") else None},
             "codexHomeFrom": {"path": a.codex_home_from, "sha256": tree_digest(a.codex_home_from)} if getattr(a, "codex_home_from", None) else None,
+            "codexDisabledSkills": {"sha256": file_digest(a.codex_disabled_skills)} if getattr(a, "codex_disabled_skills", None) else None,
+            "codexBypassHookTrust": bool(getattr(a, "codex_bypass_hook_trust", False)),
             "runner": file_digest(__file__), "source": {"head": run(["git", "rev-parse", "HEAD"]), "dirty": _digest(status) if status else status},
             "pluginDirs": [{"path": str(d), "sha256": tree_digest(d)} for d in (getattr(a, "claude_plugin_dir", None) or [])],
             "model": model_facts(a.api_base, a.model),
@@ -967,6 +977,8 @@ def main():
     ap.add_argument("--claude-plugin-dir", action="append", default=[], help="a plugin folder base Claude Code also loads (repeatable): atlias as a sub-harness, a mod")
     ap.add_argument("--codex", default="C:/Users/OWNER/AppData/Local/OpenAI/Codex/bin/2e5e00daee91c61d/codex.exe", help="the exact bundled Codex CLI")
     ap.add_argument("--codex-home-from", default="", help="a prepared CODEX_HOME copied into each task's own (atlias installed into it): the second arm")
+    ap.add_argument("--codex-disabled-skills", default="", help="frozen JSON list of personal SKILL.md paths disabled identically in both arms; native/project skills remain")
+    ap.add_argument("--codex-bypass-hook-trust", action="store_true", help="run pre-vetted isolated automation hooks; never implied by a model choice")
     a = ap.parse_args()
     need = ([a.nanobot] if a.harness == "nanobot" else [a.claude, *a.claude_plugin_dir] if a.harness == "claude"
             else [a.codex, *([a.codex_home_from] if a.codex_home_from else [])] if a.harness == "codex"

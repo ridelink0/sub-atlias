@@ -27,7 +27,8 @@ cases = [
     ("previous_response_id let through", RUNNER, 'if body.get("previous_response_id"):', "if False:", RESP),
     ("unmetered responses path let through", RUNNER, 'if "/responses" in route:', "if False:", RESP),
     ("instructions dropped on the way", RUNNER, 'body["max_output_tokens"] = s.num_predict', 'body["max_output_tokens"] = s.num_predict; body.pop("instructions", None)', RESP),
-    ("real skills root leaks into Codex", RUNNER, '"-c", "skills.include_instructions=false", "-"]', '"-"]', RESP),
+    ("native skill capability removed", RUNNER, 'argv += ["-"]', 'argv += ["-c", "skills.include_instructions=false", "-"]', RESP),
+    ("real skills root leaks into Codex", RUNNER, 'if skill_file:', 'if False:', RESP),
     ("capped call leaves no receipt", RUNNER, 's.receipts.append({"api": "messages", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})', "pass", LEDGER),
 ]
 rows = []

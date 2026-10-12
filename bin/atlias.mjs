@@ -27,6 +27,8 @@ import * as bench from '../lib/bench.mjs';
 import * as shortcut from '../lib/shortcut.mjs';
 import * as settings from '../lib/settings.mjs';
 import * as skills from '../lib/skills.mjs';
+import * as subharness from '../lib/subharness.mjs';
+import * as provider from '../lib/provider.mjs';
 import { recall, remember } from '../mcp/tools.mjs';
 
 const argv = process.argv.slice(2);
@@ -84,6 +86,8 @@ const HELP = {
   graph: ['usage: atlias graph query|affected|explain|update <arg>'],
   remember: ['usage: atlias remember <name> <user|feedback|project|reference> <description> -- <body>'],
   config: ['usage: atlias config [set <section.key> <value>]'],
+  sub: ['usage: atlias sub --host claude|codex --profile <provider.json> [--log <receipts.jsonl>] [--executable <native-cli>] -- [native arguments]', 'Runs one native session with Atlias, your API model and measured token/cost receipts. Follow-ups and resume use the native host commands.'],
+  provider: ['usage: atlias provider check <provider.json> | usage <receipts.jsonl>', 'check validates offline; usage reports recorded tokens and user-priced estimates. No API request is made.'],
 };
 HELP.run = HELP.agent;
 HELP.fly = HELP.agent;
@@ -92,6 +96,33 @@ const helpFor = cmd !== 'help' && beforeDashes.some((a) => a === '--help' || a =
 
 if (helpFor) say(HELP[helpFor] || [`atlias ${helpFor}: no usage of its own; atlias --help lists every command.`]);
 else switch (cmd) {
+  case 'sub': {
+    const split = argv.indexOf('--');
+    const options = split < 0 ? argv.slice(1) : argv.slice(1, split);
+    const allowed = ['--host', '--profile', '--log', '--executable'];
+    const opts = {};
+    try {
+      for (let i = 0; i < options.length; i += 2) {
+        if (!allowed.includes(options[i]) || !options[i + 1] || options[i + 1].startsWith('--') || options[i] in opts) throw Error('Use atlias sub --help for launcher options; native arguments go after --.');
+        opts[options[i]] = options[i + 1];
+      }
+      if (!opts['--profile']) throw Error('--profile is required.');
+      process.exitCode = await subharness.launch({ host: opts['--host'], file: opts['--profile'], logFile: opts['--log'], executable: opts['--executable'], args: split < 0 ? [] : argv.slice(split + 1) });
+    } catch (e) { say(`atlias sub: ${e.message}`); process.exitCode = 2; }
+    break;
+  }
+  case 'provider': {
+    try {
+      if (argv[1] === 'check' && argv.length === 3) {
+        const p = provider.load(argv[2]);
+        say(`Valid ${p.protocol} profile for model ${p.model}. Pricing ${p.pricing ? 'configured' : 'unknown'}; no API call made.`);
+      } else if (argv[1] === 'usage' && argv.length === 3) {
+        const rows = fs.readFileSync(argv[2], 'utf8').split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
+        say(JSON.stringify(provider.summarize(rows), null, 2));
+      } else { say(HELP.provider); process.exitCode = 2; }
+    } catch { say('Invalid provider profile or usage receipt file; see atlias provider --help.'); process.exitCode = 2; }
+    break;
+  }
   case 'logo': say(logo()); break;
   // Task evaluation: the model works in a scratch copy and a command decides.
   case 'eval': {

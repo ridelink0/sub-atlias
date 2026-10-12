@@ -1,6 +1,76 @@
 # Atlias subharness goal checkpoint for Gev
 
+## Latest verified checkpoint: October 12, 23:15Z
+
+Reset boundary update: Codex live meter reached 92% at 23:16Z. Source is saved
+as a local checkpoint, not a completed release. Current-chat heartbeat
+atlias-subharness-measured-reset-continuation was created and its saved TOML
+verified for 22:35:48 America/Chicago, exactly seven minutes after the freshly
+measured reset (2026-10-13T03:28:48Z). Existing daily wake remains unchanged.
+
+Disposable verification-20261012T2312Z: public functional 59/59, all 30 planted
+public regressions caught, restored exit 0 and byteExactRestore true. Updated
+benchmark planted regressions 19/19 caught, restored exit 0; only its generated
+receipt artifact changed in the clone. Full Node job remains pending/unverified
+until full-node/result.json and output.log record its actual final outcome.
+The orchestrator job was session17506; receipts persist without active agents.
+
+Controller fixes are implemented: unknown full peak blocks qualification rather
+than dividing None; screen/confirmation verdict holds further costly stages if
+both reductions miss the predeclared minimum (20) or outputs/completions are lost.
+Agent recorded actual selftest exit 0: 45 functional checks, 12 planted breaks,
+45 restored checks. Read controller-selftest.json and updated ops handoff.
+No GPU controller launch, source freeze or real native inference benchmark yet.
+
+This block supersedes the historical ownership and qualification notes below.
+Public BYO endpoint/model/key-env/pricing implementation and exact native request,
+follow-up and selected-skill ledgers are implemented in the experimental branch.
+Actual public Claude and Codex original/resume launches each passed 7/7 checks:
+two native exits zero, two authenticated local recording-provider calls, exact
+follow-ups and known token/cost receipts with no credential in the records.
+These are native protocol fixtures, not inference savings.
+Evidence: public-native-claude-1 and public-native-codex-2 under
+D:/harness-work/atlias-subharness-runs-1012. Codex parent-only provider overrides
+were ignored; the fixed launcher puts them inside exec/resume instead.
+
+Root full Node suite ended exit 1, 1352/1353: only static exported coverage for
+authority clear/record/selected was missing. Added direct checks, then public plus
+coverage passed 64/64 exit 0. New disposable snapshots are running full Node,
+updated 19 planted benchmark regressions and 30 public planted regressions.
+Do not call these pending runs passed until their receipts record actual exits.
+
+Private Ollama model qwen3.5:9b-32k was created successfully; actual /api/ps
+reported context_length 32768 and digest 57a1a12692be950543a274d68e4e20c397f93401869caff4ccc88056e84fbd07.
+The short readiness request spent its output cap on thinking, so it proves model
+loading/window only. Native tools and actual inference quality remain unqualified.
+
+Old regular evolution controller and gate reached safe stop boundaries and
+released LOCAL-ROLE.lock. HumanEvalFix Python finished 147/164; preserved overall
+gate snapshot 156/173 vs 145/173 base, but full Ultimate gate incomplete. Leave
+the old regular loop STOP in place under Gev's latest subharness focus.
+
+Next: finish controller fixes (unknown peak remains unknown; costly stage
+continuation requires a predeclared target/no-task-loss verdict), read actual
+verification receipts, commit locally, freeze preregistered candidate and launch
+hidden subharness controller. It runs Claude smoke then Codex smoke immediately.
+Hold on protocol/count/window/provenance failure; keep every attempt and failure.
+No 20x inference result, public release, promotion or goal completion is claimed.
+
 ## Current objective
+
+Gev's added regular-harness goal: measure and reach 4x Nanobot efficiency with
+matched model/task/budget conditions and no loss of required outputs/capability.
+Use the established total input-plus-output and full peak-context accounting;
+4x requires both to be at most one quarter of Nanobot, with uncertainty retained.
+Claude's one-week estimate is a hypothesis, not an achieved result or deadline
+proof. This is a separate regular-harness goal; current local agents/GPU trials
+remain focused on the subharness under the immediately preceding instruction.
+Queue the regular target for its own source ownership and frozen measurements.
+
+Latest Gev steering: new local agents/measurement loop now target SUBHARNESS,
+not additional regular harness evolution. Retain the same verification tests
+and add same-model base Claude vs Claude+Atlias, then base Codex vs Codex+Atlias.
+Research/test collaborators now own only their explicitly isolated new files.
 
 Fix Atlias as a real native Claude Code subharness using mods and the two pipeline
 reports, benchmark clean base Claude Code against the same client plus Atlias on
@@ -11,20 +81,32 @@ Protocol/character results are not inference savings. No paid credits or pushes.
 
 Gev is offline and authorizes necessary Atlias work, unattended Claude auto/bypass
 mode and Usage Limits relays if useful. Choose recommended decisions without
-questions. Give the natural-reset estimate ONLY ONCE at final completion.
+questions. Latest steering: give the natural-reset estimate ONLY ONCE at the
+first response. It was already given (2–4 additional resets, uncertain 20x);
+do not repeat it at completion. Public setup must accept the user's own API
+endpoint, model, key environment variable and token prices. Both native hosts
+must retain original requests and follow-ups, including across compaction.
 
 ## Workspace and ownership
+
+Codex resumed October 12 at 22:30Z. Claude's original owned continuation ended
+at afd7931 and its scoped relay has been cancelled to prevent concurrent edits.
+Codex owns this isolated branch now. A gate-specific STOP requests release after
+the current complete HumanEvalFix Python corpus. Controller STOP was written
+only after its fresh heartbeat verified waiting-for-codex-gpu-lock, before s2.
+Preserve all original evidence; keep the regular loop paused under latest scope.
+The old Codex one-shot reset automation was removed on this resumed run;
+the existing daily 21:20 continuation remains untouched.
 
 - Isolated branch: codex/subharness-1012, D:/harness-work/atlias-subharness-1012.
 - Base: main f6b6048. Live C:/Users/OWNER/atlias has other ownership changes in
   lib/logo.mjs and site JSON; do not touch them or live hashed source during runs.
 - Read D:/harness-work/atlias-evolve/RESEARCH-FIRST.md fully and top WORK-PLAN.md,
   then the atlias-work skill and status.sh via D:/Git/bin/bash.exe.
-- The current Ultimate gate owns LOCAL-ROLE.lock and is running HumanEvalFix
-  Python. The evolution controller waits for it. No live gate or lock was changed.
-  Its gate-specific STOP supports ending after the current corpus; never put STOP
-  into the running evolve folder or terminate by PID. Coordinate GPU access at
-  a boundary, preserve every existing receipt, and resume outstanding gate work.
+- The old Ultimate gate released LOCAL-ROLE.lock after completing HumanEvalFix
+  Python; the evolution controller stopped while idle before s2. Its STOP was
+  written only after a fresh waiting-for-codex-gpu-lock heartbeat was verified.
+  Keep the old loop stopped and preserve every receipt. Never terminate by PID.
 
 ## Completed research
 
