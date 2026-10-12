@@ -81,6 +81,18 @@ def _usage_of(obj):
     return (p, c) if isinstance(p, int) and isinstance(c, int) and not isinstance(p, bool) and not isinstance(c, bool) else None
 
 
+def _message_usage(u):
+    """Prompt and output tokens out of a usage block in Claude's wire format. The prompt is all that
+    was read: new tokens, tokens served from cache and tokens written to it."""
+    if not isinstance(u, dict):
+        return None, None
+    num = lambda v: v if isinstance(v, int) and not isinstance(v, bool) else None  # noqa: E731
+    p = num(u.get("input_tokens"))
+    if p is not None:
+        p += (num(u.get("cache_read_input_tokens")) or 0) + (num(u.get("cache_creation_input_tokens")) or 0)
+    return p, num(u.get("output_tokens"))
+
+
 class DoorHandler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.0"  # one request per connection; the body ends when the door closes it
 
@@ -147,8 +159,11 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             raw = self._body()
         except Exception:
             return self._send(400, {"error": {"message": "the request body could not be read"}})
-        if self.path.split("?")[0].rstrip("/").endswith("/chat/completions"):
+        route = self.path.split("?")[0].rstrip("/")
+        if route.endswith("/chat/completions"):
             return self._chat(raw)
+        if route.endswith("/v1/messages"):
+            return self._messages(raw)
         self._pass(raw)
 
     def _pass(self, raw):
@@ -180,6 +195,105 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                   "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}]
         body = "".join(f"data: {json.dumps(p)}\n\n" for p in parts) + "data: [DONE]\n\n"
         self._send(200, body.encode("utf-8"), "text/event-stream")
+
+    def _stop_message(self, stream):
+        """The stop past the budget, in the shape of Claude's wire format."""
+        s = self.server
+        msg = {"id": "msg_step_limit", "type": "message", "role": "assistant", "model": s.model,
+               "content": [{"type": "text", "text": STOP_TEXT}], "stop_reason": "end_turn", "stop_sequence": None,
+               "usage": {"input_tokens": 0, "output_tokens": 0}}
+        if not stream:
+            return self._send(200, msg)
+        events = [("message_start", {"type": "message_start", "message": {**msg, "content": [], "stop_reason": None}}),
+                  ("content_block_start", {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
+                  ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": STOP_TEXT}}),
+                  ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+                  ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": None}, "usage": {"output_tokens": 0}}),
+                  ("message_stop", {"type": "message_stop"})]
+        self._send(200, "".join(f"event: {name}\ndata: {json.dumps(data)}\n\n" for name, data in events).encode("utf-8"), "text/event-stream")
+
+    def _messages(self, raw):
+        """A call in Claude's wire format (/v1/messages), which Ollama answers too: Claude Code's
+        calls are metered, capped and held to the same model, temperature and output cap as the rest."""
+        s = self.server
+        try:
+            body = json.loads(raw.decode("utf-8"))
+            if not isinstance(body, dict):
+                raise ValueError("not an object")
+        except Exception:
+            return self._send(400, {"type": "error", "error": {"type": "invalid_request_error", "message": "the request body is not a JSON object"}})
+        stream = body.get("stream") is True
+        with s.lock:
+            s.calls += 1
+            if s.first is None:
+                s.first = time.time()
+            over = s.calls > s.budget
+            if over:
+                s.capped += 1
+            else:
+                slot = len(s.usage)
+                s.usage.append(None)
+        if over:
+            return self._stop_message(stream)
+        body["model"] = s.model
+        body["temperature"] = 0.2
+        body["max_tokens"] = s.num_predict
+        got = [None, None]  # prompt and output tokens, as the answer gives them
+
+        def note(u):
+            p, c = _message_usage(u)
+            if p is not None:
+                got[0] = p
+            if c is not None:
+                got[1] = c
+            if got[0] is not None and got[1] is not None:
+                s.usage[slot] = (got[0], got[1])
+        try:
+            req = urllib.request.Request(s.upstream + "/v1/messages", data=json.dumps(body).encode("utf-8"), method="POST",
+                                         headers={"Content-Type": "application/json", "x-api-key": "local",
+                                                  "anthropic-version": self.headers.get("anthropic-version") or "2023-06-01"})
+            with urllib.request.urlopen(req, timeout=1800) as r:
+                if not stream:
+                    data = r.read()
+                    try:
+                        note(json.loads(data.decode("utf-8")).get("usage"))
+                    except Exception:
+                        pass
+                    self._send(r.status, data, r.headers.get("Content-Type") or "application/json")
+                else:
+                    self.send_response(r.status)
+                    self.send_header("Content-Type", r.headers.get("Content-Type") or "text/event-stream")
+                    self.send_header("Cache-Control", "no-cache")
+                    self.send_header("Connection", "close")
+                    self.end_headers()
+                    for line in r:
+                        # The prompt count comes with message_start, the output count with message_delta.
+                        if line.startswith(b"data:") and b'"usage"' in line:
+                            try:
+                                ev = json.loads(line[5:].decode("utf-8").strip())
+                                note((ev.get("message") or {}).get("usage"))
+                                note(ev.get("usage"))
+                            except Exception:
+                                pass
+                        try:
+                            self.wfile.write(line)
+                            self.wfile.flush()
+                        except Exception:
+                            break  # the harness went away; the count seen so far stands
+        except urllib.error.HTTPError as e:
+            with s.lock:
+                s.errors.append(f"HTTP {e.code}"[:200])
+            try:
+                self._send(e.code, e.read(), e.headers.get("Content-Type") or "application/json")
+            except Exception:
+                pass
+        except Exception as e:
+            with s.lock:
+                s.errors.append(f"{type(e).__name__}: {e}"[:200])
+            try:
+                self._send(502, {"type": "error", "error": {"type": "api_error", "message": f"the model server did not answer: {e}"[:300]}})
+            except Exception:
+                pass
 
     def _chat(self, raw):
         s = self.server
@@ -363,7 +477,26 @@ def opencode_command(a, task, ws, state, door, budget, env):
     return argv, str(cli), task["prompt"]
 
 
-HARNESS = {"nanobot": nanobot_command, "opencode": opencode_command}
+def claude_command(a, task, ws, state, door, budget, env):
+    """Base Claude Code, one print-mode run in the task directory with a profile of its own: no
+    plugin, no skill, no instruction file, nothing but its defaults. Its own prompt and tools drive
+    the local model through the door, which speaks Claude's wire format to Ollama. With
+    --claude-plugin-dir the same run also loads those plugin folders (atlias as a sub-harness, a
+    mod), which is the second arm of Gev's comparison: base Claude Code against base Claude Code
+    plus atlias."""
+    profile = pathlib.Path(state) / "claude-profile"
+    profile.mkdir(parents=True, exist_ok=True)
+    env.update({"CLAUDE_CONFIG_DIR": str(profile), "ANTHROPIC_BASE_URL": door.base, "ANTHROPIC_AUTH_TOKEN": "local",
+                "ANTHROPIC_MODEL": a.model, "ANTHROPIC_SMALL_FAST_MODEL": a.model, "CLAUDE_CODE_MAX_OUTPUT_TOKENS": str(a.num_predict),
+                "DISABLE_TELEMETRY": "1", "DISABLE_AUTOUPDATER": "1", "DISABLE_ERROR_REPORTING": "1",
+                "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1", "PWD": str(ws)})
+    argv = [a.claude, "-p", task["prompt"], "--model", a.model, "--dangerously-skip-permissions"]
+    for d in a.claude_plugin_dir or []:
+        argv += ["--plugin-dir", str(d)]
+    return argv, str(ws), None
+
+
+HARNESS = {"nanobot": nanobot_command, "opencode": opencode_command, "claude": claude_command}
 
 
 def loaded_window(api_base, model):
@@ -400,7 +533,7 @@ def run_one(task, a, shims):
     try:
         # Start-up caches kept between tasks, so no task pays for them again and neither harness needs
         # the network: nanobot's token-counter file, and bun's compiled copy of OpenCode's source.
-        caches = {"TIKTOKEN_CACHE_DIR": str(a.tiktoken_cache)} if a.harness == "nanobot" else {"BUN_RUNTIME_TRANSPILER_CACHE_PATH": str(pathlib.Path(a.work) / "_bun-cache")}
+        caches = {"TIKTOKEN_CACHE_DIR": str(a.tiktoken_cache)} if a.harness == "nanobot" else {"BUN_RUNTIME_TRANSPILER_CACHE_PATH": str(pathlib.Path(a.work) / "_bun-cache")} if a.harness == "opencode" else {}
         env = offline_env(state, door, shims, extra_path=[pathlib.Path(a.ripgrep).parent] if a.harness == "opencode" and a.ripgrep else (), extra=caches)
         argv, cwd, stdin_text = HARNESS[a.harness](a, task, ws, state, door, budget, env)
         with open(log, "wb") as buf:
@@ -475,8 +608,10 @@ def run_one(task, a, shims):
 
 def report(results, a, t_all):
     windows = sorted({r.get("loadedWindow") for r in results if r.get("loadedWindow")})
+    plugins = [str(d) for d in (getattr(a, "claude_plugin_dir", None) or [])] if a.harness == "claude" else []
+    kind = f"with {len(plugins)} plugin folder(s)" if plugins else "stock"
     return {"results": results, "passed": sum(1 for r in results if r["pass"]), "total": len(results),
-            "ms": int((time.time() - t_all) * 1000), "engine": f"{a.harness} (stock, metered door, offline)", "harness": a.harness,
+            "ms": int((time.time() - t_all) * 1000), "engine": f"{a.harness} ({kind}, metered door, offline)", "harness": a.harness, "pluginDirs": plugins,
             "model": a.model, "numCtx": a.num_ctx, "numPredict": a.num_predict, "loadedWindows": windows,
             "windowMatched": windows == [a.num_ctx] if windows else None, "corpus": {"tasks": a.tasks, "ids": a.ids_from or None}}
 
@@ -503,8 +638,10 @@ def main():
     ap.add_argument("--opencode-source", default="D:/harness-work/atlias-opencode-1009/upstream")
     ap.add_argument("--ripgrep", default="D:/harness-work/atlias-opencode-1009/runtime/rg/rg.exe")
     ap.add_argument("--tiktoken-cache", default="D:/harness-work/tiktoken-cache", help="where nanobot's token-counter file is kept (filled once, with the network)")
+    ap.add_argument("--claude", default="C:/Users/OWNER/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/bin/claude.exe", help="the Claude Code program itself, not the npm launcher script")
+    ap.add_argument("--claude-plugin-dir", action="append", default=[], help="a plugin folder base Claude Code also loads (repeatable): atlias as a sub-harness, a mod")
     a = ap.parse_args()
-    need = [a.nanobot] if a.harness == "nanobot" else [a.bun, str(pathlib.Path(a.opencode_source) / "packages" / "cli" / "src" / "index.ts")]
+    need = [a.nanobot] if a.harness == "nanobot" else [a.claude, *a.claude_plugin_dir] if a.harness == "claude" else [a.bun, str(pathlib.Path(a.opencode_source) / "packages" / "cli" / "src" / "index.ts")]
     # Without its token-counter file nanobot falls back to counting bytes, takes its own first prompt
     # for twice the window and refuses to start (seen 2026-10-11); that is a broken setup, not a result.
     if a.harness == "nanobot" and not any(pathlib.Path(a.tiktoken_cache).glob("*")):

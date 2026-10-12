@@ -29,12 +29,35 @@ class Fake(http.server.BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _claude(self, req):
+        """The same stand-in, answering in Claude's wire format."""
+        mode = req["messages"][-1]["content"]
+        counted = mode != "nousage"
+        if req.get("stream"):
+            ev = [("message_start", {"type": "message_start", "message": {"id": "m", "type": "message", "role": "assistant", "model": req["model"], "content": [], "stop_reason": None,
+                                                                             "usage": {"input_tokens": 100, "cache_read_input_tokens": 11, "output_tokens": 1} if counted else None}}),
+                  ("content_block_start", {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
+                  ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "hi"}}),
+                  ("content_block_stop", {"type": "content_block_stop", "index": 0}),
+                  ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": None}, **({"usage": {"output_tokens": 22}} if counted else {})}),
+                  ("message_stop", {"type": "message_stop"})]
+            return self._out(200, "".join(f"event: {n}\ndata: {json.dumps(d)}\n\n" for n, d in ev).encode(), "text/event-stream", length=False)
+        d = {"id": "m", "type": "message", "role": "assistant", "model": req["model"], "content": [{"type": "text", "text": "hi"}], "stop_reason": "end_turn", "stop_sequence": None}
+        if counted:
+            d["usage"] = {"input_tokens": 100, "cache_read_input_tokens": 11, "output_tokens": 22}
+        self._out(200, json.dumps(d).encode())
+
     def do_GET(self):
         self._out(200, json.dumps({"object": "list", "data": [{"id": "m"}]}).encode())
 
     def do_POST(self):
         req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        route = self.path.split("?")[0].rstrip("/")
+        if route.endswith("/count_tokens"):
+            return self._out(200, b'{"input_tokens": 5}')
         seen.append(req)
+        if route.endswith("/v1/messages"):
+            return self._claude(req)
         mode = req["messages"][-1]["content"]
         if mode == "boom":
             return self._out(500, b'{"error":"no"}')
@@ -133,6 +156,74 @@ def main():
         check("a harness gets a home of its own, the door as its only proxy, the shims first on its path and nothing secret from this process",
               "BASE_H2H_SECRET_KEY" not in env and env["HOME"].startswith(state) and env["USERPROFILE"] == env["HOME"] and env["HTTPS_PROXY"] == door.base
               and env["NO_PROXY"].startswith("127.0.0.1") and path.split(os.pathsep)[:2] == ["SHIMS", "RG"] and env["TIKTOKEN_CACHE_DIR"] == "T" and os.path.isdir(env["TMP"]), {k: env[k] for k in ("HOME", "HTTPS_PROXY")})
+    # Claude's wire format (/v1/messages), which base Claude Code speaks and Ollama answers: the same door, the same rules.
+    import argparse
+    import shutil
+    door2 = B.Door(f"http://127.0.0.1:{fake.server_address[1]}", "qwen3.5:9b", 2048, 3)
+    threading.Thread(target=door2.serve_forever, daemon=True).start()
+
+    def postc(d, path, body):
+        req = urllib.request.Request(d.base + path, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", "anthropic-version": "2023-06-01"}, method="POST")
+        try:
+            with opener.open(req, timeout=20) as r:
+                return r.status, r.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode()
+
+    s, b = postc(door2, "/v1/messages?beta=true", {"model": "claude-x", "max_tokens": 64000, "temperature": 1, "messages": msg("x")})
+    last = seen[-1]
+    check("a call in Claude's format is forwarded with the model, temperature and output cap set",
+          s == 200 and last["model"] == "qwen3.5:9b" and last["temperature"] == 0.2 and last["max_tokens"] == 2048 and json.loads(b)["content"][0]["text"] == "hi", last)
+    check("its counts are written down, with tokens read from cache counted as read", door2.usage == [(111, 22)], door2.usage)
+    s, b = postc(door2, "/v1/messages", {"model": "claude-x", "max_tokens": 5, "stream": True, "messages": msg("x")})
+    check("a streamed call in Claude's format passes every event through and its counts are written down",
+          s == 200 and b.count("event: ") == 6 and b.rstrip().endswith('{"type": "message_stop"}') and door2.usage[-1] == (111, 22) and len(door2.usage) == 2, (b[:200], door2.usage))
+    postc(door2, "/v1/messages", {"model": "claude-x", "max_tokens": 5, "stream": True, "messages": msg("nousage")})
+    check("a call in Claude's format with no count is recorded as unknown, not as zero", door2.usage[-1] is None and len(door2.usage) == 3, door2.usage)
+    n_before = len(seen)
+    s, b = postc(door2, "/v1/messages", {"model": "claude-x", "max_tokens": 5, "messages": msg("x")})
+    check("past the budget the door answers a stop in Claude's format and the model is not called",
+          s == 200 and len(seen) == n_before and json.loads(b)["stop_reason"] == "end_turn" and json.loads(b)["content"][0]["text"] == B.STOP_TEXT and door2.capped == 1 and len(door2.usage) == 3, b[:200])
+    s, b = postc(door2, "/v1/messages", {"model": "claude-x", "max_tokens": 5, "stream": True, "messages": msg("x")})
+    check("past the budget a streamed call gets six well-formed events ending the turn",
+          s == 200 and len(seen) == n_before and b.count("event: ") == 6 and all(json.loads(x[6:]) for x in b.split("\n") if x.startswith("data: ")) and B.STOP_TEXT in b and door2.capped == 2, b[:300])
+    s, b = postc(door2, "/v1/messages/count_tokens", {"model": "claude-x", "messages": msg("x")})
+    check("a token-count request passes through and is not counted as a call", s == 200 and json.loads(b) == {"input_tokens": 5} and door2.calls == 5 and len(seen) == n_before, (s, b, door2.calls))
+    with tempfile.TemporaryDirectory() as state:
+        a = argparse.Namespace(model="qwen3.5:9b", num_predict=2048, claude="CLAUDE", claude_plugin_dir=["P1", "P2"], harness="claude", num_ctx=32768, tasks=["T"], ids_from="")
+        env = B.offline_env(state, door2, "SHIMS")
+        argv, cwd, stdin_text = B.claude_command(a, {"prompt": "fix it"}, pathlib.Path(state) / "ws", state, door2, 5, env)
+        check("base Claude Code is started in print mode with a profile of its own, the door as its model, and any plugin folders asked for",
+              argv == ["CLAUDE", "-p", "fix it", "--model", "qwen3.5:9b", "--dangerously-skip-permissions", "--plugin-dir", "P1", "--plugin-dir", "P2"] and stdin_text is None
+              and env["ANTHROPIC_BASE_URL"] == door2.base and env["CLAUDE_CONFIG_DIR"].startswith(state) and os.path.isdir(env["CLAUDE_CONFIG_DIR"]) and env["ANTHROPIC_MODEL"] == "qwen3.5:9b"
+              and B.claude_command(argparse.Namespace(**{**vars(a), "claude_plugin_dir": []}), {"prompt": "p"}, pathlib.Path(state) / "ws", state, door2, 5, dict(env))[0][-1] == "--dangerously-skip-permissions", argv)
+        rep = B.report([], a, time.time())
+        stock = B.report([], argparse.Namespace(**{**vars(a), "claude_plugin_dir": []}), time.time())
+        check("the report says whether the run was stock or carried plugin folders", rep["pluginDirs"] == ["P1", "P2"] and "with 2 plugin folder(s)" in rep["engine"] and stock["pluginDirs"] == [] and "(stock," in stock["engine"], (rep["engine"], stock["engine"]))
+    # The real program, when it is installed, against the stand-in: no model, no network, no plan usage.
+    exe = "C:/Users/OWNER/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/bin/claude.exe"
+    if os.path.exists(exe):
+        door3 = B.Door(f"http://127.0.0.1:{fake.server_address[1]}", "qwen3.5:9b", 2048, 5)
+        threading.Thread(target=door3.serve_forever, daemon=True).start()
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as state:
+            ws = pathlib.Path(state) / "ws"
+            ws.mkdir()
+            shims = pathlib.Path(state) / "shims"
+            shims.mkdir()
+            a = argparse.Namespace(model="qwen3.5:9b", num_predict=2048, claude=exe, claude_plugin_dir=[])
+            env = B.offline_env(state, door3, str(shims))
+            argv, cwd, stdin_text = B.claude_command(a, {"prompt": "x"}, ws, state, door3, 5, env)
+            out_file = pathlib.Path(state) / "out.txt"
+            with open(out_file, "wb") as buf:
+                rc, why = B.run_harness(argv, cwd=cwd, env=env, door=door3, start_limit=90, task_limit=90, stdout=buf)
+            said = out_file.read_text(encoding="utf-8", errors="replace")
+            check("the installed Claude Code, in the harness environment, reaches the door, is counted, and ends by itself",
+                  rc == 0 and why == "" and door3.calls >= 1 and door3.usage[0] == (111, 22) and "hi" in said and not door3.errors, (rc, why, door3.calls, door3.usage, door3.refused[:3], door3.errors, said[-200:]))
+            first = next((r for r in reversed(seen) if r.get("model") == "qwen3.5:9b" and r.get("tools")), None)
+            check("what it sent is base Claude Code's own opening: its tools and its system prompt, held to the local model and the output cap",
+                  first is not None and len(first["tools"]) >= 10 and first["max_tokens"] == 2048 and first["temperature"] == 0.2, None if first is None else (len(first["tools"]), first["max_tokens"]))
+        door3.shutdown()
+    door2.shutdown()
     door.shutdown()
     fake.shutdown()
     bad = [r for r in results if not r[1]]
