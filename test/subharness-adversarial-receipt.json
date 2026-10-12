@@ -97,6 +97,12 @@
       "timeout": false
     },
     {
+      "name": "real skills root leaks into Codex",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
       "name": "capped call leaves no receipt",
       "caught": true,
       "exit": 1,

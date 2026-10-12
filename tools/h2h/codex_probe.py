@@ -64,6 +64,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--codex", default=CODEX)
+    ap.add_argument("--config", action="append", default=[], help="an extra -c key=value for Codex (repeatable), the same way each arm would get it")
     a = ap.parse_args()
     root = pathlib.Path(a.out).resolve()
     ws, home = root / "workspace", root / "codex-home"
@@ -81,7 +82,7 @@ def main():
             "-c", 'model="qwen3.5:9b"', "-c", f'model_provider="{provider}"',
             "-c", f'model_providers.{provider}.name="Atlias local meter"', "-c", f'model_providers.{provider}.base_url="{base}"',
             "-c", f'model_providers.{provider}.wire_api="responses"', "-c", f"model_providers.{provider}.requires_openai_auth=false",
-            "-c", f"model_providers.{provider}.supports_websockets=false", "-c", "model_context_window=32768", "-c", 'web_search="disabled"', "-"]
+            "-c", f"model_providers.{provider}.supports_websockets=false", "-c", "model_context_window=32768", "-c", 'web_search="disabled"', *[x for c in a.config for x in ("-c", c)], "-"]
     try:
         with open(root / "native-output.txt", "wb") as out:
             rc, why = B.run_harness(argv, cwd=str(ws), env=env, door=door, start_limit=120, task_limit=120, stdout=out, stdin_text=PROMPT)

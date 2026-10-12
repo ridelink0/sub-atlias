@@ -161,8 +161,16 @@ savings claims. Do not repeat the research.
   prepared home for the Atlias arm). base_harness_responses_test.py 13/13,
   including the real codex.exe through the door against a stand-in; planted
   breaks 17/17. NOT YET: whether Ollama renders Codex's namespace tool and
-  freeform tools correctly (needs inference), the skills-root leak decision,
-  and a prepared Atlias CODEX_HOME.
+  freeform tools correctly (needs inference), and a prepared Atlias CODEX_HOME.
+- Skills-root leak DECIDED: skills.include_instructions=false passes
+  --strict-config and removes the skill list, so the real
+  C:/Users/OWNER/.agents/skills root no longer reaches the request
+  (codex-probe-noskills: first request 39,348 characters against 42,448).
+  codex_command applies it to BOTH Codex arms; Codex's five system skills leave
+  the list too, a declared difference from a stock install in both arms, never
+  an Atlias saving. A sensitivity run with the default can be added, labelled.
+  Responses checks 13/13 with the real CLI asserting no skills root; planted
+  breaks 18/18.
 
 ## Next steps, in order
 

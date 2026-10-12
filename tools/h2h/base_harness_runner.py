@@ -702,7 +702,12 @@ def codex_command(a, task, ws, state, door, budget, env):
             "-c", f'model="{a.model}"', "-c", f'model_provider="{p}"', "-c", f'model_providers.{p}.name="Atlias local meter"',
             "-c", f'model_providers.{p}.base_url="{door.base}/v1"', "-c", f'model_providers.{p}.wire_api="responses"',
             "-c", f"model_providers.{p}.requires_openai_auth=false", "-c", f"model_providers.{p}.supports_websockets=false",
-            "-c", f"model_context_window={a.num_ctx}", "-c", 'web_search="disabled"', "-"]
+            "-c", f"model_context_window={a.num_ctx}", "-c", 'web_search="disabled"',
+            # Codex finds the real C:/Users/OWNER/.agents/skills whatever HOME says, so its skill
+            # list would carry Gev's own skills into a clean arm (codex-probe-1, 2026-10-12). Both
+            # arms leave the list out; the five system skills go with it, in both, as a declared
+            # difference from a stock install, never an atlias saving.
+            "-c", "skills.include_instructions=false", "-"]
     return argv, str(ws), task["prompt"]
 
 
