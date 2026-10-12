@@ -67,6 +67,36 @@
       "timeout": false
     },
     {
+      "name": "responses count taken unchecked",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "responses stream without end not partial",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "previous_response_id let through",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "unmetered responses path let through",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "instructions dropped on the way",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
       "name": "capped call leaves no receipt",
       "caught": true,
       "exit": 1,

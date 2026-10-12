@@ -145,6 +145,25 @@ savings claims. Do not repeat the research.
   kept out (a separate Windows profile, or a supported skills setting applied
   to both arms) before any matched Codex run; not decided yet.
 
+- Codex arm groundwork, no inference: Ollama 0.35.1 on 11435 serves
+  /v1/responses and /v1/responses/compact (a nonexistent model name gives
+  "model not found" there and "404 page not found" on an unknown route;
+  ollama-shape-probe/responses-route.json). The door now meters both paths by
+  passthrough (every tool kind, instructions, call ids and raw patch text
+  untouched; model, temperature 0.2 and max_output_tokens held), counts from
+  the terminal event (a repeated one replaces, never adds; cached and
+  reasoning tokens are parts, not additions), names incomplete and failed
+  replies, marks a stream with no terminal event partial and unknown, refuses
+  previous_response_id (it keeps no response state) and any other /responses
+  path, and answers a Responses-shaped stop past the budget. codex_command runs
+  the bundled CLI with a private CODEX_HOME and ATLIAS_HOME, the loopback
+  provider and identical flags for both arms (--codex-home-from copies a
+  prepared home for the Atlias arm). base_harness_responses_test.py 13/13,
+  including the real codex.exe through the door against a stand-in; planted
+  breaks 17/17. NOT YET: whether Ollama renders Codex's namespace tool and
+  freeform tools correctly (needs inference), the skills-root leak decision,
+  and a prepared Atlias CODEX_HOME.
+
 ## Next steps, in order
 
 1. Capture the full-suite failure in a persistent log; fix genuine failures and

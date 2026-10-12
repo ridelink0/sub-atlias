@@ -9,6 +9,7 @@ root = pathlib.Path(__file__).resolve().parents[2]
 NODE = ["node", "test/run.mjs", "authority:", "efficiency:"]
 LEDGER = [sys.executable, "tools/h2h/base_harness_accounting_test.py"]
 RUNNER = "tools/h2h/base_harness_runner.py"
+RESP = [sys.executable, "tools/h2h/base_harness_responses_test.py"]
 cases = [
     ("long requests cut", "lib/loop.mjs", "if (exact) return `", "if (false) return `"),
     ("instruction tail cut", "lib/loop.mjs", "!exact && text.length > room", "text.length > room"),
@@ -21,6 +22,11 @@ cases = [
     ("row marked uncounted trusted", RUNNER, 'return r.get("usageComplete") is not False and _count', "return _count", LEDGER),
     ("partial stream taken as complete", RUNNER, 'ended = ended or ev.get("type") == "message_stop"', "ended = True", LEDGER),
     ("resume drops uncounted rows", RUNNER, 'return list(json.loads(pathlib.Path(out).read_text(encoding="utf-8")).get("results", []))', 'return [r for r in json.loads(pathlib.Path(out).read_text(encoding="utf-8")).get("results", []) if isinstance(r.get("promptTotal"), int)]', LEDGER),
+    ("responses count taken unchecked", RUNNER, 'p, c = _count(u.get("input_tokens")), _count(u.get("output_tokens"))', 'p, c = u.get("input_tokens"), u.get("output_tokens")', RESP),
+    ("responses stream without end not partial", RUNNER, "if ended is None:", "if False:", RESP),
+    ("previous_response_id let through", RUNNER, 'if body.get("previous_response_id"):', "if False:", RESP),
+    ("unmetered responses path let through", RUNNER, 'if "/responses" in route:', "if False:", RESP),
+    ("instructions dropped on the way", RUNNER, 'body["max_output_tokens"] = s.num_predict', 'body["max_output_tokens"] = s.num_predict; body.pop("instructions", None)', RESP),
     ("capped call leaves no receipt", RUNNER, 's.receipts.append({"api": "messages", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})', "pass", LEDGER),
 ]
 rows = []
@@ -43,7 +49,7 @@ for name, rel, old, new, *cmd in cases:
         p.write_bytes(before)
 
 restored = []
-for cmd in (NODE, LEDGER):
+for cmd in (NODE, LEDGER, RESP):
     with tempfile.TemporaryFile() as out:
         rc, timed = run_tree(cmd, cwd=str(root), timeout=180, stdout=out)
         out.seek(0)

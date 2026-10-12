@@ -112,6 +112,15 @@ def _message_totals(got):
     return p, _count(got.get("output"))
 
 
+def _responses_usage(u):
+    """Input and output tokens out of a usage block in the Responses format. Cached input and
+    reasoning output are parts of those two totals, not additions to them."""
+    if not isinstance(u, dict):
+        return None
+    p, c = _count(u.get("input_tokens")), _count(u.get("output_tokens"))
+    return (p, c) if p is not None and c is not None else None
+
+
 def _message_usage(u):
     """Prompt and output tokens out of one usage block in Claude's wire format. The prompt is all
     that was read: new tokens, tokens served from cache and tokens written to it."""
@@ -191,6 +200,13 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             return self._chat(raw)
         if route.endswith("/v1/messages"):
             return self._messages(raw)
+        if route.endswith("/v1/responses") or route.endswith("/v1/responses/compact"):
+            return self._responses(raw, route[route.index("/v1/responses"):])
+        if "/responses" in route:  # a generation path the door does not meter is refused, never let through
+            with self.server.lock:
+                self.server.receipts.append({"api": "responses", "path": route[:120], "slot": None, "outcome": "refused: not a metered path"})
+                self.server.errors.append(f"refused unmetered POST {route}"[:200])
+            return self._send(501, {"error": {"message": "this path is not metered by the door", "type": "invalid_request_error"}})
         self._pass(raw)
 
     def _pass(self, raw):
@@ -238,6 +254,122 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                   ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": None}, "usage": {"output_tokens": 0}}),
                   ("message_stop", {"type": "message_stop"})]
         self._send(200, "".join(f"event: {name}\ndata: {json.dumps(data)}\n\n" for name, data in events).encode("utf-8"), "text/event-stream")
+
+    def _stop_response(self, stream):
+        """The stop past the budget, in the shape of the Responses format."""
+        s = self.server
+        item = {"type": "message", "id": "msg_step_limit", "role": "assistant", "status": "completed",
+                "content": [{"type": "output_text", "text": STOP_TEXT, "annotations": []}]}
+        resp = {"id": "resp_step_limit", "object": "response", "status": "completed", "model": s.model, "output": [item],
+                "usage": {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}}
+        if not stream:
+            return self._send(200, resp)
+        events = [("response.created", {"type": "response.created", "response": {**resp, "status": "in_progress", "output": []}}),
+                  ("response.output_item.done", {"type": "response.output_item.done", "output_index": 0, "item": item}),
+                  ("response.completed", {"type": "response.completed", "response": resp})]
+        self._send(200, "".join(f"event: {name}\ndata: {json.dumps(data)}\n\n" for name, data in events).encode("utf-8"), "text/event-stream")
+
+    def _responses(self, raw, path):
+        """A call in the Responses format (/v1/responses, and the compaction call beside it), which
+        Codex speaks and Ollama answers itself: passed through whole (instructions, every tool kind,
+        call ids and patch text untouched), held to the same model, temperature and output cap as the
+        rest, and metered from the usage of its terminal event. The door keeps no response state, so a
+        call that leans on an earlier response by id is refused, never guessed at."""
+        s = self.server
+        try:
+            body = json.loads(raw.decode("utf-8"))
+            if not isinstance(body, dict):
+                raise ValueError("not an object")
+        except Exception:
+            return self._send(400, {"error": {"message": "the request body is not a JSON object", "type": "invalid_request_error"}})
+        stream = body.get("stream") is True
+        if body.get("previous_response_id"):
+            with s.lock:
+                s.receipts.append({"api": "responses", "path": path, "stream": stream, "slot": None, "outcome": "refused: previous_response_id needs response state the door does not keep"})
+                s.errors.append("refused previous_response_id")
+            return self._send(400, {"error": {"message": "this door keeps no response state; send the whole conversation", "type": "invalid_request_error"}})
+        with s.lock:
+            s.calls += 1
+            if s.first is None:
+                s.first = time.time()
+            over = s.calls > s.budget
+            if over:
+                s.capped += 1
+                s.receipts.append({"api": "responses", "path": path, "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})
+            else:
+                slot = len(s.usage)
+                s.usage.append(None)
+                rec = {"api": "responses", "path": path, "stream": stream, "slot": slot, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": []}
+                s.receipts.append(rec)
+        if over:
+            return self._stop_response(stream)
+        body["model"] = s.model
+        body["temperature"] = 0.2
+        body["max_output_tokens"] = s.num_predict
+        sent = json.dumps(body).encode("utf-8")
+        rec["sent"] = {"bytes": len(sent), "sha256": hashlib.sha256(sent).hexdigest()}
+        terminal = {"response.completed": "complete", "response.incomplete": "incomplete", "response.failed": "failed"}
+        try:
+            req = urllib.request.Request(s.upstream + path, data=sent, method="POST", headers={"Content-Type": "application/json", "Authorization": "Bearer local"})
+            with urllib.request.urlopen(req, timeout=1800) as r:
+                rec["status"] = r.status
+                if not stream:
+                    data = r.read()
+                    try:
+                        answer = json.loads(data.decode("utf-8"))
+                        rec["usage"].append(answer.get("usage"))
+                        s.usage[slot] = _responses_usage(answer.get("usage"))
+                        rec["outcome"] = "complete" if answer.get("status") in (None, "completed") else str(answer.get("status"))[:40]
+                    except Exception:
+                        rec["outcome"] = "answer not readable"
+                    self._send(r.status, data, r.headers.get("Content-Type") or "application/json")
+                else:
+                    self.send_response(r.status)
+                    self.send_header("Content-Type", r.headers.get("Content-Type") or "text/event-stream")
+                    self.send_header("Cache-Control", "no-cache")
+                    self.send_header("Connection", "close")
+                    self.end_headers()
+                    ended, left = None, False
+                    for line in r:
+                        # The usage comes once, with the terminal event; a repeated one replaces it, never adds.
+                        if line.startswith(b"data:") and b'"response.' in line and (b"completed" in line or b"incomplete" in line or b"failed" in line):
+                            try:
+                                ev = json.loads(line[5:].decode("utf-8").strip())
+                                if ev.get("type") in terminal:
+                                    ended = ev["type"]
+                                    resp = ev.get("response") or {}
+                                    rec["usage"].append(resp.get("usage"))
+                                    s.usage[slot] = _responses_usage(resp.get("usage"))
+                                    if ended != "response.completed":
+                                        rec["detail"] = resp.get("incomplete_details") or resp.get("error")
+                            except Exception:
+                                pass
+                        try:
+                            self.wfile.write(line)
+                            self.wfile.flush()
+                        except Exception:
+                            left = True
+                            break  # the harness went away; the count seen so far stands
+                    rec["outcome"] = terminal.get(ended) or ("harness left before the end" if left else "partial: no terminal event")
+                    if ended is None:
+                        with s.lock:
+                            s.partial += 1
+        except urllib.error.HTTPError as e:
+            rec.update(status=e.code, outcome=f"HTTP {e.code}")
+            with s.lock:
+                s.errors.append(f"HTTP {e.code}"[:200])
+            try:
+                self._send(e.code, e.read(), e.headers.get("Content-Type") or "application/json")
+            except Exception:
+                pass
+        except Exception as e:
+            rec["outcome"] = f"{type(e).__name__}: {e}"[:200]
+            with s.lock:
+                s.errors.append(f"{type(e).__name__}: {e}"[:200])
+            try:
+                self._send(502, {"error": {"message": f"the model server did not answer: {e}"[:300], "type": "api_error"}})
+            except Exception:
+                pass
 
     def _messages(self, raw):
         """A call in Claude's wire format (/v1/messages), which Ollama answers too: Claude Code's
@@ -553,7 +685,28 @@ def claude_command(a, task, ws, state, door, budget, env):
     return argv, str(ws), None
 
 
-HARNESS = {"nanobot": nanobot_command, "opencode": opencode_command, "claude": claude_command}
+def codex_command(a, task, ws, state, door, budget, env):
+    """Base Codex, one `exec` run in the task directory with a home of its own (CODEX_HOME and
+    ATLIAS_HOME), its model reached through the door by a loopback provider of its own (a built-in
+    provider id cannot be pointed elsewhere) on the Responses wire API with websockets off, the
+    prompt on stdin, and no approval or sandbox stop, as base Claude Code runs. With
+    --codex-home-from the same run starts from a copy of a prepared home (atlias installed into it),
+    which is the second arm; both arms get the same flags, so neither skips its home's config."""
+    home = pathlib.Path(state) / "codex-home"
+    if a.codex_home_from:
+        shutil.copytree(a.codex_home_from, home, dirs_exist_ok=True)
+    home.mkdir(parents=True, exist_ok=True)
+    env.update({"CODEX_HOME": str(home), "ATLIAS_HOME": str(pathlib.Path(state) / "atlias-home"), "PWD": str(ws)})
+    p = "atlias_local_meter"
+    argv = [a.codex, "exec", "--ignore-rules", "--strict-config", "--json", "--skip-git-repo-check", "--dangerously-bypass-approvals-and-sandbox", "-C", str(ws),
+            "-c", f'model="{a.model}"', "-c", f'model_provider="{p}"', "-c", f'model_providers.{p}.name="Atlias local meter"',
+            "-c", f'model_providers.{p}.base_url="{door.base}/v1"', "-c", f'model_providers.{p}.wire_api="responses"',
+            "-c", f"model_providers.{p}.requires_openai_auth=false", "-c", f"model_providers.{p}.supports_websockets=false",
+            "-c", f"model_context_window={a.num_ctx}", "-c", 'web_search="disabled"', "-"]
+    return argv, str(ws), task["prompt"]
+
+
+HARNESS = {"nanobot": nanobot_command, "opencode": opencode_command, "claude": claude_command, "codex": codex_command}
 
 
 def _digest(obj):
@@ -614,10 +767,11 @@ def provenance(a):
             return done.stdout.decode("utf-8", errors="replace").strip() if done.returncode == 0 else None
         except Exception:
             return None
-    client = a.claude if a.harness == "claude" else a.nanobot if a.harness == "nanobot" else str(pathlib.Path(a.opencode_source) / "packages" / "cli")
+    client = {"claude": getattr(a, "claude", None), "codex": getattr(a, "codex", None), "nanobot": getattr(a, "nanobot", None)}.get(a.harness) or str(pathlib.Path(a.opencode_source) / "packages" / "cli")
     status = run(["git", "status", "--porcelain"])
     return {"harness": a.harness, "client": {"path": str(client), "sha256": tree_digest(client),
-                                             "version": run([client, "--version"]) if a.harness == "claude" else None},
+                                             "version": run([client, "--version"]) if a.harness in ("claude", "codex") else None},
+            "codexHomeFrom": {"path": a.codex_home_from, "sha256": tree_digest(a.codex_home_from)} if getattr(a, "codex_home_from", None) else None,
             "runner": file_digest(__file__), "source": {"head": run(["git", "rev-parse", "HEAD"]), "dirty": _digest(status) if status else status},
             "pluginDirs": [{"path": str(d), "sha256": tree_digest(d)} for d in (getattr(a, "claude_plugin_dir", None) or [])],
             "model": model_facts(a.api_base, a.model),
@@ -806,8 +960,12 @@ def main():
     ap.add_argument("--tiktoken-cache", default="D:/harness-work/tiktoken-cache", help="where nanobot's token-counter file is kept (filled once, with the network)")
     ap.add_argument("--claude", default="C:/Users/OWNER/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/bin/claude.exe", help="the Claude Code program itself, not the npm launcher script")
     ap.add_argument("--claude-plugin-dir", action="append", default=[], help="a plugin folder base Claude Code also loads (repeatable): atlias as a sub-harness, a mod")
+    ap.add_argument("--codex", default="C:/Users/OWNER/AppData/Local/OpenAI/Codex/bin/2e5e00daee91c61d/codex.exe", help="the exact bundled Codex CLI")
+    ap.add_argument("--codex-home-from", default="", help="a prepared CODEX_HOME copied into each task's own (atlias installed into it): the second arm")
     a = ap.parse_args()
-    need = [a.nanobot] if a.harness == "nanobot" else [a.claude, *a.claude_plugin_dir] if a.harness == "claude" else [a.bun, str(pathlib.Path(a.opencode_source) / "packages" / "cli" / "src" / "index.ts")]
+    need = ([a.nanobot] if a.harness == "nanobot" else [a.claude, *a.claude_plugin_dir] if a.harness == "claude"
+            else [a.codex, *([a.codex_home_from] if a.codex_home_from else [])] if a.harness == "codex"
+            else [a.bun, str(pathlib.Path(a.opencode_source) / "packages" / "cli" / "src" / "index.ts")])
     # Without its token-counter file nanobot falls back to counting bytes, takes its own first prompt
     # for twice the window and refuses to start (seen 2026-10-11); that is a broken setup, not a result.
     if a.harness == "nanobot" and not any(pathlib.Path(a.tiktoken_cache).glob("*")):
