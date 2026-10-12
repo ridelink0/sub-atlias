@@ -1,0 +1,14 @@
+# Atlias efficiency
+
+Experimental optional Claude Code mod for Gev. It leaves user prompts, instruction files,
+active skills, tool descriptions and schemas intact. When enabled, it asks native ToolSearch
+to discover selected built-in tools as needed. Unknown tools and MCP tools keep native placement.
+
+Default off. Configure `pluginConfigs["atlias-efficiency"].options.enabled` in Claude Code
+settings, and explicitly set `ENABLE_TOOL_SEARCH=true` only for a qualified endpoint. Load
+this folder with `--plugin-dir`, alongside the Atlias plugin. Restart the session when changing
+mode; already stored context cannot be restored or rewritten by this mod.
+
+Custom endpoints require actual tool-reference support. A recording probe only proves the
+installed client contract; a matched local-model benchmark must establish compatibility and
+quality. No token or 20x savings are claimed by this implementation.

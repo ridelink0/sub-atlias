@@ -43,7 +43,8 @@ import urllib.error
 import urllib.request
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
-from mini_swe_runner import LIVE, _LIVE_LOCK, WIN, case_counts, end_all, kill_tree, make_shims, run_tree, sha, watch_parent  # noqa: E402
+from mini_swe_runner import case_counts, make_shims, sha  # noqa: E402
+from owned_process import LIVE, _LIVE_LOCK, WIN, end_all, kill_tree, release, run_tree, start_owned, watch_parent  # noqa: E402
 
 STOP_TEXT = "The step limit for this task has been reached. Stop now."
 KEEP_ENV = {"SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT", "PATH", "NUMBER_OF_PROCESSORS", "PROCESSOR_ARCHITECTURE", "OS", "LANG", "TZ", "SYSTEMDRIVE"}
@@ -78,7 +79,7 @@ def _usage_of(obj):
     if not isinstance(u, dict):
         return None
     p, c = u.get("prompt_tokens"), u.get("completion_tokens")
-    return (p, c) if isinstance(p, int) and isinstance(c, int) and not isinstance(p, bool) and not isinstance(c, bool) else None
+    return (p, c) if isinstance(p, int) and isinstance(c, int) and not isinstance(p, bool) and not isinstance(c, bool) and p >= 0 and c >= 0 else None
 
 
 def _message_usage(u):
@@ -86,7 +87,7 @@ def _message_usage(u):
     was read: new tokens, tokens served from cache and tokens written to it."""
     if not isinstance(u, dict):
         return None, None
-    num = lambda v: v if isinstance(v, int) and not isinstance(v, bool) else None  # noqa: E731
+    num = lambda v: v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None  # noqa: E731
     p = num(u.get("input_tokens"))
     if p is not None:
         p += (num(u.get("cache_read_input_tokens")) or 0) + (num(u.get("cache_creation_input_tokens")) or 0)
@@ -378,7 +379,7 @@ def run_harness(argv, *, cwd, env, door, start_limit, task_limit, stdout, stdin_
           "stdout": stdout, "stderr": subprocess.STDOUT}
     if not WIN:
         kw["start_new_session"] = True
-    p = subprocess.Popen(argv, **kw)
+    p = start_owned(argv, **kw)
     with _LIVE_LOCK:
         LIVE.add(p)
     try:
@@ -408,13 +409,7 @@ def run_harness(argv, *, cwd, env, door, start_limit, task_limit, stdout, stdin_
                     pass
                 return -1, why + " and the harness was stopped with everything it started"
     finally:
-        if not WIN:
-            try:
-                os.killpg(p.pid, signal.SIGKILL)
-            except (ProcessLookupError, PermissionError):
-                pass
-        with _LIVE_LOCK:
-            LIVE.discard(p)
+        release(p)
 
 
 def offline_env(state, door, shims, extra_path=(), extra=None):
@@ -600,7 +595,10 @@ def run_one(task, a, shims):
             "startMs": int((door.first - t0) * 1000) if door.first else None, "promptTokens": toks, "cases": case_counts(full),
             # A call Ollama gave no count for leaves the totals unknown, never a smaller number.
             "promptTotal": sum(toks) if counted else None, "outputTokens": outs, "outputTotal": sum(outs) if counted else None,
-            "peakPrompt": max([t for t in toks if isinstance(t, int)] or [0]), "numCtx": a.num_ctx, "loadedWindow": window,
+            "peakPrompt": max(toks or [0]) if counted else None,
+            "peakContext": max([p + o for p, o in usage] or [0]) if counted else None,
+            "usageComplete": counted, "nativeCompleted": rc == 0 and not door.capped and not door.errors and bool(usage),
+            "numCtx": a.num_ctx, "loadedWindow": window,
             "refused": door.refused[:20], "modelErrors": door.errors[:20], "addedFiles": None if (passed and not a.keep) else added,
             "ms": int((time.time() - t0) * 1000), "agentMs": agent_ms,
             "workspace": None if (passed and not a.keep) else str(ws), "state": None if (passed and not a.keep) else str(state), "output": tail}
@@ -672,8 +670,9 @@ def main():
     results, t_all = [], time.time()
     out = pathlib.Path(a.out)
     if a.resume and out.exists():
-        # A task whose tokens could not be counted (the model server failed under it) is run again.
-        results = [r for r in json.loads(out.read_text(encoding="utf-8")).get("results", []) if isinstance(r.get("promptTotal"), int) and isinstance(r.get("outputTotal"), int)]
+        # Preserve unknown, failed and unfavorable attempts. A repeat is a new report,
+        # never a replacement that erases the original spend or grade.
+        results = list(json.loads(out.read_text(encoding="utf-8")).get("results", []))
     done = {r["id"] for r in results}
     try:
         for f in files:

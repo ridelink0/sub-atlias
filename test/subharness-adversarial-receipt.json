@@ -1,0 +1,30 @@
+{
+  "mutations": [
+    {
+      "name": "long requests cut",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "instruction tail cut",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "repeated authority erased",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "off mode changes placement",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    }
+  ],
+  "restoredFunctionalExit": 0,
+  "restoredFunctionalTimeout": false
+}

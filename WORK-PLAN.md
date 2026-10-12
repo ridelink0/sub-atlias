@@ -1,15 +1,137 @@
-# Gev checkpoint — 2026-10-10
+# Atlias subharness goal checkpoint for Gev
 
-Gev rejected OpenCode and requested deleting its runtime and restarting the original champion. Installed Atlias has the original runtime restored, OpenCode runtime modules removed, and reviewed finishOnGreen safety fixes retained. Main commit ed3b70b; existing lib/logo.mjs changes remain Gev-owned.
+## Current objective
 
-Original evolution controller34724 restarted with championv0002 and qwen3.5:9b at16384 context on private Ollama11435. Its first real Ultimate full-corpus job is plumbing; status completed. One available corpus runs per round boundary; 25 suites have missing external execution evidence or unavailable corpora. Job records and exact reports: D:/harness-work/atlias-evolve/ULTIMATE-RUNS.json. OpenCode series is stopped permanently unless Gev reverses the decision. Historical reports are retained.
+Fix Atlias as a real native Claude Code subharness using mods and the two pipeline
+reports, benchmark clean base Claude Code against the same client plus Atlias on
+the same local model/tasks, then do base Codex against Codex plus Atlias. The target
+is 20x lower total input plus output AND full native peak context, with the same
+or better taskwise required outputs and capabilities. This goal is NOT complete.
+Protocol/character results are not inference savings. No paid credits or pushes.
 
-Website https://atlias.vercel.app deployed production dpl_JAt7L2bpkNz5MfjPVaHmPYwForHC, displays original champion and history past round27 throughv0031, same-task rejected OpenCode comparison4/10 vs7/10, and real Ultimate job counts. Real production browser pass360/1440: no JS errors or overflow; live API fresh. Functional and adversarial status/history/search/controller checks passed. Single live publisher12068; modern PowerShell ownership probe verifies the running controller.
+Gev is offline and authorizes necessary Atlias work, unattended Claude auto/bypass
+mode and Usage Limits relays if useful. Choose recommended decisions without
+questions. Give the natural-reset estimate ONLY ONCE at final completion.
 
-Source verification complete: full suite1161/1161 checks passed across167 suites, exit0. Log: D:/harness-work/atlias-opencode-1009/checks/codex-classic-green-final-1010.log. Helper suite5/5 and separate functional/adversarial status, history, search and controller checks passed.
+## Workspace and ownership
 
-v0030 was not promoted: s2 44/60 versus champion44/60, +4/-4, p1, no quality/cost route win. v0031 was superseded unmeasured at the boundary. Original scores are unchanged. OpenCode measured4/10,391245tokens,1283.911s versus champion7/10,193617tokens,596.688s; two native attempts held after blocked grep download.
+- Isolated branch: codex/subharness-1012, D:/harness-work/atlias-subharness-1012.
+- Base: main f6b6048. Live C:/Users/OWNER/atlias has other ownership changes in
+  lib/logo.mjs and site JSON; do not touch them or live hashed source during runs.
+- Read D:/harness-work/atlias-evolve/RESEARCH-FIRST.md fully and top WORK-PLAN.md,
+  then the atlias-work skill and status.sh via D:/Git/bin/bash.exe.
+- The current Ultimate gate owns LOCAL-ROLE.lock and is running HumanEvalFix
+  Python. The evolution controller waits for it. No live gate or lock was changed.
+  Its gate-specific STOP supports ending after the current corpus; never put STOP
+  into the running evolve folder or terminate by PID. Coordinate GPU access at
+  a boundary, preserve every existing receipt, and resume outstanding gate work.
 
-Memory index trimmed below24400 bytes with all147 original links retained; now 21211 bytes after durable feedback opencode-rejected-october10.md. No paid inference, new schedules, PID kills, upstream changes, or Git pushes. Native OpenCode feature qualification was cancelled by Gev.
+## Completed research
 
-Live API verified21:15:39Z: local controller running, processVerifiedtrue, v0032/s1, plumbing9/9 with135662input and10151output tokens. Next: continue the original evolution loop and remaining available full-corpus jobs at round boundaries;25 suite entries lack external fixtures/execution evidence. Maintain the original champion runtime. Do not resume OpenCode.
+Read both earlier reports fully: C:/Users/OWNER/reports/Atlias token efficient
+pipelines.md and CLAUDE MODS dual model pipeline.md. Query_graph and search_text
+checked latest Claude work. New notes are research_notes/Atlias subharness
+efficiency upgrade/{claude_mods,codex,pipelines}.md. The completed report at
+C:/Users/OWNER/reports/Atlias subharness efficiency upgrade.md was read in full
+and reviewed for evidence boundaries. It contains recommendations, not model
+savings claims. Do not repeat the research.
+
+## Implemented, experimental and not shipped
+
+1. mods/atlias-efficiency: default-off userConfig.enabled, legal tool.describe
+   deferral for a known built-in allowlist, only with ENABLE_TOOL_SEARCH=true.
+   Full descriptions/contracts unchanged; unknown/core/MCP placement unchanged.
+   Native Claude 2.1.296 strict validation passes. Custom endpoint tool-reference
+   and actual discovery/execution still need live qualification.
+2. flags.authorityLedger, default off: complete instruction-file contents and
+   exact earlier requests in chronological order during /compact. Long/middle
+   amendments and repeated request occurrences survive. Avoid obsolete clipped
+   pinRules fragments in exact mode. Complete authority can exceed a small model
+   window; report exhaustion rather than silently discarding instructions.
+3. tools/h2h/owned_process.py replaces the base runner's Windows taskkill/PID
+   termination with owned suspended processes and Job Object handles. Existing
+   mini_swe_runner is not changed. Native no-model self-test including timeouts
+   passed 28/28. Base runner releases its job at every exit.
+4. Provider accounting rejects negative/bool token counts, exposes unknown peak
+   when usage is incomplete, records peakContext separately from peakPrompt and
+   nativeCompleted separately from grader pass, and preserves unknown attempts
+   on resume. Four accounting edge assertions pass. More adversarial coverage
+   and exact raw cache/category/source provenance are still required.
+
+## Verified receipts
+
+- node --check on core/settings/loop/new mod/new test passed.
+- Python py_compile for owned_process/base runner/probe/adversarial script passed.
+- git diff --check passed.
+- Focused functional suites: 9/9 (five authority, four mod placement).
+- Second pass: all four planted mutations caught, sources restored, 9/9 rerun.
+  Receipt: test/subharness-adversarial-receipt.json.
+- Native recording probes, no inference: probe-base and probe-efficiency under
+  D:/harness-work/atlias-subharness-runs-1012, both exit 0, original request exact.
+  Base first request 68,684 JSON characters; mod first request 25,368 characters.
+  Those figures are NOT token savings or quality proof. Deferral placeholder was
+  observed, but retrieval/dispatch through ToolSearch was not exercised yet.
+- Full repository suite started as exec session 26169. Poll the session if still
+  available; otherwise inspect receipts or rerun it once. No full-suite result is
+  claimed at this checkpoint. Do not mutate source while its checks are running.
+
+## Next steps, in order
+
+1. Record the full-suite result; fix genuine failures and rerun affected checks.
+   Verify the report writer's artifact. Keep work committed locally.
+2. Add native recording tests of ToolSearch selection followed by actual tool
+   dispatch and exact restored schema; compare mod OFF byte behavior and include
+   required project/skill instructions. Test raw prompt preservation at every
+   step, not merely first-request discovery metadata.
+3. Complete the benchmark accounting/provenance: raw request/response usage,
+   disjoint cache categories, retries/failures/unknowns, client+source hashes,
+   prompt/task+grader hashes, exact loaded context on every task. Resume must not
+   replace unknown original costs. A partial peak must never qualify a ratio.
+4. Borrow the GPU safely at a boundary. Qualify sufficient model window for BOTH
+   native arms without front truncation. Claude's clean opening needs >=32k;
+   Codex/Ollama recommends >=64k, to be measured on this PC. Do not change the
+   live gate's server context midway. Use private profiles/server settings and
+   measured RAM/VRAM. No simultaneous inference with existing gate/controller.
+5. Run paired fresh Claude smoke tasks first, then a preregistered repeated screen
+   and confirmation with hidden protected graders, identical tasks/model/window/
+   sampling/budgets. Plain is ordinary native print mode, NOT --bare. Atlias arm
+   loads the full Atlias plugin plus optional mod. Keep failures/unfavorable rows.
+6. Immediately implement the corresponding Codex arm. Bundled binary exists at
+   C:/Users/OWNER/AppData/Local/OpenAI/Codex/bin/2e5e00daee91c61d/codex.exe,
+   0.162.0-alpha.17.2; do not install another CLI unnecessarily. It requires a
+   metered /v1/responses path (existing door only handles chat/messages). First
+   probe direct Ollama Responses compatibility. Preserve complete function and
+   custom/freeform tool items, call IDs, terminal SSE items and usage; support
+   namespaces only if actually present. No unsupported hook output rewrite.
+   Use task-local CODEX_HOME, custom provider ID, --ignore-user-config/--ignore-rules,
+   supported output/catalog/compaction controls, full task/project/skill authority.
+7. Compare taskwise outputs, native completion, total tokens per solve and full
+   peak context with all costs, repeats and honest uncertainty. Iterate research-
+   backed components. Do not mark the 20x goal complete without both host proofs.
+8. After release qualification, coordinate shipping at a controller boundary,
+   preserve historical pins, complete remaining gate work, and keep benchmarks
+   and docs factual. Never push without a newer explicit instruction overriding
+   the current atlias-work rule.
+
+## Usage continuation
+
+Last measured reset: 1791844021 = October 12, 2026 17:27:01 America/Chicago.
+One-shot heartbeat atlias-subharness-reset-continuation targets this current chat
+01a131b1-6ec1-7673-aaea-4722defad1e4 at 17:37:01, reset plus ten minutes.
+Saved automation.toml read back: BYHOUR=17, BYMINUTE=37, BYSECOND=1; verified.
+Existing daily 21:20 continuation belongs to an older chat and was left alone.
+Remove the one-shot after it runs. Read fresh usage before continuing; schedule
+another continuation only at measured reset plus 5-10 minutes if necessary.
+
+## Authorized Claude continuation ownership
+
+Gev explicitly authorized Claude bypass/auto runs and Usage Limits relays.
+A headless Claude continuation is being launched from this isolated worktree,
+with logs and the exact continuation prompt in
+D:/harness-work/atlias-subharness-runs-1012/claude-continuation/.
+Codex must inspect its run-state.json and recent stream log before editing on
+the reset wake. While Claude is active, do not make concurrent source edits or
+launch competing GPU inference; coordinate by the handoff/status files. Claude
+owns completing the pending native protocol/accounting, local qualification and
+paired Claude then Codex trials. The existing full suite is still running as
+exec session26169; preserve its result and do not mutate its source mid-run.

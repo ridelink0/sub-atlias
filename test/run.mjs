@@ -991,6 +991,7 @@ await (await import('./straytool-suites.mjs')).default({ suite, asyncSuite, chec
 await (await import('./guardreset-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./toolset-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./meter-suites.mjs')).default({ suite, asyncSuite, check, fs, path, ROOT });
+await (await import('./authority-efficiency-suites.mjs')).default({ suite, asyncSuite, check, fs, path, PROJECT });
 await (await import('./oracle-ledger-suites.mjs')).default({ asyncSuite, check, ROOT, spawnSync });
 await (await import('./finishgreen-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./standalone-suites.mjs')).default({ asyncSuite, check, TMP });

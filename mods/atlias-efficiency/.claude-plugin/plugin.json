@@ -1,0 +1,14 @@
+{
+  "name": "atlias-efficiency",
+  "version": "0.1.0",
+  "author": {"name": "Gev"},
+  "description": "Optional native tool discovery for Atlias; full contracts are loaded on demand.",
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Atlias efficiency",
+      "description": "Defer supported built-in tools behind native ToolSearch. Requires a compatible endpoint.",
+      "default": false
+    }
+  }
+}
