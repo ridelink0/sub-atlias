@@ -90,7 +90,7 @@ Measured on the 60-task run above:
 | --- | --- |
 | The opening block (system message, tool list, task) is re-sent on every call: **48.8% of all prompt tokens**, at 8.4 calls a task | It is the first place to cut |
 | An index of installed skills was about 1,440 characters of that block, and no run used a skill | `agent.skillIndex` is **off by default**; `relevant` names at most five skills that share words with the request and says how to list the rest |
-| Four of eleven tools are 42% of the tool list's text | `agent.toolSet core` offers the other seven; off until a paired run shows no loss |
+| Four of eleven tools are 45% of the tool list a model reads in text mode (1,195 characters down to 659), and 42% of the schemas in native mode | `agent.toolSet core` offers the other seven; off until a paired run shows no loss |
 | 80% of prompt tokens were served from the model server's cache | Old tool results are masked in blocks, so the cached prefix survives |
 
 A change like these is kept only when a paired run shows fewer tokens with no loss of solved tasks. `atlias compare a.json b.json` does the pairing: which tasks flipped, and whether a coin could have done it.
