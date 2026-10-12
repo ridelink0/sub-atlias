@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {plateauState,chooseParent,proposalChoices,selectProposal,untriedAttempt,effectiveConfig} from '../lib/evolution-search.mjs';
+import {plateauState,chooseParent,proposalChoices,selectProposal,untriedAttempt,effectiveConfig,standing} from '../lib/evolution-search.mjs';
 const s={n:1,passed:1,tokens:10,rows:[{key:'a',pass:true}]};
 const c={id:'v0002',born:'2026-10-10T00:00:00Z',config:{x:2},s1:s,s2:s};
 const failures=[3,4,5].map(n=>({id:'v000'+n,born:`2026-10-10T00:0${n}:00Z`,config:{x:n},s1:{...s,passed:0,tokens:0,rows:[{key:'a',pass:false}]},broken:'model unavailable'}));
@@ -77,4 +77,18 @@ console.log('PASS separate adversarial: outages/pending/partial/confirmation exc
   assert.equal(proposalChoices(mixed, champ, { keep: [1, 2, 3], model: ['local', 'other'] }, { mean: 41.5 }).find(ch => ch.change.keep === 1).contextualPenalty, 1);
   plateauState(mixed, { mean: 41.5 }); assert.equal(JSON.stringify(mixed), frozen);
   console.log('PASS separate adversarial: broken, unfinished, unmatched and merely-equal rounds are not spared; a bad mean spares nothing; only level rounds become parents');
+}
+{
+  // standing() against what must not be spared: nothing to compare, the champion itself, a broken round, other tasks, a bad mean.
+  const run = (n, passes) => ({ n, passed: passes, tokens: 100, rows: Array.from({ length: n }, (_, i) => ({ key: 't' + i, pass: i < passes })) });
+  const champ = { id: 'v0002', s1: run(10, 7), s2: run(60, 44) };
+  assert.equal(standing(null, champ), 'below');
+  assert.equal(standing({ id: 'a', s1: run(10, 9), s2: run(60, 50) }, null), 'below');
+  assert.equal(standing(champ, champ, { mean: 0 }), 'below');
+  assert.equal(standing({ id: 'a', broken: 'crash', s1: run(10, 10), s2: run(60, 60) }, champ, { mean: 41.5 }), 'below');
+  assert.equal(standing({ id: 'a', s1: run(10, 7), s2: run(30, 30) }, champ, { mean: 20 }), 'below');
+  assert.equal(standing({ id: 'a', s1: run(5, 5), s2: run(60, 10) }, champ, { mean: 41.5 }), 'below');
+  assert.equal(standing({ id: 'a', s1: run(10, 7), s2: run(60, 44) }, champ, { mean: NaN }), 'level');
+  assert.equal(standing({ id: 'a', s1: run(10, 7), s2: run(60, 43) }, champ, { mean: NaN }), 'below');
+  console.log('PASS separate adversarial: standing spares nothing it cannot compare');
 }

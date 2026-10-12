@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import {plateauState,chooseParent,proposalChoices,selectProposal} from '../lib/evolution-search.mjs';
+import {plateauState,chooseParent,proposalChoices,selectProposal,standing} from '../lib/evolution-search.mjs';
 const stage=(passes,tokens=100)=>({n:4,passed:passes,tokens,rows:[0,1,2,3].map(i=>({key:'task-'+i,pass:i<passes}))});
 const champion={id:'v0002',born:'2026-10-10T00:00:00Z',config:{budget:8,model:'local'},s1:stage(3),s2:stage(3)};
 const variants=[champion,...[3,4,5].map((n,i)=>({id:'v000'+n,born:`2026-10-10T00:0${i+1}:00Z`,parent:champion.id,config:{budget:4+i,model:'local'},change:{budget:4+i},s2:stage(2),vsChampionS2:{champion:champion.id,better:false,cheaper:false}}))];
@@ -48,4 +48,14 @@ console.log('PASS functional: third completed round applies branch-weight penalt
   assert.deepEqual(selectProposal(arch, champ, space, { proposed: { evict: 4 }, mean: 41.5, random: () => 0 }).change, { evict: 4 });
   assert.notDeepEqual(selectProposal(arch, champ, space, { proposed: { keep: 1 }, mean: 41.5, random: () => 0 }).change, { keep: 1 });
   console.log('PASS functional: rounds level with the champion mean or ahead at the smoke stage carry no penalty, level rounds stay parents');
+}
+{
+  // standing() by itself: level against the champion's mean, started ahead at the smoke stage, below otherwise.
+  const run = (n, passes) => ({ n, passed: passes, tokens: 100, rows: Array.from({ length: n }, (_, i) => ({ key: 't' + i, pass: i < passes })) });
+  const champ = { id: 'v0002', s1: run(10, 7), s2: run(60, 44) };
+  assert.equal(standing({ id: 'a', s1: run(10, 7), s2: run(60, 42) }, champ, { mean: 41.5 }), 'level');
+  assert.equal(standing({ id: 'a', s1: run(10, 7), s2: run(60, 42) }, champ), 'below');
+  assert.equal(standing({ id: 'a', s1: run(10, 8), s2: run(60, 30) }, champ, { mean: 41.5 }), 'started-ahead');
+  assert.equal(standing({ id: 'a', s1: run(10, 7), s2: run(60, 41) }, champ, { mean: 41.5 }), 'below');
+  console.log('PASS functional: standing names a round level, started ahead or below');
 }
