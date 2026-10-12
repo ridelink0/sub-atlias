@@ -72,7 +72,7 @@ export default async function skillsSuites({ suite, check, core, TMP, ROOT, fs, 
     const tight = skills.promptSection(SPROJ, 30);
     check('and says how many it left out when the budget is short', /and \d+ more/.test(tight) && tight.length < section.length, { happened: tight, why: 'Cutting a list silently tells the reader there are no more; a prompt is not a directory listing and the tail has to be counted.', fix: 'Count the omitted names in promptSection.' });
 
-    const prompt = loop.systemPrompt(SPROJ, { hasGraph: false, instructions: '' });
-    check('the agent\'s own system prompt carries the index', prompt.includes('Skills installed here') && prompt.includes('tidy-imports'), { happened: prompt.slice(-300), why: 'This is the point of the whole feature: the sub-harness hosts show their model the skills they have, and until now the terminal agent was the one harness that could not.', fix: 'Push skills.promptSection into systemPrompt.' });
+    const prompt = loop.systemPrompt(SPROJ, { hasGraph: false, instructions: '', skillIndex: 'all' });
+    check('the agent\'s own system prompt carries the index when agent.skillIndex is all', prompt.includes('Skills installed here') && prompt.includes('tidy-imports'), { happened: prompt.slice(-300), why: 'This is the point of the whole feature: the sub-harness hosts show their model the skills they have, and until now the terminal agent was the one harness that could not.', fix: 'Push skills.promptSection into systemPrompt.' });
   });
 }

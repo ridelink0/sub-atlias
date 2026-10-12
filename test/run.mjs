@@ -976,6 +976,7 @@ await (await import('./host-suites.mjs')).default({ suite, check, PROJECT });
 await (await import('./unit-suites.mjs')).default({ suite, asyncSuite, check, PROJECT, TMP, fs, path });
 await (await import('./pointer-suites.mjs')).default({ suite, check, core, track, router, TMP, ROOT, fs, path });
 await (await import('./skills-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
+await (await import('./skillindex-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./sandbox-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path, spawnSync });
 await (await import('./exit-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./context-suites.mjs')).default({ asyncSuite, check, agentMod, TMP, fs, path });
@@ -987,6 +988,7 @@ await (await import('./lean-suites.mjs')).default({ suite, check, brief, TMP, RO
 await (await import('./gatecheck-suites.mjs')).default({ suite, check, skip, core, gate, router, track, TMP, fs, path });
 await (await import('./sametext-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./straytool-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
+await (await import('./guardreset-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./oracle-ledger-suites.mjs')).default({ asyncSuite, check, ROOT, spawnSync });
 await (await import('./finishgreen-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./standalone-suites.mjs')).default({ asyncSuite, check, TMP });
