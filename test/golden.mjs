@@ -129,6 +129,13 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   process.env.ATLIAS_EVAL_DIR = path.join(base, 'work');
   process.env.ATLIAS_EVAL_REAP = '0';
   process.env.ATLIAS_NO_DETACH = '1';
+  // The baseline was recorded when the skill index was part of every system
+  // message. atlias made it off by default on 2026-10-12 (Gev), so this run
+  // holds it at the value the baseline used, the way the evolve controller pins
+  // it for a stored champion: with that one setting, every request must still
+  // be the baseline's byte for byte.
+  fs.mkdirSync(process.env.ATLIAS_HOME, { recursive: true });
+  fs.writeFileSync(path.join(process.env.ATLIAS_HOME, 'config.json'), JSON.stringify({ agent: { skillIndex: 'all' } }));
   let code = 0;
   try {
     const fp = await fingerprint();
