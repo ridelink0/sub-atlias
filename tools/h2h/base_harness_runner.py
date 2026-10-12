@@ -419,6 +419,9 @@ def run_one(task, a, shims):
         door.shutdown()
         door.server_close()
     agent_ms = int((time.time() - t0) * 1000)
+    # What the harness itself left behind, listed before the hidden files are written: listed after,
+    # the grader's own files looked as if the harness could have read them (council member h11, 2026-10-12).
+    added = sorted(str(p.relative_to(ws)).replace("\\", "/") for p in ws.rglob("*") if p.is_file() and str(p.relative_to(ws)).replace("\\", "/") not in shipped)[:40]
     try:  # what went through the door, kept beside the harness's own output
         (state / "door-log.json").write_text(json.dumps({"calls": door.calls, "usage": door.usage, "capped": door.capped, "refused": door.refused,
                                                          "errors": door.errors, "passed": door.passed}, indent=1), encoding="utf-8")
@@ -465,8 +468,7 @@ def run_one(task, a, shims):
             # A call Ollama gave no count for leaves the totals unknown, never a smaller number.
             "promptTotal": sum(toks) if counted else None, "outputTokens": outs, "outputTotal": sum(outs) if counted else None,
             "peakPrompt": max([t for t in toks if isinstance(t, int)] or [0]), "numCtx": a.num_ctx, "loadedWindow": window,
-            "refused": door.refused[:20], "modelErrors": door.errors[:20], "addedFiles": None if (passed and not a.keep) else sorted(
-                str(p.relative_to(ws)).replace("\\", "/") for p in ws.rglob("*") if p.is_file() and str(p.relative_to(ws)).replace("\\", "/") not in shipped)[:40],
+            "refused": door.refused[:20], "modelErrors": door.errors[:20], "addedFiles": None if (passed and not a.keep) else added,
             "ms": int((time.time() - t0) * 1000), "agentMs": agent_ms,
             "workspace": None if (passed and not a.keep) else str(ws), "state": None if (passed and not a.keep) else str(state), "output": tail}
 
