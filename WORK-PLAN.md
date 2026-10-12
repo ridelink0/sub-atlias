@@ -102,6 +102,49 @@ savings claims. Do not repeat the research.
 - Planted breaks: 6/6 caught (two new: moved tools not named; note replacing
   ToolSearch text); focused suites 11/11; strict plugin validation passes.
 
+- Accounting and provenance (tools/h2h/base_harness_runner.py), no model:
+  every call the harness makes now has one receipt (raw usage blocks as they
+  came, Claude's three input parts kept apart, status, outcome: complete,
+  partial, harness left, HTTP n, capped by the door; size and SHA-256 of the
+  exact body sent). A cache or input count that is negative, true/false, text,
+  null or fractional is unknown, never 0. A stream without its terminal event
+  is a partial call and the task is not nativeCompleted. Every row carries task
+  digests (prompt, files, grader) and the run's provenance (client path, hash
+  and version, runner hash, git head and dirty hash, plugin-folder hashes, model
+  server version, model digest, template and parameter hashes, quantization,
+  door settings). The report has totals and peaks only when every task was
+  counted, windowMatched only when every task's loaded window was read and
+  equals --num-ctx, provenanceUniform, and nativeCompleted counted apart from
+  passes. Resume keeps every earlier row. Checks: base_harness_accounting_test.py
+  26/26; base_harness_selftest.py 28/28; planted breaks 12/12
+  (subharness_adversarial.py, six of them on the ledger).
+  Full suite after these changes: 1296/1296 across 197 suites, exit 0,
+  21:00:40Z to 21:08:04Z (claude-continuation/full-suite-20261012T210040Z.log).
+- GPU position at 20:49Z: the Ultimate gate holds LOCAL-ROLE.lock and Ollama
+  11435 (qwen3.5:9b, context 16384, 7.4 of 12.3 GiB VRAM, GPU 82%), running
+  humanevalfix-python, started 18:55Z, about 12 hours for 596 tasks. Ollama
+  0.40.0 also answers on 11434 with nothing loaded; using it would put a second
+  model on the same GPU and is not allowed while the gate runs. No inference
+  was started by Claude.
+
+- Codex recording probe, no inference (tools/h2h/codex_probe.py, run
+  codex-probe-1): the bundled codex.exe 0.162.0-alpha.17.2 (sha256 d13914ce...)
+  runs `exec` against a loopback custom provider "atlias_local_meter" with
+  wire_api responses, requires_openai_auth=false, supports_websockets=false,
+  --ignore-user-config --ignore-rules --strict-config; exit 0, one POST
+  /v1/responses, the exact prompt present. Its outbound attempts to
+  api.github.com, chatgpt.com and ab.chatgpt.com were refused by the door.
+  Base opening 42,448 JSON characters (not tokens): tools 18,784 (8 tools; a
+  namespace tool multi_agent_v1 is 10,149 of them; no apply_patch tool under the
+  fallback model metadata it warned about), developer messages 17,174 and 3,383
+  characters of text, environment 531, request 73. The request carries
+  include ["reasoning.encrypted_content"], store false, prompt_cache_key.
+  ISOLATION LEAK FOUND: although HOME, USERPROFILE and CODEX_HOME were private,
+  its skills list names the real C:/Users/OWNER/.agents/skills root (69 skills
+  dropped from the listing for budget). A clean base Codex arm needs that root
+  kept out (a separate Windows profile, or a supported skills setting applied
+  to both arms) before any matched Codex run; not decided yet.
+
 ## Next steps, in order
 
 1. Capture the full-suite failure in a persistent log; fix genuine failures and

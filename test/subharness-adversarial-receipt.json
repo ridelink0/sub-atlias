@@ -35,6 +35,42 @@
       "caught": true,
       "exit": 1,
       "timeout": false
+    },
+    {
+      "name": "malformed cache count read as 0",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "missing window counted as matched",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "row marked uncounted trusted",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "partial stream taken as complete",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "resume drops uncounted rows",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "capped call leaves no receipt",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
     }
   ],
   "restoredFunctionalExit": 0,

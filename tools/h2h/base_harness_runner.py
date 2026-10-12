@@ -28,6 +28,7 @@ Usage:
       --out report.json --model qwen3.5:9b [--ids-from atlias.json] [--only id,id] [--resume]
 """
 import argparse
+import hashlib
 import http.server
 import json
 import os
@@ -68,6 +69,8 @@ class Door(http.server.ThreadingHTTPServer):
         self.passed = []        # every other request let through to the model server: seconds in, method, path, status
         self.t0 = time.time()
         self.first = None       # when the first chat call arrived: the task's clock starts there
+        self.receipts = []      # one per call the harness made, model or not: raw usage blocks, the parts read, how it ended
+        self.partial = 0        # calls whose answer ended before its terminal event
 
     @property
     def base(self):
@@ -82,16 +85,39 @@ def _usage_of(obj):
     return (p, c) if isinstance(p, int) and isinstance(c, int) and not isinstance(p, bool) and not isinstance(c, bool) and p >= 0 and c >= 0 else None
 
 
+MESSAGE_PARTS = (("input_tokens", "uncached"), ("cache_creation_input_tokens", "cacheCreate"), ("cache_read_input_tokens", "cacheRead"), ("output_tokens", "output"))
+
+
+def _count(v):
+    return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None
+
+
+def _message_counts(u, got):
+    """Folds one usage block in Claude's wire format into got: new input, cache writes and cache
+    reads (three parts of what was read, each counted once) and output. A count the block carries
+    in a form that is not a whole number of tokens (negative, true or false, text, null, 1.5) makes
+    that part unknown, never 0; a later block's count for the same part replaces an earlier one, as
+    Claude's stream does."""
+    if isinstance(u, dict):
+        for key, name in MESSAGE_PARTS:
+            if key in u:
+                got[name] = _count(u[key]) if _count(u[key]) is not None else "unknown"
+
+
+def _message_totals(got):
+    """Prompt and output tokens out of folded counts; either is None when not known. A cache part
+    no block mentioned is 0."""
+    parts = [got.get("uncached"), got.get("cacheCreate", 0), got.get("cacheRead", 0)]
+    p = sum(parts) if all(_count(x) is not None for x in parts) else None
+    return p, _count(got.get("output"))
+
+
 def _message_usage(u):
-    """Prompt and output tokens out of a usage block in Claude's wire format. The prompt is all that
-    was read: new tokens, tokens served from cache and tokens written to it."""
-    if not isinstance(u, dict):
-        return None, None
-    num = lambda v: v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None  # noqa: E731
-    p = num(u.get("input_tokens"))
-    if p is not None:
-        p += (num(u.get("cache_read_input_tokens")) or 0) + (num(u.get("cache_creation_input_tokens")) or 0)
-    return p, num(u.get("output_tokens"))
+    """Prompt and output tokens out of one usage block in Claude's wire format. The prompt is all
+    that was read: new tokens, tokens served from cache and tokens written to it."""
+    got = {}
+    _message_counts(u, got)
+    return _message_totals(got)
 
 
 class DoorHandler(http.server.BaseHTTPRequestHandler):
@@ -231,35 +257,41 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             over = s.calls > s.budget
             if over:
                 s.capped += 1
+                s.receipts.append({"api": "messages", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})
             else:
                 slot = len(s.usage)
                 s.usage.append(None)
+                got = {}  # the parts read and written, as the answer gives them
+                rec = {"api": "messages", "stream": stream, "slot": slot, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": [], "counts": got}
+                s.receipts.append(rec)
         if over:
             return self._stop_message(stream)
         body["model"] = s.model
         body["temperature"] = 0.2
         body["max_tokens"] = s.num_predict
-        got = [None, None]  # prompt and output tokens, as the answer gives them
 
         def note(u):
-            p, c = _message_usage(u)
-            if p is not None:
-                got[0] = p
-            if c is not None:
-                got[1] = c
-            if got[0] is not None and got[1] is not None:
-                s.usage[slot] = (got[0], got[1])
+            # Every usage block is kept as it came; the slot holds a count only while every part is known.
+            if isinstance(u, dict):
+                rec["usage"].append(u)
+                _message_counts(u, got)
+                p, c = _message_totals(got)
+                s.usage[slot] = (p, c) if p is not None and c is not None else None
+        sent = json.dumps(body).encode("utf-8")
+        rec["sent"] = {"bytes": len(sent), "sha256": hashlib.sha256(sent).hexdigest()}  # exactly what the model server was given
         try:
-            req = urllib.request.Request(s.upstream + "/v1/messages", data=json.dumps(body).encode("utf-8"), method="POST",
+            req = urllib.request.Request(s.upstream + "/v1/messages", data=sent, method="POST",
                                          headers={"Content-Type": "application/json", "x-api-key": "local",
                                                   "anthropic-version": self.headers.get("anthropic-version") or "2023-06-01"})
             with urllib.request.urlopen(req, timeout=1800) as r:
+                rec["status"] = r.status
                 if not stream:
                     data = r.read()
                     try:
                         note(json.loads(data.decode("utf-8")).get("usage"))
+                        rec["outcome"] = "complete"
                     except Exception:
-                        pass
+                        rec["outcome"] = "answer not readable"
                     self._send(r.status, data, r.headers.get("Content-Type") or "application/json")
                 else:
                     self.send_response(r.status)
@@ -267,11 +299,13 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                     self.send_header("Cache-Control", "no-cache")
                     self.send_header("Connection", "close")
                     self.end_headers()
+                    ended, left = False, False
                     for line in r:
                         # The prompt count comes with message_start, the output count with message_delta.
-                        if line.startswith(b"data:") and b'"usage"' in line:
+                        if line.startswith(b"data:") and (b'"usage"' in line or b"message_stop" in line):
                             try:
                                 ev = json.loads(line[5:].decode("utf-8").strip())
+                                ended = ended or ev.get("type") == "message_stop"
                                 note((ev.get("message") or {}).get("usage"))
                                 note(ev.get("usage"))
                             except Exception:
@@ -280,8 +314,14 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                             self.wfile.write(line)
                             self.wfile.flush()
                         except Exception:
+                            left = True
                             break  # the harness went away; the count seen so far stands
+                    rec["outcome"] = "complete" if ended else "harness left before the end" if left else "partial: no message_stop"
+                    if not ended:
+                        with s.lock:
+                            s.partial += 1
         except urllib.error.HTTPError as e:
+            rec.update(status=e.code, outcome=f"HTTP {e.code}")
             with s.lock:
                 s.errors.append(f"HTTP {e.code}"[:200])
             try:
@@ -289,6 +329,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             except Exception:
                 pass
         except Exception as e:
+            rec["outcome"] = f"{type(e).__name__}: {e}"[:200]
             with s.lock:
                 s.errors.append(f"{type(e).__name__}: {e}"[:200])
             try:
@@ -312,11 +353,14 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             over = s.calls > s.budget
             if over:
                 s.capped += 1
+                s.receipts.append({"api": "chat", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})
             else:
                 # The call's place is kept before it is sent, and filled the moment Ollama's count is
                 # seen, so a harness that hangs up straight after its answer cannot lose the count.
                 slot = len(s.usage)
                 s.usage.append(None)
+                rec = {"api": "chat", "stream": stream, "slot": slot, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": []}
+                s.receipts.append(rec)
         if over:
             return self._stop_reply(stream)
         body["model"] = s.model
@@ -325,16 +369,22 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
         body.pop("max_completion_tokens", None)
         if stream:
             body["stream_options"] = {"include_usage": True}
+        sent = json.dumps(body).encode("utf-8")
+        rec["sent"] = {"bytes": len(sent), "sha256": hashlib.sha256(sent).hexdigest()}  # exactly what the model server was given
         try:
-            req = urllib.request.Request(s.upstream + "/v1/chat/completions", data=json.dumps(body).encode("utf-8"), method="POST",
+            req = urllib.request.Request(s.upstream + "/v1/chat/completions", data=sent, method="POST",
                                          headers={"Content-Type": "application/json", "Authorization": "Bearer local"})
             with urllib.request.urlopen(req, timeout=1800) as r:
+                rec["status"] = r.status
                 if not stream:
                     data = r.read()
                     try:
-                        s.usage[slot] = _usage_of(json.loads(data.decode("utf-8")))
+                        answer = json.loads(data.decode("utf-8"))
+                        rec["usage"].append(answer.get("usage"))
+                        s.usage[slot] = _usage_of(answer)
+                        rec["outcome"] = "complete"
                     except Exception:
-                        pass
+                        rec["outcome"] = "answer not readable"
                     self._send(r.status, data, r.headers.get("Content-Type") or "application/json")
                 else:
                     self.send_response(r.status)
@@ -342,18 +392,29 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                     self.send_header("Cache-Control", "no-cache")
                     self.send_header("Connection", "close")
                     self.end_headers()
+                    ended, left = False, False
                     for line in r:
-                        if line.startswith(b"data:") and b'"usage"' in line:
+                        if line.startswith(b"data:") and line[5:].strip() == b"[DONE]":
+                            ended = True
+                        elif line.startswith(b"data:") and b'"usage"' in line:
                             try:
-                                s.usage[slot] = _usage_of(json.loads(line[5:].decode("utf-8").strip())) or s.usage[slot]
+                                ev = json.loads(line[5:].decode("utf-8").strip())
+                                rec["usage"].append(ev.get("usage"))
+                                s.usage[slot] = _usage_of(ev) or s.usage[slot]
                             except Exception:
                                 pass
                         try:
                             self.wfile.write(line)
                             self.wfile.flush()
                         except Exception:
+                            left = True
                             break  # the harness went away; the count seen so far stands
+                    rec["outcome"] = "complete" if ended else "harness left before the end" if left else "partial: no [DONE]"
+                    if not ended:
+                        with s.lock:
+                            s.partial += 1
         except urllib.error.HTTPError as e:
+            rec.update(status=e.code, outcome=f"HTTP {e.code}")
             with s.lock:
                 s.errors.append(f"HTTP {e.code}"[:200])
             try:
@@ -361,6 +422,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             except Exception:
                 pass
         except Exception as e:
+            rec["outcome"] = f"{type(e).__name__}: {e}"[:200]
             with s.lock:
                 s.errors.append(f"{type(e).__name__}: {e}"[:200])
             try:
@@ -494,6 +556,81 @@ def claude_command(a, task, ws, state, door, budget, env):
 HARNESS = {"nanobot": nanobot_command, "opencode": opencode_command, "claude": claude_command}
 
 
+def _digest(obj):
+    return hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
+
+
+def file_digest(path):
+    h = hashlib.sha256()
+    try:
+        with open(path, "rb") as f:
+            for block in iter(lambda: f.read(1 << 20), b""):
+                h.update(block)
+    except OSError:
+        return None
+    return h.hexdigest()
+
+
+def tree_digest(root):
+    """One hash over every file under root, path and bytes, so a changed plugin is a changed arm."""
+    root = pathlib.Path(root)
+    if not root.exists():
+        return None
+    if root.is_file():
+        return file_digest(root)
+    skip = {".git", "__pycache__", "node_modules"}
+    return _digest([[f.relative_to(root).as_posix(), file_digest(f)] for f in sorted(root.rglob("*"))
+                    if f.is_file() and not skip & set(f.relative_to(root).parts)])
+
+
+def model_facts(api_base, model):
+    """What the server holds under the model's name: its digest, the template and parameters it
+    renders with, its quantization, and the server's version. Metadata only: nothing is loaded."""
+    def ask(path, body=None):
+        try:
+            req = urllib.request.Request(api_base.rstrip("/") + path, data=None if body is None else json.dumps(body).encode("utf-8"),
+                                         method="GET" if body is None else "POST", headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except Exception:
+            return None
+    tags, show = ask("/api/tags") or {}, ask("/api/show", {"model": model}) or {}
+    return {"name": model, "server": (ask("/api/version") or {}).get("version"),
+            "digest": next((m.get("digest") for m in tags.get("models", []) if model in (m.get("name"), m.get("model"))), None),
+            "template": _digest(show["template"]) if isinstance(show.get("template"), str) else None,
+            "parameters": _digest(show["parameters"]) if isinstance(show.get("parameters"), str) else None,
+            "quantization": (show.get("details") or {}).get("quantization_level")}
+
+
+def provenance(a):
+    """What every number of a run came from, the same for each of its tasks: the client program and
+    its version, this runner and the source tree it sits in, the plugin folders, the model server and
+    the model's digest and template, and the settings the door holds the model to. None marks a
+    fact that could not be read; it is never filled in by a guess."""
+    root = pathlib.Path(__file__).resolve().parents[2]
+    def run(argv):
+        try:
+            done = subprocess.run(argv, capture_output=True, timeout=60, cwd=str(root))
+            return done.stdout.decode("utf-8", errors="replace").strip() if done.returncode == 0 else None
+        except Exception:
+            return None
+    client = a.claude if a.harness == "claude" else a.nanobot if a.harness == "nanobot" else str(pathlib.Path(a.opencode_source) / "packages" / "cli")
+    status = run(["git", "status", "--porcelain"])
+    return {"harness": a.harness, "client": {"path": str(client), "sha256": tree_digest(client),
+                                             "version": run([client, "--version"]) if a.harness == "claude" else None},
+            "runner": file_digest(__file__), "source": {"head": run(["git", "rev-parse", "HEAD"]), "dirty": _digest(status) if status else status},
+            "pluginDirs": [{"path": str(d), "sha256": tree_digest(d)} for d in (getattr(a, "claude_plugin_dir", None) or [])],
+            "model": model_facts(a.api_base, a.model),
+            "door": {"temperature": 0.2, "numPredict": a.num_predict, "numCtx": a.num_ctx, "budget": a.budget or "per task"}}
+
+
+def task_digests(task):
+    """The task as the harness got it and the grader that judged it, so two arms can be shown to
+    have run the same thing."""
+    return {"prompt": _digest(task.get("prompt")), "files": _digest(task.get("files")),
+            "grader": _digest({"check": task.get("check"), "hidden": task.get("hidden"), "protect": task.get("protect")})}
+
+
 def loaded_window(api_base, model):
     """The window Ollama has this model loaded at right now, or None."""
     try:
@@ -552,7 +689,7 @@ def run_one(task, a, shims):
     added = sorted(str(p.relative_to(ws)).replace("\\", "/") for p in ws.rglob("*") if p.is_file() and str(p.relative_to(ws)).replace("\\", "/") not in shipped)[:40]
     try:  # what went through the door, kept beside the harness's own output
         (state / "door-log.json").write_text(json.dumps({"calls": door.calls, "usage": door.usage, "capped": door.capped, "refused": door.refused,
-                                                         "errors": door.errors, "passed": door.passed}, indent=1), encoding="utf-8")
+                                                         "errors": door.errors, "passed": door.passed, "partial": door.partial, "receipts": door.receipts}, indent=1), encoding="utf-8")
     except Exception:
         pass
     window = loaded_window(a.api_base, a.model)
@@ -585,6 +722,11 @@ def run_one(task, a, shims):
     toks = [u[0] if u else None for u in usage]
     outs = [u[1] if u else None for u in usage]
     passed = check_ok and not tampered
+    # Claude's three input parts, each summed once, where every call gave all three as counts.
+    parts = [r.get("counts") for r in door.receipts if r.get("slot") is not None and r.get("api") == "messages"]
+    split = None
+    if counted and parts and all(_message_totals(c)[0] is not None for c in parts):
+        split = {k: sum(c.get(k, 0) for c in parts) for k in ("uncached", "cacheCreate", "cacheRead")}
     if door.capped:
         stop += f"; step limit reached ({door.capped} further call(s) answered with a stop)"
     if passed and not a.keep:
@@ -597,21 +739,47 @@ def run_one(task, a, shims):
             "promptTotal": sum(toks) if counted else None, "outputTokens": outs, "outputTotal": sum(outs) if counted else None,
             "peakPrompt": max(toks or [0]) if counted else None,
             "peakContext": max([p + o for p, o in usage] or [0]) if counted else None,
-            "usageComplete": counted, "nativeCompleted": rc == 0 and not door.capped and not door.errors and bool(usage),
-            "numCtx": a.num_ctx, "loadedWindow": window,
+            "usageComplete": counted, "inputParts": split, "partialCalls": door.partial,
+            # Whether the harness ended by itself, apart from whether the grader passed what it left.
+            "nativeCompleted": rc == 0 and not door.capped and not door.errors and not door.partial and bool(usage),
+            "numCtx": a.num_ctx, "loadedWindow": window, "taskDigests": task_digests(task), "provenance": getattr(a, "provenance", None),
+            "receipts": door.receipts,
             "refused": door.refused[:20], "modelErrors": door.errors[:20], "addedFiles": None if (passed and not a.keep) else added,
             "ms": int((time.time() - t0) * 1000), "agentMs": agent_ms,
             "workspace": None if (passed and not a.keep) else str(ws), "state": None if (passed and not a.keep) else str(state), "output": tail}
+
+
+def counted_row(r):
+    """A row whose every call was counted; an older row without the flag counts when its totals do."""
+    return r.get("usageComplete") is not False and _count(r.get("promptTotal")) is not None and _count(r.get("outputTotal")) is not None
 
 
 def report(results, a, t_all):
     windows = sorted({r.get("loadedWindow") for r in results if r.get("loadedWindow")})
     plugins = [str(d) for d in (getattr(a, "claude_plugin_dir", None) or [])] if a.harness == "claude" else []
     kind = f"with {len(plugins)} plugin folder(s)" if plugins else "stock"
+    # Run totals and peaks exist only when every task was counted: one uncounted call anywhere
+    # leaves them unknown, never smaller. The window matches only when every task's was read and
+    # equals the one asked for; a task whose window could not be read does not match.
+    complete = bool(results) and all(counted_row(r) for r in results)
+    peaks = [r.get("peakContext") for r in results]
     return {"results": results, "passed": sum(1 for r in results if r["pass"]), "total": len(results),
             "ms": int((time.time() - t_all) * 1000), "engine": f"{a.harness} ({kind}, metered door, offline)", "harness": a.harness, "pluginDirs": plugins,
             "model": a.model, "numCtx": a.num_ctx, "numPredict": a.num_predict, "loadedWindows": windows,
-            "windowMatched": windows == [a.num_ctx] if windows else None, "corpus": {"tasks": a.tasks, "ids": a.ids_from or None}}
+            "windowMatched": all(r.get("loadedWindow") == a.num_ctx for r in results) if results else None,
+            "usageComplete": complete, "promptTotal": sum(r["promptTotal"] for r in results) if complete else None,
+            "outputTotal": sum(r["outputTotal"] for r in results) if complete else None,
+            "peakPrompt": max(r["peakPrompt"] for r in results) if complete and all(_count(r.get("peakPrompt")) is not None for r in results) else None,
+            "peakContext": max(peaks) if complete and all(_count(x) is not None for x in peaks) else None,
+            "nativeCompleted": sum(1 for r in results if r.get("nativeCompleted") is True),
+            "provenance": getattr(a, "provenance", None), "provenanceUniform": len({_digest(r.get("provenance")) for r in results}) <= 1,
+            "corpus": {"tasks": a.tasks, "ids": a.ids_from or None}}
+
+
+def resumed(out):
+    """Every row of an earlier report: unknown, failed and unfavourable attempts stay, and a task
+    already in it is never run again in its place."""
+    return list(json.loads(pathlib.Path(out).read_text(encoding="utf-8")).get("results", []))
 
 
 def main():
@@ -672,8 +840,9 @@ def main():
     if a.resume and out.exists():
         # Preserve unknown, failed and unfavorable attempts. A repeat is a new report,
         # never a replacement that erases the original spend or grade.
-        results = list(json.loads(out.read_text(encoding="utf-8")).get("results", []))
+        results = resumed(out)
     done = {r["id"] for r in results}
+    a.provenance = provenance(a)
     try:
         for f in files:
             task = json.loads(f.read_text(encoding="utf-8"))

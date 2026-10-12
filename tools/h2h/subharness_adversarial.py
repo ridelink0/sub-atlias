@@ -6,6 +6,9 @@ import tempfile
 from owned_process import run_tree
 
 root = pathlib.Path(__file__).resolve().parents[2]
+NODE = ["node", "test/run.mjs", "authority:", "efficiency:"]
+LEDGER = [sys.executable, "tools/h2h/base_harness_accounting_test.py"]
+RUNNER = "tools/h2h/base_harness_runner.py"
 cases = [
     ("long requests cut", "lib/loop.mjs", "if (exact) return `", "if (false) return `"),
     ("instruction tail cut", "lib/loop.mjs", "!exact && text.length > room", "text.length > room"),
@@ -13,9 +16,15 @@ cases = [
     ("off mode changes placement", "mods/atlias-efficiency/hooks/register.mjs", "if (!enabled || !compatible", "if (!compatible"),
     ("moved tools not named", "mods/atlias-efficiency/hooks/register.mjs", "return { ...result, description: result.description + NOTE };", "return result;"),
     ("note replaces ToolSearch text", "mods/atlias-efficiency/hooks/register.mjs", "description: result.description + NOTE", "description: NOTE"),
+    ("malformed cache count read as 0", RUNNER, 'got[name] = _count(u[key]) if _count(u[key]) is not None else "unknown"', "got[name] = _count(u[key]) or 0", LEDGER),
+    ("missing window counted as matched", RUNNER, '"windowMatched": all(r.get("loadedWindow") == a.num_ctx for r in results) if results else None,', '"windowMatched": windows == [a.num_ctx] if windows else None,', LEDGER),
+    ("row marked uncounted trusted", RUNNER, 'return r.get("usageComplete") is not False and _count', "return _count", LEDGER),
+    ("partial stream taken as complete", RUNNER, 'ended = ended or ev.get("type") == "message_stop"', "ended = True", LEDGER),
+    ("resume drops uncounted rows", RUNNER, 'return list(json.loads(pathlib.Path(out).read_text(encoding="utf-8")).get("results", []))', 'return [r for r in json.loads(pathlib.Path(out).read_text(encoding="utf-8")).get("results", []) if isinstance(r.get("promptTotal"), int)]', LEDGER),
+    ("capped call leaves no receipt", RUNNER, 's.receipts.append({"api": "messages", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})', "pass", LEDGER),
 ]
 rows = []
-for name, rel, old, new in cases:
+for name, rel, old, new, *cmd in cases:
     p = root / rel
     before = p.read_bytes()
     try:
@@ -24,7 +33,7 @@ for name, rel, old, new in cases:
             raise RuntimeError(f"mutation anchor not unique: {name}")
         p.write_bytes(text.replace(old, new, 1).encode("utf-8"))
         with tempfile.TemporaryFile() as out:
-            rc, timed = run_tree(["node", "test/run.mjs", "authority:", "efficiency:"], cwd=str(root), timeout=180, stdout=out)
+            rc, timed = run_tree(cmd[0] if cmd else NODE, cwd=str(root), timeout=180, stdout=out)
             out.seek(0)
             result = out.read().decode("utf-8", errors="replace")
         caught = rc != 0 and not timed and "FAIL " in result
@@ -33,11 +42,15 @@ for name, rel, old, new in cases:
     finally:
         p.write_bytes(before)
 
-with tempfile.TemporaryFile() as out:
-    rc, timed = run_tree(["node", "test/run.mjs", "authority:", "efficiency:"], cwd=str(root), timeout=180, stdout=out)
-    out.seek(0)
-    text = out.read().decode("utf-8", errors="replace")
-print(text, flush=True)
+restored = []
+for cmd in (NODE, LEDGER):
+    with tempfile.TemporaryFile() as out:
+        rc, timed = run_tree(cmd, cwd=str(root), timeout=180, stdout=out)
+        out.seek(0)
+        print(out.read().decode("utf-8", errors="replace")[-400:], flush=True)
+    restored.append((rc, timed))
+rc = max(abs(r) for r, _ in restored)
+timed = any(t for _, t in restored)
 receipt = {"mutations": rows, "restoredFunctionalExit": rc, "restoredFunctionalTimeout": timed}
 target = root / "test" / "subharness-adversarial-receipt.json"
 target.write_bytes(json.dumps(receipt, indent=2).encode("utf-8"))
