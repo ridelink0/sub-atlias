@@ -71,14 +71,16 @@ savings claims. Do not repeat the research.
   Base first request 68,684 JSON characters; mod first request 25,368 characters.
   Those figures are NOT token savings or quality proof. Deferral placeholder was
   observed, but retrieval/dispatch through ToolSearch was not exercised yet.
-- Full repository suite started as exec session 26169. Poll the session if still
-  available; otherwise inspect receipts or rerun it once. No full-suite result is
-  claimed at this checkpoint. Do not mutate source while its checks are running.
+- Full repository suite finished: 1293/1294 across197 suites, exit1. Console
+  truncation omitted the one failure's detail; the new9/9 suites passed. Capture
+  a persistent full-suite log, identify and fix/classify the failure before
+  claiming complete verification. Do not run overlapping full suites.
 
 ## Next steps, in order
 
-1. Record the full-suite result; fix genuine failures and rerun affected checks.
-   Verify the report writer's artifact. Keep work committed locally.
+1. Capture the full-suite failure in a persistent log; fix genuine failures and
+   rerun affected checks. Report reviewed. Initial verified changes committed
+   locally as ee7db19; no live merge or push.
 2. Add native recording tests of ToolSearch selection followed by actual tool
    dispatch and exact restored schema; compare mod OFF byte behavior and include
    required project/skill instructions. Test raw prompt preservation at every
@@ -132,6 +134,6 @@ D:/harness-work/atlias-subharness-runs-1012/claude-continuation/.
 Codex must inspect its run-state.json and recent stream log before editing on
 the reset wake. While Claude is active, do not make concurrent source edits or
 launch competing GPU inference; coordinate by the handoff/status files. Claude
-owns completing the pending native protocol/accounting, local qualification and
-paired Claude then Codex trials. The existing full suite is still running as
-exec session26169; preserve its result and do not mutate its source mid-run.
+owns completing the pending full-suite failure diagnosis, native protocol/
+accounting, local qualification and paired Claude then Codex trials. The old
+suite is finished, so new edits are safe within this isolated worktree.
