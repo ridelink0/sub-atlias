@@ -23,6 +23,18 @@
       "caught": true,
       "exit": 1,
       "timeout": false
+    },
+    {
+      "name": "moved tools not named",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "note replaces ToolSearch text",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
     }
   ],
   "restoredFunctionalExit": 0,

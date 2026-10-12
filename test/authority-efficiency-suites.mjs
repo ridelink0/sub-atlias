@@ -38,6 +38,13 @@ export default async function authorityEfficiencySuites({ suite, asyncSuite, che
     const events = [{ ...event, tool: 'Read' }, { ...event, tool: 'futureTool' }, { ...event, provider: { plugin: 'mcp:test' } }];
     check('off, unqualified endpoints, core tools, future tools and MCP placement are unchanged', mod.placement(event, result, false, true) === result && mod.placement(event, result, true, false) === result && events.every((e) => mod.placement(e, result, true, true) === result),
       { happened: 'placement identities checked', why: 'Unknown capabilities and native MCP deferral are part of the baseline.', fix: 'Only explicitly qualified built-ins may move.' });
+    const search = { tool: 'ToolSearch', description: 'Fetches full schema definitions for deferred tools.', provider: { plugin: 'engine', tier: 'core' } };
+    const found = { description: search.description };
+    const named = mod.placement(search, found, true, true);
+    check('a tool the mod moves is named to the model after ToolSearch\'s whole original text', named.description === search.description + mod.NOTE && mod.ANNOUNCE.every((n) => mod.DEFER.includes(n) && named.description.includes(n)) && named.isDeferred === undefined,
+      { happened: named.description, why: 'Claude Code 2.1.296 left the tools this mod moved out of its deferred listing, so the model could not find Grep, Glob, Skill or Agent.', fix: 'placement appends NOTE to ToolSearch and keeps the engine text first.' });
+    check('off, unqualified, or a ToolSearch from another provider keeps its description', mod.placement(search, found, false, true) === found && mod.placement(search, found, true, false) === found && mod.placement({ ...search, provider: { plugin: 'mcp:x' } }, found, true, true) === found,
+      { happened: 'ToolSearch identities checked', why: 'Only the qualified arm may say anything new.', fix: 'The ToolSearch note sits behind the same switch and provider check as the deferral.' });
     let hook;
     mod.register((event, fn) => { hook = fn; return { catch() {} }; }, { enabled: false });
     let envReads = 0;

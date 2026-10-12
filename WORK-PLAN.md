@@ -71,10 +71,36 @@ savings claims. Do not repeat the research.
   Base first request 68,684 JSON characters; mod first request 25,368 characters.
   Those figures are NOT token savings or quality proof. Deferral placeholder was
   observed, but retrieval/dispatch through ToolSearch was not exercised yet.
-- Full repository suite finished: 1293/1294 across197 suites, exit1. Console
-  truncation omitted the one failure's detail; the new9/9 suites passed. Capture
-  a persistent full-suite log, identify and fix/classify the failure before
-  claiming complete verification. Do not run overlapping full suites.
+- Full repository suite rerun by Claude to a persistent log at 15348a6:
+  1294/1294 across 197 suites, exit 0, 20:38:38Z to 20:45:29Z
+  (claude-continuation/full-suite-20261012T203837Z.log). The earlier single
+  failure did not reproduce and its detail was lost; treat it as an unexplained
+  one-off, not as a known pass.
+- ToolSearch qualification, recording stand-in, no inference, Claude 2.1.296
+  (tools/h2h/toolsearch_probe.py; runs toolsearch-probe-1 before the fix,
+  toolsearch-probe-2 after). Four arms: base, off (mod loaded, switch off),
+  ts (ENABLE_TOOL_SEARCH=true alone), on (mod on plus ENABLE_TOOL_SEARCH).
+  - Every request in every arm carried the exact original request, the project
+    CLAUDE.md and the body of an explicitly invoked project skill.
+  - off equals base byte for byte on every request once the session id and the
+    arm's own folder are taken out; tool arrays identical.
+  - ts and on: ToolSearch answers with tool_reference blocks; the next request
+    carries the selected tools' full definitions with defer_loading:true, each
+    identical to the base arm's apart from that flag; the found Grep really ran
+    ("Found 1 file notes	arget.txt").
+  - BUG FOUND AND FIXED: the mod's eight extra deferrals (Agent, Glob, Grep,
+    ListAgents, ReportFindings, ScheduleWakeup, Skill, Workflow) were absent
+    from the engine's deferred listing and from the tool array, so a model could
+    not see them at all. The mod now appends their names after ToolSearch's whole
+    original text. Probe 2: nothing hidden, ToolSearch original text kept.
+  - First-request characters (not tokens): base 74,818, ts 55,094, on 31,474.
+  - NOT QUALIFIED for the local benchmark: the client needs the endpoint to
+    accept tool_reference blocks and defer_loading. A no-load shape check on
+    Ollama 0.35.1 (nonexistent model name) is inconclusive: every shape,
+    including an invented block type, returned 404 before parsing
+    (ollama-shape-probe/result.json). Needs one real request at a GPU boundary.
+- Planted breaks: 6/6 caught (two new: moved tools not named; note replacing
+  ToolSearch text); focused suites 11/11; strict plugin validation passes.
 
 ## Next steps, in order
 
