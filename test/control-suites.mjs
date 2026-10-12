@@ -15,7 +15,7 @@ const NL = String.fromCharCode(10);
 const blk = (obj) => '```atlias' + NL + JSON.stringify(obj) + NL + '```';
 // The fields the ledger added to a row and to a report. Anything else new in a
 // flags-off row is a change the control did not have.
-export const LEDGER_ROW = ['editsApplied', 'masked', 'rereads', 'cachedTokens', 'cachedTotal', 'sameText', 'repeatEdits', 'spared', 'switches'];
+export const LEDGER_ROW = ['editsApplied', 'masked', 'rereads', 'cachedTokens', 'cachedTotal', 'sameText', 'repeatEdits', 'spared', 'switches', 'strayCalls'];
 export const LEDGER_REPORT = ['editsApplied', 'masked', 'rereads', 'cachedTotal', 'flags', 'sameText', 'repeatEdits', 'spared', 'switches'];
 
 // Registers flags for the length of fn, the way a round-five change will, and
