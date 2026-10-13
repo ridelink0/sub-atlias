@@ -994,6 +994,7 @@ await (await import('./sametext-suites.mjs')).default({ suite, asyncSuite, check
 await (await import('./straytool-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./guardreset-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./guardhook-suites.mjs')).default({ suite, check, core });
+await (await import('./brief-nocheck-suites.mjs')).default({ suite, check, core, TMP, fs, path, ROOT });
 await (await import('./toolset-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./meter-suites.mjs')).default({ suite, asyncSuite, check, fs, path, ROOT });
 await (await import('./authority-efficiency-suites.mjs')).default({ suite, asyncSuite, check, fs, path, PROJECT });

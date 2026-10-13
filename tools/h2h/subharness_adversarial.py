@@ -57,6 +57,10 @@ cases += [
     ("open quote split anyway", "lib/guard.mjs", "const texts = parts && !parts.open ? parts", "const texts = parts ? parts", CODEX_F),
     ("substitution taken as read-only", "lib/guard.mjs", "if (/\\$\\(|`|<\\(/.test(part.text) || part.bare.includes('>')) return false;", "", CODEX_F),
     ("hook ignores the positions switch", "lib/guard.mjs", "destructiveReason(command, Boolean(cfg.flags && cfg.flags.guardCommandPositions === true))", "destructiveReason(command)", CODEX_F),
+    ("no-check rule without its flag", "lib/brief.mjs", "if (!flags.briefNoCheckRule) return false;", "", ["node", "test/run.mjs", "no check is named"]),
+    ("no-check rule where a check exists", "lib/brief.mjs", "try { return !visibleCheck(cwd); } catch { return false; }", "return true;", ["node", "test/run.mjs", "no check is named"]),
+    ("tool list ignores its flag", "lib/brief.mjs", "flags.briefAllTools ? TOOLS_ALL : TOOLS_LISTED", "TOOLS_ALL", ["node", "test/run.mjs", "no check is named"]),
+    ("Stop timeout back to 30", "lib/hosts.mjs", "['Stop', 'stop', 45]", "['Stop', 'stop', 30]", ["node", "test/run.mjs", "45 seconds on every host"]),
     ("ledger drops middle requests", "lib/loop.mjs", "if (state.asks.length > 20 && !exact)", "if (state.asks.length > 20)", CODEX_F),
 ]
 rows = []

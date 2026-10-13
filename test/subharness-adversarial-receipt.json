@@ -253,6 +253,30 @@
       "timeout": false
     },
     {
+      "name": "no-check rule without its flag",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "no-check rule where a check exists",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "tool list ignores its flag",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "Stop timeout back to 30",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
       "name": "ledger drops middle requests",
       "caught": true,
       "exit": 1,
