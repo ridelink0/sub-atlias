@@ -746,7 +746,8 @@ def selftest_cases():
         seen = []
         fake_two = types.SimpleNamespace(end_all=lambda: None, make_shims=fake_shims,
             provenance=lambda _: copy.deepcopy(conditions), model_facts=lambda *_: conditions["model"],
-            run_one=lambda task, a, shims: (seen.append(a.harness) or {"pass": False, "usageComplete": False}))
+            run_one=lambda task, a, shims: (seen.append(a.harness) or {"pass": False, "usageComplete": False, "promptTotal": None,
+                "outputTotal": None, "peakContext": None, "stop": "fixture", "provenance": copy.deepcopy(conditions)}))
         try:
             globals()["verify"] = lambda _: two
             globals()["preflight"] = lambda *_: None
