@@ -1,3 +1,12 @@
+# A/A terminal outcome: native qualification held
+
+Updated 2026-10-13T22:26:22.914053+00:00
+AAcontroller44946 is terminal actualexit0 at22:25:11UTC. Frozen load_attempts verified4 receipt hashes. Bothbarearms solved104 andfailed107; eachnativecompletion1/2, eachcappedCalls1. TOTALbase284171 versussecondbare281434 (1.009725193x);PEAK17806 versus17504 (1.017253199x). This is calibration variation, notAtliasperformance.20xflagfalse. Correctedqueuev2 actualphaseheld at22:25:14UTC; batchunstarted becausefour native completionswereabsent. A/A sourceunchanged; do notoverwriteorretrofitthefailedtrial.
+
+Nextaftermeasuredreset: inspect task107stop/modelErrors/cappedCalls/proxylogs, resolveactualnativecapcause, create NEWfrozenmanifest andcalibrationbeforebatch. NeedcompleteClaude andCodex comparisons, nativefollowups/actorisolation,regular4xNanobot; targetsremainactive/unproved. Preserveallfailedreceipts. No newworkbelow10percent. Recoverywake20:30:41CDTOct13 isreset+7min; daily21:20unchanged.
+
+---
+
 # Live A/A evidence and queue correction
 
 Updated 2026-10-13T22:23:05.562546+00:00
