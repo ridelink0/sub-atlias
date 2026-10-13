@@ -149,6 +149,13 @@ suite('guard expert', 'guards', () => {
   check('counter resets after one denial', after === null, { happened: JSON.stringify(after), why: 'Without a reset the tool is dead for the rest of the session even when a repeat is legitimate.', fix: 'Count only events after the last deny event for that key.' });
   const other = guard.preTool({ session_id: s, cwd: PROJECT, tool_name: 'Grep', tool_input: { pattern: 'bar', path: PROJECT } });
   check('a different input is not counted as a repeat', other === null, { happened: JSON.stringify(other), why: 'False positives would block honest work.', fix: 'Key on tool name plus the full input JSON.' });
+  // Council 1013b (b06, b07): shapes the default guard let through until 2026-10-13.
+  const R = 'r' + 'm', HOME = '$' + 'HOME';
+  const MORE_DANGER = [`${R} -rf /*`, `${R} -rf ~/*`, `${R} -rf "${HOME}"`, `echo $(${R} -rf /)`, `(${R} -rf ~)`, `${R} -r -f /`, `${R} --recursive --force ~`, `bash -lc \\"${R} -rf ~\\"`,
+    'kill -Id 1234', 'kill 4321', 'Format-' + 'Volume -DriveLetter D', 'Clear-' + 'Disk -Number 1', 'echo x > /dev/sda', 'Remove-Item -Path ' + DRIVE + ' -Recurse', 'Remove-Item -Recurse -Force ' + HOME, 'rd /s /q "' + DRIVE + '"'];
+  const MORE_SAFE = [`${R} -rf ~/projects/x`, `${R} -rf /tmp/x`, `${R} -rf build/*`, 'rd /s /q build', 'skill 3', 'echo hi > out.txt', 'Remove-Item -Recurse -Force ' + WINPATH + ch(92) + 'proj'];
+  for (const c of MORE_DANGER) check(`destructive: ${c}`, guard.destructiveReason(c), { happened: 'not flagged', why: 'An irreversible command ran without a confirmation (council 1013b).', fix: `Add or widen the pattern that should match: ${c}` });
+  for (const c of MORE_SAFE) check(`harmless: ${c}`, !guard.destructiveReason(c), { happened: `flagged as ${guard.destructiveReason(c)}`, why: 'False positives train the user to click through.', fix: `Narrow the pattern that matched: ${c}` });
   for (const c of DANGER) check(`destructive: ${c}`, guard.destructiveReason(c), { happened: 'not flagged', why: 'An irreversible command ran without a confirmation.', fix: `Add or widen the pattern that should match: ${c}` });
   for (const c of SAFE) check(`harmless: ${c}`, !guard.destructiveReason(c), { happened: `flagged as ${guard.destructiveReason(c)}`, why: 'False positives turn every routine command into a prompt and train the user to click through.', fix: `Narrow the pattern that matched: ${c}` });
   const ask = guard.preTool({ session_id: s, cwd: PROJECT, tool_name: 'Bash', tool_input: { command: DANGER[3] } });
