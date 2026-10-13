@@ -404,6 +404,21 @@ def stage_gate(manifest, attempts, host, stage):
             "action": "hold" if reasons else "continue"}
 
 
+def smoke_gate(manifest, attempts, host):
+    """Before the long screen (council 1013b, b02): hold when the smoke already fails never worse,
+    that is the Atlias arm solved fewer matched tasks than base, or the pairs are unmatched. trial-07
+    and trial-08 each ran hours of screen after a smoke that had already failed it. Only the solve
+    rule applies here: the 20x minimum is the screen's to judge. "smokeGate": false in the spec
+    turns it off."""
+    measured = next(r for r in summarize(manifest, attempts)["reports"] if r["host"] == host and r["stage"] == "smoke")
+    reasons = []
+    if manifest["spec"].get("smokeGate", True) is not False and not measured["neverWorse"]:
+        reasons.append("never worse at smoke: the Atlias arm solved fewer matched tasks than base, or the pairs are unmatched (Gev, 2026-10-13)")
+    inputs = [a for a in attempts if a["trial"]["host"] == host and a["trial"]["stage"] == "smoke"]
+    return {"manifest": manifest["id"], "host": host, "stage": "smoke", "gate": "smoke", "attemptsHash": digest(inputs),
+            "measurement": measured, "reasons": reasons, "action": "hold" if reasons else "continue"}
+
+
 def report(root, manifest=None):
     root = pathlib.Path(root)
     manifest = manifest or verify(root)
@@ -593,9 +608,11 @@ def run_owned(root, gpu_lock, max_tasks=0):
                 if STOP_REQUESTED or (root / "STOP").exists() or (max_tasks and n >= max_tasks):
                     write(root / "STATE.json", {"manifest": manifest["id"], "phase": "stopped-at-task-boundary", "next": trial, "at": now()})
                     break
-                prerequisite = {"confirmation": "screen", "ultimate": "confirmation"}.get(trial["stage"])
+                prerequisite = {"screen": "smoke", "confirmation": "screen", "ultimate": "confirmation"}.get(trial["stage"])
+                if prerequisite == "smoke" and not any(s["name"] == "smoke" for s in manifest["spec"]["stages"]):
+                    prerequisite = None
                 if prerequisite:
-                    gate = stage_gate(manifest, attempts, trial["host"], prerequisite)
+                    gate = smoke_gate(manifest, attempts, trial["host"]) if prerequisite == "smoke" else stage_gate(manifest, attempts, trial["host"], prerequisite)
                     write(root / "gates" / f"{trial['host']}-{prerequisite}.json", gate)
                     if gate["action"] == "hold":
                         # A verdict holds this host's later stages only. The other host's stages are
@@ -704,6 +721,21 @@ def selftest_cases():
     t = summarize(m, traded)["reports"][0]
     check("one gained and one lost is never worse, and the strict stage gate still holds on the loss",
           t["neverWorse"] is True and t["lost"] == 1 and t["gained"] == 1 and stage_gate(m, traded, "claude", "screen")["action"] == "hold")
+    sm = copy.deepcopy(m)
+    sm["spec"]["stages"][0]["name"] = "smoke"
+    def as_smoke(rows):
+        # The same rows on the smoke plan's own trials (a trial's key includes its stage).
+        rows = copy.deepcopy(rows)
+        for x, t in zip(rows, plan(sm)):
+            x["trial"] = t
+        return rows
+    check("a smoke that is never worse lets the screen start, whatever its token ratio", smoke_gate(sm, as_smoke(below), "claude")["action"] == "continue")
+    check("a smoke where Atlias solved fewer holds the screen, and says why", smoke_gate(sm, as_smoke(lost_task), "claude")["action"] == "hold"
+          and smoke_gate(sm, as_smoke(lost_task), "claude")["reasons"][0].startswith("never worse at smoke"))
+    check("a smoke that traded one task for another is never worse and lets the screen start", smoke_gate(sm, as_smoke(traded), "claude")["action"] == "continue")
+    off = copy.deepcopy(sm)
+    off["spec"]["smokeGate"] = False
+    check("smokeGate false in the spec turns the smoke gate off", smoke_gate(off, as_smoke(lost_task), "claude")["action"] == "continue")
     per_solve = summarize(m, attempts)["reports"][0]["arms"]
     check("tokens per solved task are reported per arm", per_solve["base"]["tokensPerSolved"] == 220 and per_solve["atlias"]["tokensPerSolved"] == 10)
     blocks = copy.deepcopy(attempts)
