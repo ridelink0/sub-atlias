@@ -71,6 +71,7 @@ class Door(http.server.ThreadingHTTPServer):
         self.first = None       # when the first chat call arrived: the task's clock starts there
         self.receipts = []      # one per call the harness made, model or not: raw usage blocks, the parts read, how it ended
         self.partial = 0        # calls whose answer ended before its terminal event
+        self.cut = 0            # calls the model server ended at the output cap (council 1013b: never read before)
 
     @property
     def base(self):
@@ -119,6 +120,28 @@ def _responses_usage(u):
         return None
     p, c = _count(u.get("input_tokens")), _count(u.get("output_tokens"))
     return (p, c) if p is not None and c is not None else None
+
+
+CUT_STOPS = {"length", "max_tokens", "max_output_tokens"}  # chat, messages and Responses names for "ended at the output cap"
+
+
+def _note_stop(door, rec, why):
+    """Keeps why the model server ended a call (finish_reason, stop_reason or the Responses
+    incomplete reason) on its receipt, and counts a call ended at the output cap."""
+    if not isinstance(why, str) or not why:
+        return
+    rec["stop"] = why[:40]
+    if why in CUT_STOPS and not rec.get("cut"):
+        rec["cut"] = True
+        with door.lock:
+            door.cut += 1
+
+
+def ended_cut(receipts):
+    """Whether the last call that reached the model ended at the output cap: the run then stopped
+    on a reply that was never finished, which is not ending by itself (council 1013b, b02 b10 b11 b14)."""
+    sent = [r for r in receipts if r.get("slot") is not None]
+    return bool(sent) and bool(sent[-1].get("cut"))
 
 
 def _message_usage(u):
@@ -335,6 +358,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                         rec["usage"].append(answer.get("usage"))
                         s.usage[slot] = _responses_usage(answer.get("usage"))
                         rec["outcome"] = "complete" if answer.get("status") in (None, "completed") else str(answer.get("status"))[:40]
+                        _note_stop(s, rec, (answer.get("incomplete_details") or {}).get("reason") or answer.get("status"))
                     except Exception:
                         rec["outcome"] = "answer not readable"
                     self._send(r.status, data, r.headers.get("Content-Type") or "application/json")
@@ -357,6 +381,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                                     s.usage[slot] = _responses_usage(resp.get("usage"))
                                     if ended != "response.completed":
                                         rec["detail"] = resp.get("incomplete_details") or resp.get("error")
+                                    _note_stop(s, rec, (resp.get("incomplete_details") or {}).get("reason") or resp.get("status"))
                             except Exception:
                                 pass
                         try:
@@ -429,7 +454,9 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                 if not stream:
                     data = r.read()
                     try:
-                        note(json.loads(data.decode("utf-8")).get("usage"))
+                        answer = json.loads(data.decode("utf-8"))
+                        note(answer.get("usage"))
+                        _note_stop(s, rec, answer.get("stop_reason"))
                         rec["outcome"] = "complete"
                     except Exception:
                         rec["outcome"] = "answer not readable"
@@ -443,12 +470,13 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                     ended, left = False, False
                     for line in r:
                         # The prompt count comes with message_start, the output count with message_delta.
-                        if line.startswith(b"data:") and (b'"usage"' in line or b"message_stop" in line):
+                        if line.startswith(b"data:") and (b'"usage"' in line or b"message_stop" in line or b'"stop_reason"' in line):
                             try:
                                 ev = json.loads(line[5:].decode("utf-8").strip())
                                 ended = ended or ev.get("type") == "message_stop"
                                 note((ev.get("message") or {}).get("usage"))
                                 note(ev.get("usage"))
+                                _note_stop(s, rec, (ev.get("delta") or {}).get("stop_reason"))
                             except Exception:
                                 pass
                         try:
@@ -518,6 +546,8 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                         rec["usage"].append(answer.get("usage"))
                         s.usage[slot] = _usage_of(answer)
                         rec["outcome"] = "complete"
+                        for choice in answer.get("choices") or []:
+                            _note_stop(s, rec, (choice or {}).get("finish_reason"))
                     except Exception:
                         rec["outcome"] = "answer not readable"
                     self._send(r.status, data, r.headers.get("Content-Type") or "application/json")
@@ -531,11 +561,14 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                     for line in r:
                         if line.startswith(b"data:") and line[5:].strip() == b"[DONE]":
                             ended = True
-                        elif line.startswith(b"data:") and b'"usage"' in line:
+                        elif line.startswith(b"data:") and (b'"usage"' in line or b'"finish_reason":"' in line or b'"finish_reason": "' in line):
                             try:
                                 ev = json.loads(line[5:].decode("utf-8").strip())
-                                rec["usage"].append(ev.get("usage"))
-                                s.usage[slot] = _usage_of(ev) or s.usage[slot]
+                                if b'"usage"' in line:
+                                    rec["usage"].append(ev.get("usage"))
+                                    s.usage[slot] = _usage_of(ev) or s.usage[slot]
+                                for choice in ev.get("choices") or []:
+                                    _note_stop(s, rec, (choice or {}).get("finish_reason"))
                             except Exception:
                                 pass
                         try:
@@ -932,6 +965,9 @@ def run_one(task, a, shims):
         split = {k: sum(c.get(k, 0) for c in parts) for k in ("uncached", "cacheCreate", "cacheRead")}
     if door.capped:
         stop += f"; step limit reached ({door.capped} further call(s) answered with a stop)"
+    cut_last = ended_cut(door.receipts)
+    if cut_last:
+        stop += "; the last reply was cut at the output cap"
     if passed and not a.keep:
         shutil.rmtree(ws, ignore_errors=True)
         shutil.rmtree(state, ignore_errors=True)
@@ -944,7 +980,9 @@ def run_one(task, a, shims):
             "peakContext": max([p + o for p, o in usage] or [0]) if counted else None,
             "usageComplete": counted, "inputParts": split, "partialCalls": door.partial,
             # Whether the harness ended by itself, apart from whether the grader passed what it left.
-            "nativeCompleted": rc == 0 and not door.capped and not door.errors and not door.partial and bool(usage),
+            # A run whose last model reply ended at the output cap stopped on an unfinished reply.
+            "nativeCompleted": rc == 0 and not door.capped and not door.errors and not door.partial and bool(usage) and not cut_last,
+            "cutCalls": door.cut, "endedCut": cut_last,
             "numCtx": a.num_ctx, "loadedWindow": window, "loadedWindows": windows, "taskDigests": task_digests(task), "provenance": getattr(a, "provenance", None),
             "receipts": door.receipts,
             "refused": door.refused[:20], "modelErrors": door.errors[:20], "addedFiles": None if (passed and not a.keep) else added,

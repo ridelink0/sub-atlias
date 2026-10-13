@@ -235,6 +235,36 @@
       "timeout": false
     },
     {
+      "name": "positions reads a pipe into a shell",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "positions refuses 2>/dev/null",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "space before > /dev/sd slips by",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "quoted or globbed home target slips by",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "door ignores a cut reply",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
       "name": "open quote split anyway",
       "caught": true,
       "exit": 1,

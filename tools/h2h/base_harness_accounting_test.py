@@ -12,6 +12,7 @@ import sys
 import tempfile
 import threading
 import time
+import types
 import urllib.error
 import urllib.request
 
@@ -41,7 +42,7 @@ class Upstream(http.server.BaseHTTPRequestHandler):
               ("content_block_start", {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
               ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "hi"}}),
               ("content_block_stop", {"type": "content_block_stop", "index": 0})]
-        ev += [("message_delta", {"type": "message_delta", "delta": {"stop_reason": "end_turn"}, "usage": u}) for u in say.get("deltas", [])]
+        ev += [("message_delta", {"type": "message_delta", "delta": {"stop_reason": say.get("stop", "end_turn")}, "usage": u}) for u in say.get("deltas", [])]
         if say.get("end", True):
             ev.append(("message_stop", {"type": "message_stop"}))
         self.send_response(200)
@@ -115,6 +116,25 @@ def main():
     check("a call past the budget is answered by the door, has a receipt that says so, and adds no model count",
           door.capped == 1 and door.receipts[-1]["outcome"].startswith("capped") and door.receipts[-1]["slot"] is None and len(door.usage) == 5, (door.capped, door.receipts[-1]))
     check("every call the harness made has exactly one receipt", len(door.receipts) == door.calls == 6, (len(door.receipts), door.calls))
+    # Council 1013b: why the model server ended each call is kept, and a reply cut at the output cap is named.
+    door2 = B.Door(f"http://127.0.0.1:{up.server_address[1]}", "qwen3.5:9b", 2048, 9)
+    threading.Thread(target=door2.serve_forever, daemon=True).start()
+    door, keep = door2, door
+    call({"start": {"input_tokens": 100, "output_tokens": 1}, "deltas": [{"output_tokens": 2048}], "stop": "max_tokens"})
+    rc = door2.receipts[-1]
+    check("a reply the model server ended at the output cap is kept as cut on its receipt and counted",
+          rc.get("stop") == "max_tokens" and rc.get("cut") is True and door2.cut == 1 and B.ended_cut(door2.receipts), (rc, door2.cut))
+    call({"start": {"input_tokens": 100, "output_tokens": 1}, "deltas": [{"output_tokens": 9}]})
+    check("a later reply that ends by itself keeps the count but the run no longer ended on a cut reply",
+          door2.receipts[-1].get("stop") == "end_turn" and not door2.receipts[-1].get("cut") and door2.cut == 1 and not B.ended_cut(door2.receipts), (door2.receipts[-1], door2.cut))
+    door = keep
+    ns = types.SimpleNamespace(lock=threading.Lock(), cut=0)
+    chat, resp, done, odd = {}, {}, {}, {}
+    B._note_stop(ns, chat, "length"); B._note_stop(ns, resp, "max_output_tokens"); B._note_stop(ns, done, "stop"); B._note_stop(ns, odd, None)
+    B._note_stop(ns, chat, "length")
+    check("the chat and Responses names for a cut count once per call; a normal stop or no reason is not a cut",
+          ns.cut == 2 and chat.get("cut") and resp.get("cut") and done == {"stop": "stop"} and odd == {}, (ns.cut, chat, resp, done, odd))
+    check("a run with no model call did not end on a cut reply", not B.ended_cut([]) and not B.ended_cut([{"slot": None, "cut": True}]))
     sent = [r.get("sent") for r in door.receipts if r["slot"] is not None]
     check("every call sent to the model names the size and hash of the exact body sent, and two different bodies differ",
           all(x and x["bytes"] > 0 and len(x["sha256"]) == 64 for x in sent) and len({x["sha256"] for x in sent}) == len(sent), sent)
