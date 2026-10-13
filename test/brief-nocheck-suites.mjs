@@ -14,6 +14,33 @@ export default async function briefNoCheckSuites({ suite, check, core, TMP, fs, 
   };
   const withFlags = (flags) => ({ ...core.config(), flags: { ...core.config().flags, ...flags } });
   const say = (dir, flags) => brief.build({ cwd: dir, source: 'startup', session_id: `nocheck-${process.pid}-${Date.now()}` }, 'claude', withFlags(flags));
+  suite('brief no-check adversary', 'uncertain discovery never claims no check exists', () => {
+    const ambiguous = project('ambiguous', { 'check.py': 'assert True\n', 'verify.py': 'assert True\n' });
+    const malformed = project('malformed-package', { 'package.json': '{ broken metadata' });
+    check('tied best candidates and malformed package metadata cannot select the no-check rule', !/do not write one/.test(say(ambiguous, { briefNoCheckRule: true })) && !/do not write one/.test(say(malformed, { briefNoCheckRule: true })),
+      { happened: 'ambiguous and malformed project briefs', why: 'Unknown discovery is not definite absence.', fix: 'Retain discovery uncertainty separately from the optional unique check.' });
+    const original = { readdirSync: fs.readdirSync, statSync: fs.statSync, readFileSync: fs.readFileSync };
+    const denied = () => { const e = new Error('fixture access denied'); e.code = 'EACCES'; throw e; };
+    const same = (a, b) => path.resolve(String(a)) === path.resolve(String(b));
+    try {
+      const cases = [
+        ['readdirSync', '', 'root enumeration', { 'main.py': 'X=1\n' }],
+        ['statSync', 'test_x.py', 'candidate stat', { 'test_x.py': 'assert True\n' }],
+        ['readFileSync', 'test_x.py', 'candidate read', { 'test_x.py': 'assert True\n' }],
+        ['readFileSync', 'pyproject.toml', 'suite metadata read', { 'pyproject.toml': '[project]\nname="x"\n' }],
+        ['readdirSync', 'tests', 'tests enumeration', { 'tests/helper.py': 'X=1\n' }],
+      ];
+      for (const [method, relative, label, files] of cases) {
+        const dir = project(label.replaceAll(' ', '-'), files);
+        const target = path.join(dir, relative);
+        fs[method] = (...args) => same(args[0], target) ? denied() : original[method](...args);
+        const text = say(dir, { briefNoCheckRule: true });
+        check(`unreadable ${label} is unknown rather than no-check`, !/do not write one/.test(text),
+          { happened: text.slice(-400), why: 'An inaccessible project or candidate cannot justify absence of a check.', fix: 'Keep uncertainty and suppress only the optional no-check branch.' });
+        fs[method] = original[method];
+      }
+    } finally { Object.assign(fs, original); }
+  });
   suite('brief no-check expert', 'no check is named, so the brief says not to write one', () => {
     const on = brief.doneRule({ none: true });
     const onOff = brief.doneRule({ none: true, doublePass: false });

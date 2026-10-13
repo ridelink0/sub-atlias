@@ -1,7 +1,55 @@
 import * as mod from '../mods/atlias-efficiency/hooks/register.mjs';
 import * as loop from '../lib/loop.mjs';
+import * as agent from '../lib/agent.mjs';
 
 export default async function authorityEfficiencySuites({ suite, asyncSuite, check, fs, path, PROJECT }) {
+  suite('authority expert', 'authority: exact requests survive save, resume and repeated compaction', () => {
+    const key = 'ATLIAS_FLAG_AUTHORITY_LEDGER';
+    const previous = process.env[key];
+    try {
+      process.env[key] = '1';
+      const a = 'Keep schema exactly.\r\n' + 'long detail '.repeat(800) + 'FINAL_AUTHORITY';
+      const state = { sid: 'authority-persistence', cwd: PROJECT, engine: 'echo', history: [], messages: [{ role: 'system', content: 'system' }], asks: [], edited: new Set() };
+      const add = (s, text) => { loop.rememberAsk(s, text, true); s.messages.push({ role: 'user', content: text }, { role: 'assistant', content: 'observed' }); };
+      for (const text of [a, 'Amend only the validator.', a]) add(state, text);
+      loop.compact(state, 2, true);
+      agent.saveChat(state);
+      let resumed = agent.loadChat(state.sid, PROJECT);
+      add(resumed, 'Add the test; preserve prior requirements.');
+      loop.compact(resumed, 2, true);
+      agent.saveChat(resumed);
+      resumed = agent.loadChat(state.sid, PROJECT);
+      add(resumed, 'One final follow-up.');
+      loop.compact(resumed, 2, true);
+      const context = resumed.messages.map((m) => m.content).join('\n');
+      check('all exact occurrences survive two restarts, including A/B/A beyond the evidence budget', resumed.asks.length === 5 && resumed.asks[0] === a && resumed.asks[2] === a && context.split(a).length === 3 && context.includes('Amend only the validator.') && context.includes('Add the test; preserve prior requirements.'),
+        { happened: JSON.stringify({ asks: resumed.asks.length, chars: context.length }), why: 'The serializer is part of the authority boundary; in-memory compaction tests cannot catch a missing saved ledger.', fix: 'Save and restore exact asks in the flag-on session record.' });
+      const file = agent.chatPath(state.sid);
+      const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
+      delete saved.asks; delete saved.authorityMissing;
+      fs.writeFileSync(file, JSON.stringify(saved));
+      const legacy = agent.loadChat(state.sid, PROJECT);
+      add(legacy, 'New follow-up on an old session.');
+      const before = JSON.stringify(legacy.messages);
+      const result = loop.compact(legacy, 2, true);
+      check('a legacy session with unknown exact history retains its whole existing context', /cannot compact/.test(result) && JSON.stringify(legacy.messages) === before && legacy.authorityMissing,
+        { happened: result, why: 'A new ask must not make an incomplete old ledger look complete and erase the prior capsule.', fix: 'Persist the missing-history marker and refuse a destructive exact compaction.' });
+      agent.saveChat(legacy);
+      check('the unknown-history marker survives another restart', agent.loadChat(state.sid, PROJECT).authorityMissing === true,
+        { happened: 'legacy marker after save/load', why: 'A restart must not falsely qualify missing history.', fix: 'Save authorityMissing with the ledger.' });
+      saved.asks = [a, null];
+      fs.writeFileSync(file, JSON.stringify(saved));
+      let rejected = false;
+      try { agent.loadChat(state.sid, PROJECT); } catch (e) { rejected = /Invalid saved request ledger/.test(e.message); }
+      check('a malformed saved exact ledger is rejected instead of silently normalized', rejected,
+        { happened: rejected, why: 'Null or altered request text is not exact authority.', fix: 'Validate every saved request as a string.' });
+      process.env[key] = '0';
+      agent.saveChat(state);
+      const off = JSON.parse(fs.readFileSync(file, 'utf8'));
+      check('flag-off session shape retains the original fields without new authority fields', !Object.hasOwn(off, 'asks') && !Object.hasOwn(off, 'authorityMissing') && !Object.hasOwn(agent.loadChat(state.sid, PROJECT), 'asks'),
+        { happened: Object.keys(off).join(','), why: 'Existing frozen comparisons must keep the old persistence path when the feature is off.', fix: 'Gate save and restore fields behind authorityLedger.' });
+    } finally { if (previous === undefined) delete process.env[key]; else process.env[key] = previous; }
+  });
   const long = 'Never change the schema.\r\n' + 'detail '.repeat(800) + 'Keep END_AUTHORITY_1012 exactly.';
   const asks = [long, ...Array.from({ length: 18 }, (_, i) => `Only change item ${i}; preserve constraint ${i}. ` + 'x'.repeat(420)), 'Repeat me', 'Repeat me'];
   const makeState = () => ({ cwd: PROJECT, asks, pinned: ['an obsolete extracted rule'], edited: new Set(),
