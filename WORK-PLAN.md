@@ -1,3 +1,12 @@
+# Usage guard cutoff audit
+
+Updated 2026-10-13T22:28:34.060601+00:00
+Live meter4%left,8estimatedturns; measuredreset2026-10-14T01:23:40Z. Gev's below10% rule forbids starting a new trial or implementation. This same external constraint has recurred across at leastthree consecutive goal continuations (8%,6%,now4%). The running A/A has ended actualexit0; correctedqueuev2isheld and batchunstarted. Existingresults/handoffarecommitted. No further meaningful work can proceed under the usageguard until the windowreset. Mark goalblocked for this external usageguard, nevercomplete; automatic recovery20:30:41CDTOct13 remainsACTIVE, checked421sec afterthe freshreset. Resume the full unchanged20x/4xobjective whenusageallows.
+
+Previous queuev1terminalstderr is KeyError:trial, retained; v2correctlyheldnativeincomplete. No model attempt was repeated or evidence replaced. Nextactualfix is14-round defaultstepcap inA/A107; makeaNEWmatchedspec/frozenmanifestafterresearch/sourcecheck, keepnativecompletionstrict, thenfinishbatchClaude/Codex andregular4xNanobot.
+
+---
+
 # A/A terminal outcome: native qualification held
 
 Updated 2026-10-13T22:26:22.914053+00:00
