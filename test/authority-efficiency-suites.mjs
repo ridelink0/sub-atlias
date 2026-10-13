@@ -75,5 +75,28 @@ export default async function authorityEfficiencySuites({ suite, asyncSuite, che
     const dropped = await hooks({ enabled: true, skillListing: true })['prompt.attachment']({}, listingEvent, async () => ({ text: null }));
     check('a listing another hook already left out stays out', dropped.text === null,
       { happened: dropped, why: 'A null text means the attachment is omitted; rewriting it would put it back.', fix: 'Pass a non-string text through.' });
+
+    const mem = { name: 'memory', text: '# Memory\nlong instructions' };
+    check('only the named memory section is left out, and only when its switch is on', mod.section({ name: 'memory' }, mem, true).text === null && mod.section({ name: 'memory' }, mem, false) === mem && mod.section({ name: 'env_info_simple' }, mem, true) === mem && mod.section({ name: 'a_future_section' }, mem, true) === mem && mod.section(undefined, mem, true) === mem,
+      { happened: mod.OMIT_SECTIONS, why: 'The safety, action and environment sections are not this mod\'s to remove, and a section it does not know must pass.', fix: 'Omit only names in OMIT_SECTIONS.' });
+    const bash = { tool: 'Bash', provider: { plugin: 'engine' } };
+    const opening = 'Executes a bash command and returns its output.\n\nThis tool runs Git Bash (POSIX sh).\n';
+    const bashText = { description: opening + '\n- ' + 'a long note about the shell. '.repeat(60), isDeferred: undefined };
+    const small = mod.compactText(bash, bashText, true);
+    check('compact tool text keeps the opening of the original, replaces only the notes, and leaves the rest of the result alone', small.description === opening + '\n' + mod.TOOL_TEXT.Bash.tail && small.description.length < bashText.description.length && Object.keys(small).join() === Object.keys(bashText).join() && bashText.description.endsWith('shell. '),
+      { happened: small.description.slice(0, 160), why: 'The opening names the shell this build runs, and the schema and placement are not text.', fix: 'Cut at the break the rule names, append its tail, copy the result.' });
+    const same = [mod.compactText(bash, bashText, false), mod.compactText({ tool: 'Edit', provider: { plugin: 'engine' } }, bashText, true), mod.compactText({ tool: 'constructor', provider: { plugin: 'engine' } }, bashText, true), mod.compactText({ ...bash, provider: { plugin: 'mcp:x' } }, bashText, true)];
+    check('off, a tool not in the table, another provider\'s tool, a text without the expected break and a text that would not get shorter are untouched', same.every((r) => r === bashText) && mod.compactText(bash, { description: 'One line only.' }, true).description === 'One line only.' && mod.compactText(bash, { description: 'Short.\n- note' }, true).description === 'Short.\n- note',
+      { happened: same.map((r) => r === bashText), why: 'A changed native text must not be guessed at, and an MCP tool named Bash is not the engine\'s.', fix: 'Return the result itself unless the engine tool is in TOOL_TEXT, the break is found and the text gets shorter.' });
+    const wired = hooks({ enabled: true, omitMemorySection: true, compactToolText: true });
+    const plain = hooks({ enabled: true });
+    const masterOff = hooks({ omitMemorySection: true, compactToolText: true });
+    const envApi = { env: { get: async () => 'true' } };
+    const searchText = { description: 'Fetches full schema definitions.\n\n' + 'Long explanation. '.repeat(40) };
+    const memOf = (h) => h['prompt.section']({}, { name: 'memory' }, async () => mem);
+    const bashOf = (h) => h['tool.describe'](envApi, bash, async () => bashText);
+    const got = [await memOf(wired), await memOf(plain), await memOf(masterOff), await bashOf(wired), await bashOf(plain), await bashOf(masterOff), await wired['tool.describe'](envApi, { tool: 'ToolSearch', provider: { plugin: 'engine' } }, async () => searchText)];
+    check('each cut answers to its own switch under the master switch, and the ToolSearch note still follows the compact text', got[0].text === null && got[1] === mem && got[2] === mem && got[3].description === small.description && got[4] === bashText && got[5] === bashText && got[6].description === 'Fetches full schema definitions.\n' + mod.TOOL_TEXT.ToolSearch.tail + mod.NOTE,
+      { happened: [got[0].text, got[3].description.length, got[6].description.length], why: 'Each cut is measured alone, so each must be its own switch, and off must be the native bytes.', fix: 'Gate each handler on enabled and on its own option.' });
   });
 }

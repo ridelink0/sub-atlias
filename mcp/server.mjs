@@ -31,6 +31,11 @@ export function handle(msg) {
   }
   if (method === 'resources/list') return reply(id, { resources: [] });
   if (method === 'prompts/list') return reply(id, { prompts: [] });
+  if (method === 'resources/templates/list') return reply(id, { resourceTemplates: [] });
+  // A host that offers a generic "read MCP resource" tool lets a small model try it on project
+  // files. On 2026-10-13 a 9B in Codex did, twice in one task, and "method not found" told it
+  // nothing (RESEARCH-FIRST H3: an error has to be something the model can act on).
+  if (method === 'resources/read') return fail(id, -32002, 'atlias serves no resources. Read project files with the shell or with the file tool of the host, not through this server.');
   if (id !== undefined) return fail(id, -32601, `method not found: ${method}`);
 }
 

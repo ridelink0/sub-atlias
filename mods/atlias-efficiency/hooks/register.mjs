@@ -43,9 +43,42 @@ export function briefListing(text, enabled) {
   return cut ? out.join('\n') + LISTING_NOTE : text;
 }
 
+// RESEARCH-FIRST 0f: Claude Code's own memory instructions were 2,313 of the system prompt's
+// 5,861 characters (trial-02). With Atlias loaded, memory is Atlias's (harness_recall,
+// harness_remember). Only a section named here is left out; any other section, known or
+// future, passes through untouched.
+export const OMIT_SECTIONS = ['memory'];
+
+export function section(event, result, enabled) {
+  if (!enabled || !OMIT_SECTIONS.includes(event?.name)) return result;
+  return { ...result, text: null };
+}
+
+// H1: Bash, Read and ToolSearch carried 3,500 characters of description on every call
+// (trial-02). The opening of each original text is kept, because it names the shell this
+// build runs; the long notes after it are replaced by these, and the schema, which names
+// every parameter, is never touched. A description without the expected break is left whole.
+export const TOOL_TEXT = {
+  Bash: { until: '\n- ', tail: '- The working directory persists between calls; shell state does not.\n- Prefer the dedicated tools over `find`, `grep`, `cat`, `head`, `tail`, `sed`, `awk` and `echo`.\n- `timeout` is in milliseconds (default 120000, max 600000); `run_in_background` runs a command detached, with no `&`.\n- Git: no interactive flags (`-i`); commit or push only when the user asks.' },
+  Read: { until: '\n- ', tail: '- `file_path` must be an absolute path.\n- Returns up to 2000 lines in cat -n format; read only the part you need with `offset` and `limit`.\n- Also reads images, PDFs (`pages`, max 20 a request) and Jupyter notebooks.\n- Do not re-read a file you just edited: Edit and Write report an error when a change fails.' },
+  ToolSearch: { until: '\n\n', tail: 'Deferred tools appear by name in <system-reminder> messages and cannot be called until fetched. Query "select:Name1,Name2" for exact names, or keywords to search (up to max_results matches). A fetched tool is callable like any other.' },
+};
+
+export function compactText(event, result, enabled) {
+  if (!enabled || event?.provider?.plugin !== 'engine' || !Object.hasOwn(TOOL_TEXT, event.tool) || typeof result?.description !== 'string') return result;
+  const rule = TOOL_TEXT[event.tool];
+  const at = result.description.indexOf(rule.until);
+  if (at < 0) return result;
+  const description = result.description.slice(0, at) + '\n' + rule.tail;
+  return description.length < result.description.length ? { ...result, description } : result;
+}
+
 export function register(on, options = {}) {
   const enabled = options.enabled === true;
   const listing = enabled && options.skillListing === true;
+  const noMemory = enabled && options.omitMemorySection === true;
+  const compact = enabled && options.compactToolText === true;
+  on('prompt.section', { name: 'memory' }, async ($, e, next) => section(e, await next(e), noMemory)).catch(async ($, e, next) => next(e));
   on('prompt.attachment', { type: 'skill_listing' }, async ($, e, next) => {
     const result = await next(e);
     if (!listing || e?.origin?.kind !== 'engine' || typeof result?.text !== 'string') return result;
@@ -56,6 +89,6 @@ export function register(on, options = {}) {
     if (!enabled) return result;
     // Explicit opt-in is also necessary on custom endpoints; do not infer compatibility.
     const compatible = (await $.env.get('ENABLE_TOOL_SEARCH')) === 'true';
-    return placement(e, result, enabled, compatible);
+    return placement(e, compactText(e, result, compact), enabled, compatible);
   }).catch(async ($, e, next) => next(e));
 }

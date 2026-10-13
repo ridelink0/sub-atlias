@@ -6,10 +6,12 @@ Run ``selftest`` before preparing a measurement manifest. No model is called
 by prepare, status, report, or selftest.
 """
 import argparse
+import contextlib
 import copy
 import datetime as dt
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import pathlib
@@ -530,9 +532,10 @@ def run_owned(root, gpu_lock, max_tasks=0):
                 done.add(active["trial"]["key"])
             active_path.unlink()
         n = 0
+        held = {}
         try:
             for trial in plan(manifest):
-                if trial["key"] in done:
+                if trial["key"] in done or trial["host"] in held:
                     continue
                 if STOP_REQUESTED or (root / "STOP").exists() or (max_tasks and n >= max_tasks):
                     write(root / "STATE.json", {"manifest": manifest["id"], "phase": "stopped-at-task-boundary", "next": trial, "at": now()})
@@ -542,9 +545,11 @@ def run_owned(root, gpu_lock, max_tasks=0):
                     gate = stage_gate(manifest, attempts, trial["host"], prerequisite)
                     write(root / "gates" / f"{trial['host']}-{prerequisite}.json", gate)
                     if gate["action"] == "hold":
-                        write(root / "STATE.json", {"manifest": manifest["id"], "phase": "held-stage-verdict", "next": trial,
-                                                   "gate": gate, "at": now()})
-                        break
+                        # A verdict holds this host's later stages only. The other host's stages are
+                        # their own measurement and still run: before this, Claude's held screen
+                        # ended the run and Codex's screen was never measured.
+                        held[trial["host"]] = {"next": trial, "gate": gate}
+                        continue
                 verify(root)
                 a = arguments(root, manifest, trial)
                 pathlib.Path(a.work).mkdir(parents=True, exist_ok=True)
@@ -582,7 +587,12 @@ def run_owned(root, gpu_lock, max_tasks=0):
                     write(root / "STATE.json", {"manifest": manifest["id"], "phase": "held-native-qualification", "trial": trial, "at": now()})
                     break
             else:
-                write(root / "STATE.json", {"manifest": manifest["id"], "phase": "measurements-complete", "at": now()})
+                if held:
+                    first = next(iter(held.values()))
+                    write(root / "STATE.json", {"manifest": manifest["id"], "phase": "held-stage-verdict", "next": first["next"],
+                                               "gate": first["gate"], "held": held, "at": now()})
+                else:
+                    write(root / "STATE.json", {"manifest": manifest["id"], "phase": "measurements-complete", "at": now()})
         finally:
             runner.end_all()
             report(root, manifest)
@@ -730,6 +740,23 @@ def selftest_cases():
         finally:
             globals().update(original)
         check("run holds below-minimum screen before another model call", held)
+        two = copy.deepcopy(gate_manifest)
+        two["spec"]["hosts"].append({"host": "codex", "numCtx": 100, "client": sys.executable})
+        write(trial_root / "TASKS.json", {"held": {"id": "held"}, "a": {"id": "a"}, "b": {"id": "b"}})
+        seen = []
+        fake_two = types.SimpleNamespace(end_all=lambda: None, make_shims=fake_shims,
+            provenance=lambda _: copy.deepcopy(conditions), model_facts=lambda *_: conditions["model"],
+            run_one=lambda task, a, shims: (seen.append(a.harness) or {"pass": False, "usageComplete": False}))
+        try:
+            globals()["verify"] = lambda _: two
+            globals()["preflight"] = lambda *_: None
+            globals()["backend"] = lambda _: fake_two
+            with contextlib.redirect_stdout(io.StringIO()):
+                run_owned(trial_root, trial_root / "fake-gpu.lock", max_tasks=1)
+        finally:
+            globals().update(original)
+        check("a held host does not stop the other host's stages",
+              seen == ["codex"] and read(trial_root / "gates" / "claude-screen.json")["action"] == "hold")
     with tempfile.TemporaryDirectory() as temp:
         temp = pathlib.Path(temp)
         source, tasks = temp / "candidate", temp / "tasks"
@@ -799,6 +826,8 @@ def selftest(receipt_path):
                 ("stage native completion gate bypassed", 'if measured["arms"][arm]["nativeCompleted"] != measured["arms"][arm]["expected"]:', 'if False:'),
                 ("stage task loss gate bypassed", 'if measured["lost"] != 0:', 'if False:')]
     mutants += [("stage gate not dispatched", 'if prerequisite:', 'if False:')]
+    mutants += [("held host ends the other host's stages", 'held[trial["host"]] = {"next": trial, "gate": gate}',
+                 'write(root / "STATE.json", {"manifest": manifest["id"], "phase": "held-stage-verdict", "next": trial, "gate": gate, "at": now()}); break')]
     mutants += [("check copy left without a commit", '["add", "-A"], ["commit", "-q", "-m", label]', '["add", "-A"]')]
     source = pathlib.Path(__file__).read_text(encoding="utf-8")
     planted = []
