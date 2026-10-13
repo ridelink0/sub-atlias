@@ -401,6 +401,16 @@ class Lease:
             pass
 
 
+def repository(folder, label):
+    """A frozen snapshot carries no .git, and a check that stamps a result with its commit needs one
+    to name. Only the disposable check copy becomes a repository; the measured source never does."""
+    for args in (["init", "-q"], ["add", "-A"], ["commit", "-q", "-m", label]):
+        done = subprocess.run(["git", "-c", "core.autocrlf=false", "-c", "user.name=Gev", "-c", "user.email=gev@localhost", *args],
+                              cwd=str(folder), capture_output=True, timeout=600)
+        if done.returncode != 0:
+            raise ValueError("disposable check copy could not be committed: " + done.stderr.decode("utf-8", "replace")[-300:])
+
+
 def preflight(root, manifest):
     """Checks run on a disposable copy: planted changes cannot mutate measured source."""
     root = pathlib.Path(root)
@@ -419,6 +429,7 @@ def preflight(root, manifest):
     with tempfile.TemporaryDirectory(prefix="atlias-subharness-check-") as temp:
         check_source = pathlib.Path(temp) / "source"
         shutil.copytree(root / "source", check_source)
+        repository(check_source, "frozen candidate " + manifest["id"])
         for i, argv in enumerate(manifest["spec"]["checks"]):
             log = root / "checks" / f"{i:02d}.log"
             log.parent.mkdir(exist_ok=True)
@@ -757,6 +768,12 @@ def selftest_cases():
         except ValueError:
             rejected = True
         check("confirmation cannot reuse screen", rejected)
+        check_copy = temp / "check-copy"
+        shutil.copytree(trial / "source", check_copy)
+        repository(check_copy, "fixture")
+        logged = subprocess.run(["git", "log", "-1", "--format=%h"], cwd=str(check_copy), capture_output=True, timeout=60)
+        check("disposable check copy has a commit to stamp; frozen source stays without a repository",
+              logged.returncode == 0 and re.fullmatch(rb"[0-9a-f]{7,40}\s*", logged.stdout) and not (trial / "source/.git").exists())
         changed = copy.deepcopy(spec)
         changed["apiBase"] = "https://api.example.com"
         try:
@@ -782,6 +799,7 @@ def selftest(receipt_path):
                 ("stage native completion gate bypassed", 'if measured["arms"][arm]["nativeCompleted"] != measured["arms"][arm]["expected"]:', 'if False:'),
                 ("stage task loss gate bypassed", 'if measured["lost"] != 0:', 'if False:')]
     mutants += [("stage gate not dispatched", 'if prerequisite:', 'if False:')]
+    mutants += [("check copy left without a commit", '["add", "-A"], ["commit", "-q", "-m", label]', '["add", "-A"]')]
     source = pathlib.Path(__file__).read_text(encoding="utf-8")
     planted = []
     with tempfile.TemporaryDirectory() as temp:
