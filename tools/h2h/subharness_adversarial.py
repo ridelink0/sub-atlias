@@ -24,6 +24,8 @@ cases = [
     ("compact text without its switch", "mods/atlias-efficiency/hooks/register.mjs", "const compact = enabled && options.compactToolText === true;", "const compact = enabled;"),
     ("another provider's tool text rewritten", "mods/atlias-efficiency/hooks/register.mjs", "event?.provider?.plugin !== 'engine' || !Object.hasOwn", "!Object.hasOwn"),
     ("brief ignores verify.doublePass", "lib/brief.mjs", "doublePass: !(cfg.verify && cfg.verify.doublePass === false)", "doublePass: true", ["node", "test/run.mjs", "the brief says when the gate will run the check"]),
+    ("hooks-only brief still names tools", "lib/brief.mjs", "if (flags.hooksOnly) {", "if (false) {", ["node", "test/run.mjs", "the brief says when the gate will run the check"]),
+    ("hooks-only block for every host", "lib/hosts.mjs", "if (hooksOnly && host === 'codex') return", "if (hooksOnly) return", ["node", "test/run.mjs", "each harness is called by its own name"]),
     ("lean Codex block for every host", "lib/hosts.mjs", "if (lean && host === 'codex') return", "if (lean) return", ["node", "test/run.mjs", "each harness is called by its own name"]),
     ("malformed cache count read as 0", RUNNER, 'got[name] = _count(u[key]) if _count(u[key]) is not None else "unknown"', "got[name] = _count(u[key]) or 0", LEDGER),
     ("missing window counted as matched", RUNNER, '"windowMatched": all(r.get("loadedWindow") == a.num_ctx for r in results) if results else None,', '"windowMatched": windows == [a.num_ctx] if windows else None,', LEDGER),
