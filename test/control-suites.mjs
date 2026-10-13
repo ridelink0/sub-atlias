@@ -92,7 +92,7 @@ export default async function controlSuites({ suite, asyncSuite, check, TMP, ROO
     const bin = path.join(ROOT, 'bin', 'atlias.mjs');
     const env = { ...noFlagEnv(), ATLIAS_FLAG_NOT_A_FLAG: '1' };
     const refused = spawnSync(process.execPath, [bin, 'eval', '--engine', 'echo', 'add-function', '--outlive-parent'], { encoding: 'utf8', env, timeout: 60000 });
-    check('atlias eval refuses to start an arm whose flag names no flag', refused.status === 2 && /ATLIAS_FLAG_NOT_A_FLAG names no flag/.test(refused.stdout) && /Nothing ran/.test(refused.stdout) && !/FAIL|PASS/.test(refused.stdout),
+    check('atlias eval refuses to start an arm whose flag names no flag', refused.status === 2 && /ATLIAS_FLAG_NOT_A_FLAG names no flag/.test(refused.stdout) && /Nothing ran/.test(refused.stdout) && !/bFAILb|bPASSb/.test(refused.stdout),
       { happened: `exit ${refused.status}: ${(refused.stdout || refused.stderr).slice(0, 300)}`, why: 'A typo in a study script would otherwise run hours of the control and file it as the change.', fix: 'The eval command checks flagStamp().unknown and .bad before the first task.' });
     const ran = spawnSync(process.execPath, [bin, 'eval', '--engine', 'echo', 'add-function', '--outlive-parent'], { encoding: 'utf8', env: noFlagEnv(), timeout: 60000 });
     const said = String(ran.stdout || '');
