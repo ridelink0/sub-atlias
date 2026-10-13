@@ -5,6 +5,10 @@
 // no edit in between the fourth is still refused; with the flag unset the guard
 // is what it was, so stored runs reproduce. Loaded by test/run.mjs.
 import * as guard from '../lib/guard.mjs';
+import * as track from '../lib/track.mjs';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 export default async function guardHookSuites({ suite, check, core }) {
   const FLAG = 'ATLIAS_FLAG_GUARD_RESET_ON_EDIT';
@@ -77,4 +81,80 @@ export default async function guardHookSuites({ suite, check, core }) {
     } finally { if (before == null) delete process.env[POS]; else process.env[POS] = before; }
     check('the hook reads guardCommandPositions from the settings, so the search goes through', hook === null, { happened: JSON.stringify(hook), why: 'A switch the hook does not read changes nothing in a run.', fix: 'preTool passes cfg.flags.guardCommandPositions to destructiveReason.' });
   });
+  // Council 1013b (b03, b05, b06): with the flag on, an edit that returns a file to content an earlier
+  // edit left it with is a revert and resets nothing. These scripts land real edits on a real file, so
+  // track.postTool hashes what landed and the guard reads those hashes.
+  const workdir = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-guardrev-'));
+  const sidOf = (tag) => `guardrev-${tag}-${process.pid}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  const fresh = (tag, text) => { const dir = fs.mkdtempSync(path.join(workdir, `${tag}-`)); const file = path.join(dir, 'f.txt'); fs.writeFileSync(file, text); return { dir, file }; };
+  const withFlag = (flag, fn) => {
+    const before = process.env[FLAG];
+    if (flag == null) delete process.env[FLAG]; else process.env[FLAG] = flag;
+    try { return fn(); } finally { if (before == null) delete process.env[FLAG]; else process.env[FLAG] = before; }
+  };
+  // One edit as the hooks see it: PreToolUse decides, and an allowed edit lands on disk and PostToolUse records it.
+  const landEdit = (sid, dir, file, old, neu) => {
+    const payload = { session_id: sid, tool_name: 'Edit', tool_input: { file_path: file, old_string: old, new_string: neu }, cwd: dir };
+    const decision = guard.preTool(payload);
+    if (!denied(decision)) { fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(old, neu)); track.postTool({ ...payload, tool_response: {} }); }
+    return decision;
+  };
+  const landWrite = (sid, dir, file, content) => {
+    const payload = { session_id: sid, tool_name: 'Write', tool_input: { file_path: file, content }, cwd: dir };
+    const decision = guard.preTool(payload);
+    if (!denied(decision)) { fs.writeFileSync(file, content); track.postTool({ ...payload, tool_response: {} }); }
+    return decision;
+  };
+  const reread = (sid, dir, file) => guard.preTool({ session_id: sid, tool_name: 'Read', tool_input: { file_path: file }, cwd: dir });
+  // Returns the 1-based call the guard first refuses in one to-and-fro of Edit one->two and two->one, or 0.
+  const flipFlop = (flag, tag, calls) => withFlag(flag, () => {
+    const sid = sidOf(tag);
+    const { dir, file } = fresh(tag, 'one\n');
+    const pair = [['one', 'two'], ['two', 'one']];
+    for (let k = 1; k <= calls; k++) { const [o, n] = pair[(k - 1) % 2]; if (denied(landEdit(sid, dir, file, o, n))) return k; }
+    return 0;
+  });
+  // Edit one->two and two->three, read three times, then a Write to toContent, then the same read.
+  const back = (flag, tag, toContent) => withFlag(flag, () => {
+    const sid = sidOf(tag);
+    const { dir, file } = fresh(tag, 'one\n');
+    return [landEdit(sid, dir, file, 'one', 'two'), landEdit(sid, dir, file, 'two', 'three'), reread(sid, dir, file), reread(sid, dir, file), reread(sid, dir, file), landWrite(sid, dir, file, toContent), reread(sid, dir, file)].map(denied);
+  });
+  suite('guard hook revert', 'an edit that returns a file to content an earlier edit left it with resets nothing (council 1013b, b05, b06)', () => {
+    const offFF = flipFlop(null, 'ff-off', 20);
+    check('flip-flop (edit one to two, two to one, repeated) with guardResetOnEdit unset: refused at call 6 (stored runs reproduce)', offFF === 6, { happened: `first refusal at call ${offFF}`, why: 'The flag-off guard must not move.', fix: 'The reset clauses in lib/guard.mjs run only under the flag.' });
+    const onFF = flipFlop('1', 'ff-on', 20);
+    check('flip-flop with guardResetOnEdit: refused at call 8, because each reverting edit leaves the alternating record alone', onFF === 8, { happened: `first refusal at call ${onFF}`, why: 'Every landed edit used to clear the alternating record, so none of the 20 calls was refused (b05 F1).', fix: 'revertsEarlier(evs, i) in the alternating reset of lib/guard.mjs (line 119).' });
+    const backOn = back('1', 'back-on', 'two\n');
+    check('with guardResetOnEdit, a Write back to the content an earlier edit left (a new call key, the same hash): the fourth read is refused', backOn[6] === true && backOn.slice(2, 6).every((d) => d === false), { happened: JSON.stringify(backOn), why: 'The revert is found by content, so a key rule that only matches an identical edit would miss it.', fix: 'revertsEarlier in the identical-call reset of lib/guard.mjs (line 105); track.mjs writes after.' });
+    const backOff = back(null, 'back-off', 'two\n');
+    check('with guardResetOnEdit unset, the same script is refused at the fourth read as well (no reset at all)', backOff[6] === true, { happened: JSON.stringify(backOff), why: 'The flag-off guard must not move.', fix: 'The reset clauses run only under the flag.' });
+    const newOn = back('1', 'new-on', 'four\n');
+    check('with guardResetOnEdit, a Write to content the file never had is a real change: the fourth read goes through', newOn[6] === false, { happened: JSON.stringify(newOn), why: 'Only a return to earlier content is a revert; a real change still clears the record.', fix: 'revertsEarlier must not match new content.' });
+  });
+  suite('guard hook edit record', 'the stored edit event: flag off is the line before 19b92cb, the marks only under the flag (council 1013b, b03, b05)', () => {
+    const { dir, file } = fresh('bytes', 'one\n');
+    const failed = (sid) => ({ session_id: sid, tool_name: 'Edit', tool_input: { file_path: file, old_string: 'one', new_string: 'two' }, cwd: dir, tool_response: { is_error: true } });
+    const sOff = sidOf('bytes-off');
+    withFlag(null, () => track.postTool(failed(sOff)));
+    const offEv = { ...core.eventsTail(sOff).find((e) => e.kind === 'edit') };
+    delete offEv.t;
+    const wantOff = JSON.stringify({ kind: 'edit', tool: 'Edit', files: [file] });
+    check('flag off: a failed edit is stored exactly as before 19b92cb (no failed mark)', JSON.stringify(offEv) === wantOff, { happened: JSON.stringify(offEv), why: 'The log of a flag-off run must not change; the failed mark was added with no flag (b03 F1).', fix: 'track.mjs writes failed only under flags.guardResetOnEdit.' });
+    const sOn = sidOf('bytes-on');
+    withFlag('1', () => track.postTool(failed(sOn)));
+    const onEv = core.eventsTail(sOn).find((e) => e.kind === 'edit') || {};
+    check('flag on: a failed edit is marked failed and carries no content hash', onEv.failed === true && !('after' in onEv), { happened: JSON.stringify(onEv), why: 'A failed edit changed nothing, so it resets nothing and is not a revert target.', fix: 'track.mjs sets after only for a landed edit.' });
+    const sOk = sidOf('bytes-ok');
+    fs.writeFileSync(file, 'two\n');
+    withFlag('1', () => track.postTool({ session_id: sOk, tool_name: 'Edit', tool_input: { file_path: file, old_string: 'one', new_string: 'two' }, cwd: dir, tool_response: {} }));
+    const okEv = core.eventsTail(sOk).find((e) => e.kind === 'edit') || {};
+    check('flag on: a landed edit carries the hash of the file it left, and no failed mark', typeof okEv.after === 'string' && okEv.after.length === 16 && !('failed' in okEv), { happened: JSON.stringify(okEv), why: 'The revert rule compares these hashes.', fix: 'track.mjs contentHash on a landed single-file edit under the flag.' });
+    const sOkOff = sidOf('bytes-ok-off');
+    withFlag(null, () => track.postTool({ session_id: sOkOff, tool_name: 'Edit', tool_input: { file_path: file, old_string: 'one', new_string: 'two' }, cwd: dir, tool_response: {} }));
+    const okOff = { ...core.eventsTail(sOkOff).find((e) => e.kind === 'edit') };
+    delete okOff.t;
+    check('flag off: a landed edit is stored exactly as before 19b92cb (no hash)', JSON.stringify(okOff) === wantOff,{ happened: JSON.stringify(okOff), why: 'No hash may reach a flag-off log.', fix: 'track.mjs writes after only under the flag.' });
+  });
+  fs.rmSync(workdir, { recursive: true, force: true });
 }
