@@ -64,6 +64,24 @@ export default async function integritySuites({ suite, check, core, gate, track,
     check('with checkFailDominates, a print-only command after a failed check does not verify the edit', !integrity.verificationAfterLastEdit(t06, true) && integrity.lastVerification(t06, true) === failedCheck, { happened: JSON.stringify(integrity.lastVerification(t06, true)), why: 'In trial-02 this let a run whose check.py failed end as if verified.', fix: 'unresolvedFailure must keep a failed check until the same command passes.' });
     check('with checkFailDominates, the same check passing again clears the failure', integrity.verificationAfterLastEdit([...t06, { ...failedCheck, outcome: 'pass', command: ' python  check.py ' }], true), { happened: 'still held', why: 'A fixed check must be able to close the gate, or the gate becomes a loop.', fix: 'Compare commands with whitespace collapsed and accept a later non-failing run of the same one.' });
     check('unresolvedFailure names the failed check a later different command did not clear, and nothing once the same command passes', integrity.unresolvedFailure(t06) === failedCheck && integrity.unresolvedFailure([...t06, { ...failedCheck, outcome: 'pass' }]) === null, { happened: JSON.stringify(integrity.unresolvedFailure(t06)), why: 'Both claim checks rest on this one reading.', fix: 'Check unresolvedFailure in lib/integrity.mjs.' });
+    check('with checkFailDominates, the same check with an outcome nobody could read does not clear a failure (Codex F1)', integrity.unresolvedFailure([...t06, { ...failedCheck, outcome: 'unknown' }]) === failedCheck && !integrity.verificationAfterLastEdit([edit, failedCheck, { ...failedCheck, outcome: 'unknown' }], true), { happened: JSON.stringify(integrity.unresolvedFailure([...t06, { ...failedCheck, outcome: 'unknown' }])), why: 'A check whose result could not be read has not passed; letting it clear a failure opens the gate on nothing.', fix: 'Clear a failure only on an explicit pass of the same check.' });
+    const quoted = { kind: 'shell', verify: true, command: `python -c "assert f('a  b')"`, outcome: 'fail' };
+    check('a check whose quoted text differs only in spacing is another check and does not clear a failure (Codex F2)', integrity.unresolvedFailure([edit, quoted, { ...quoted, command: `python -c "assert f('a b')"`, outcome: 'pass' }]) === quoted && integrity.canonicalCommand(' python   check.py ') === 'python check.py', { happened: integrity.canonicalCommand(quoted.command), why: 'Spaces inside quotes are part of the program; collapsing them let a different command clear the failure.', fix: 'canonicalCommand collapses spaces only outside quotes.' });
+    check('two long checks with the same first 300 characters, or one command in two directories, are told apart by checkId', integrity.unresolvedFailure([edit, { ...failedCheck, checkId: 'one' }, { ...failedCheck, checkId: 'two', outcome: 'pass' }])?.checkId === 'one' && integrity.unresolvedFailure([edit, { ...failedCheck, checkId: 'one' }, { ...failedCheck, checkId: 'one', outcome: 'pass' }]) === null, { happened: 'checkId ignored', why: 'An event keeps 300 characters of the command; only the hash of the whole command and directory tells two such checks apart.', fix: 'sameCheck compares checkId when both events carry one.' });
+    {
+      const before = process.env.ATLIAS_FLAG_CHECK_FAIL_DOMINATES;
+      const tail = 'x'.repeat(320);
+      const ids = [];
+      try {
+        for (const [flag, cwd, extra] of [[null, PROJECT, 'a'], ['1', PROJECT, 'a'], ['1', PROJECT, 'b'], ['1', path.join(PROJECT, 'sub'), 'a']]) {
+          if (flag == null) delete process.env.ATLIAS_FLAG_CHECK_FAIL_DOMINATES; else process.env.ATLIAS_FLAG_CHECK_FAIL_DOMINATES = flag;
+          const sid = `checkid-${ids.length}-${process.pid}-${Date.now()}`;
+          track.postTool({ session_id: sid, cwd, tool_name: 'Bash', tool_input: { command: `npm test -- ${tail}${extra}` }, tool_response: { stdout: 'FAIL x', exit_code: 1 } });
+          ids.push(core.eventsTail(sid).filter((e) => e.kind === 'shell').pop()?.checkId);
+        }
+      } finally { if (before == null) delete process.env.ATLIAS_FLAG_CHECK_FAIL_DOMINATES; else process.env.ATLIAS_FLAG_CHECK_FAIL_DOMINATES = before; }
+      check('with checkFailDominates the hook records a checkId from the whole command and directory, and without it records none', ids[0] === undefined && ids[1] && ids[2] && ids[3] && new Set(ids.slice(1)).size === 3, { happened: JSON.stringify(ids), why: 'Flag off must record what it always did; flag on must tell apart commands that differ after character 300 or run elsewhere.', fix: 'track.mjs adds checkId(payload, command) to check events when failDominates() is true.' });
+    }
     const envBefore = process.env.ATLIAS_FLAG_CHECK_FAIL_DOMINATES;
     process.env.ATLIAS_FLAG_CHECK_FAIL_DOMINATES = '1';
     let held = [];

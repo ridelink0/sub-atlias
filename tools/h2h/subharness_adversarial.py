@@ -44,6 +44,21 @@ cases = [
     ("real skills root leaks into Codex", RUNNER, 'if skill_file:', 'if False:', RESP),
     ("capped call leaves no receipt", RUNNER, 's.receipts.append({"api": "messages", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})', "pass", LEDGER),
 ]
+# Codex's audit of 2026-10-13, F1 to F5: one planted break on the line each fix rests on.
+CODEX_F = ["node", "test/run.mjs", "Codex F", "claims against evidence"]
+cases += [
+    ("unknown outcome clears a failure", "lib/integrity.mjs", "sameCheck(l, e) && l.outcome === 'pass'", "sameCheck(l, e) && l.outcome !== 'fail'", CODEX_F),
+    ("quoted spacing collapsed", "lib/integrity.mjs", ": canonicalCommand(a.command) === canonicalCommand(b.command));", ": String(a.command).replace(/\\s+/g, ' ').trim() === String(b.command).replace(/\\s+/g, ' ').trim());", CODEX_F),
+    ("checkId ignored", "lib/integrity.mjs", "a.checkId && b.checkId ? a.checkId === b.checkId : ", "", CODEX_F),
+    ("hook records no checkId", "lib/track.mjs", "verify, ...(verify ? checkId(payload, command) : {}) };", "verify };", CODEX_F),
+    ("alternating window ignores edits", "lib/guard.mjs", "i > lastAlt; i--) if (evs[i].kind === 'edit' && !evs[i].failed) { lastAlt = i; break; }", "i > lastAlt; i--) if (false) { lastAlt = i; break; }", CODEX_F),
+    ("failed edit resets the alternating guard", "lib/guard.mjs", "&& !evs[i].failed) { lastAlt = i; break; }", ") { lastAlt = i; break; }", CODEX_F),
+    ("positions applied without the switch", "lib/guard.mjs", "const parts = positions ? simpleCommands(cmd) : null;", "const parts = simpleCommands(cmd);", CODEX_F),
+    ("open quote split anyway", "lib/guard.mjs", "const texts = parts && !parts.open ? parts", "const texts = parts ? parts", CODEX_F),
+    ("substitution taken as read-only", "lib/guard.mjs", "if (/\\$\\(|`|<\\(/.test(part.text) || part.bare.includes('>')) return false;", "", CODEX_F),
+    ("hook ignores the positions switch", "lib/guard.mjs", "destructiveReason(command, Boolean(cfg.flags && cfg.flags.guardCommandPositions === true))", "destructiveReason(command)", CODEX_F),
+    ("ledger drops middle requests", "lib/loop.mjs", "if (state.asks.length > 20 && !exact)", "if (state.asks.length > 20)", CODEX_F),
+]
 rows = []
 for name, rel, old, new, *cmd in cases:
     p = root / rel

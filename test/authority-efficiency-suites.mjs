@@ -7,6 +7,20 @@ export default async function authorityEfficiencySuites({ suite, asyncSuite, che
   const makeState = () => ({ cwd: PROJECT, asks, pinned: ['an obsolete extracted rule'], edited: new Set(),
     messages: [{ role: 'system', content: 'system remains exact' }, ...asks.flatMap((s) => [{ role: 'user', content: s }, { role: 'assistant', content: 'observed' }])] });
 
+  suite('authority expert', 'authority: every request is kept for the ledger (Codex F3)', () => {
+    const many = Array.from({ length: 32 }, (_, i) => (i === 1 ? 'Never touch b.py; this holds for the whole task.' : i === 2 || i === 3 ? 'Same words twice.' : `Follow-up ${i}.`));
+    const off = { asks: [] };
+    for (const a of many.slice(0, 22)) loop.rememberAsk(off, a, false);
+    check('without the ledger, the first request and the newest nineteen are kept (stored runs reproduce)', off.asks.length === 20 && off.asks[0] === many[0] && !off.asks.includes(many[1]), { happened: off.asks.length, why: 'The flag-off loop must not move.', fix: 'Splice to twenty only when exact is false.' });
+    const on = { cwd: PROJECT, edited: new Set(), messages: [{ role: 'system', content: 'system' }] };
+    for (const a of many) { loop.rememberAsk(on, a, true); on.messages.push({ role: 'user', content: a }, { role: 'assistant', content: 'done' }); }
+    loop.compact(on, 8, true);
+    on.messages.push(...Array.from({ length: 6 }, (_, i) => [{ role: 'user', content: `Later ${i}.` }, { role: 'assistant', content: 'done' }]).flat());
+    for (let i = 0; i < 6; i++) loop.rememberAsk(on, `Later ${i}.`, true);
+    loop.compact(on, 8, true);
+    const note = String(on.messages[1].content);
+    check('with the ledger, 30 and more requests, a middle restriction and both copies of a repeated request survive two compactions', on.asks.length === 38 && note.includes(many[1]) && note.split('Same words twice.').length === 3 && note.includes('Follow-up 31.'), { happened: note.slice(0, 300), why: 'A middle restriction that is dropped before any compaction cannot be restated by the exact note.', fix: 'rememberAsk keeps every request when exact is true.' });
+  });
   suite('authority expert', 'authority: budgets retire evidence rather than requests', () => {
     const note = loop.askedNote(asks, 40, true);
     check('exact mode retains long text, middle amendments, repeated requests and original newlines', asks.every((s) => note.includes(s)) && note.includes('END_AUTHORITY_1012') && note.split('Repeat me').length === 3 && !note.includes('left out'),

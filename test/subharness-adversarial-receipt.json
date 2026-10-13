@@ -191,6 +191,72 @@
       "caught": true,
       "exit": 1,
       "timeout": false
+    },
+    {
+      "name": "unknown outcome clears a failure",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "quoted spacing collapsed",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "checkId ignored",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "hook records no checkId",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "alternating window ignores edits",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "failed edit resets the alternating guard",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "positions applied without the switch",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "open quote split anyway",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "substitution taken as read-only",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "hook ignores the positions switch",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "ledger drops middle requests",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
     }
   ],
   "restoredFunctionalExit": 0,
