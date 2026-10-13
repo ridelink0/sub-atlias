@@ -109,6 +109,8 @@ def main():
     r4 = door.receipts[-1]
     check("an upstream failure is a receipt with its status and an unknown count, and is listed as an error",
           s == 500 and r4["outcome"] == "HTTP 500" and r4["status"] == 500 and door.usage[-1] is None and door.errors[-1] == "HTTP 500", (s, r4))
+    check("an upstream failure keeps the start of the server's own text, and the harness still gets that text whole",
+          '"message":"no"' in r4.get("error", "") and '"message":"no"' in _, (r4.get("error"), _))
     call({"start": {"input_tokens": 1, "output_tokens": 1}})
     check("a call past the budget is answered by the door, has a receipt that says so, and adds no model count",
           door.capped == 1 and door.receipts[-1]["outcome"].startswith("capped") and door.receipts[-1]["slot"] is None and len(door.usage) == 5, (door.capped, door.receipts[-1]))
@@ -118,6 +120,38 @@ def main():
           all(x and x["bytes"] > 0 and len(x["sha256"]) == 64 for x in sent) and len({x["sha256"] for x in sent}) == len(sent), sent)
     door.shutdown()
     up.shutdown()
+
+    # The loaded window: read while the harness runs, not only after it.
+    check("a model the server unloaded after the last call keeps the window it served at", B.window_of([32768, 32768], None, 32768) == (32768, [32768]))
+    check("no reading at all is unknown, never matched", B.window_of([], None, 32768) == (None, []))
+    check("a short task read only at its end is matched", B.window_of([], 32768, 32768) == (32768, [32768]))
+    check("a reload at another window is reported, wherever in the task it was seen",
+          B.window_of([32768], 16384, 32768) == (16384, [16384, 32768]) and B.window_of([16384, 32768], 32768, 32768)[0] == 16384)
+    loaded = {"models": [{"name": "qwen3.5:9b", "model": "qwen3.5:9b", "context_length": 32768}]}
+
+    class Ps(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *_):
+            pass
+
+        def do_GET(self):
+            data = json.dumps(loaded).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+    ps = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Ps)
+    threading.Thread(target=ps.serve_forever, daemon=True).start()
+    ps_base = f"http://127.0.0.1:{ps.server_address[1]}"
+    watch = B.WindowWatch(ps_base, "qwen3.5:9b", every=0.05)
+    time.sleep(0.4)
+    loaded = {"models": []}  # idle long enough that the server let the model go
+    time.sleep(0.2)
+    seen = watch.stop()
+    end = B.loaded_window(ps_base, "qwen3.5:9b")
+    check("the watch reads the window while the model is loaded, and the task is matched though the reading after it finds nothing",
+          seen and set(seen) == {32768} and end is None and B.window_of(seen, end, 32768)[0] == 32768, (seen, end))
+    ps.shutdown()
 
     # The run's report.
     a = argparse.Namespace(harness="claude", claude_plugin_dir=[], model="qwen3.5:9b", num_ctx=32768, num_predict=2048, tasks=["T"], ids_from="")

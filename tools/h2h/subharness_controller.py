@@ -72,6 +72,25 @@ def count(value):
     return value if type(value) is int and value >= 0 else None
 
 
+def block_prompt(u):
+    """What one usage block in Claude's wire format says was read (new input, cache writes, cache
+    reads), or None when a part is there but is not a count."""
+    if not isinstance(u, dict):
+        return None
+    parts = [u.get("input_tokens"), u.get("cache_creation_input_tokens", 0), u.get("cache_read_input_tokens", 0)]
+    return sum(parts) if all(count(p) is not None for p in parts) else None
+
+
+def first_block_prompt(results):
+    """Claude's stream gives each call two usage blocks (message_start, then message_delta) and on
+    the Atlias arm they disagree by about 5% (c17 F3). The ledger counts the final block; this sums the
+    first one, so the gap is in the report. None when there is no Claude call or any first block is
+    missing or not a count."""
+    firsts = [block_prompt((x.get("usage") or [None])[0]) for r in results for x in (r.get("receipts") or [])
+              if x.get("api") == "messages" and x.get("slot") is not None]
+    return sum(firsts) if firsts and all(f is not None for f in firsts) else None
+
+
 def relpath(value):
     p = pathlib.PurePosixPath(str(value).replace("\\", "/"))
     if p.is_absolute() or not p.parts or ".." in p.parts or ":" in str(p):
@@ -93,6 +112,10 @@ def validate(spec):
     if not isinstance(spec.get("candidate"), str) or not re.fullmatch(r"[A-Za-z0-9_-]+", spec["candidate"]):
         raise ValueError("candidate must be a simple label")
     positive(spec.get("continuationMinimum", 20), "continuationMinimum")
+    if not isinstance(spec.get("control", False), bool):
+        raise ValueError("control must be true or false")
+    if spec.get("control") is True and (spec.get("atliasConfig") or spec.get("claudeMods") or spec.get("claudeSettings")):
+        raise ValueError("a control trial runs the bare client in both arms, so it takes no Atlias config, mods or settings")
     hosts = spec.get("hosts")
     if not isinstance(hosts, list) or not hosts or [h.get("host") for h in hosts] not in (["claude"], ["codex"], ["claude", "codex"]):
         # Codex alone is allowed: a candidate that changes only what Codex is sent (no MCP
@@ -309,7 +332,11 @@ def summarize(manifest, attempts):
                              "usageComplete": counted,
                              "totalTokens": sum(r["promptTotal"] + r["outputTotal"] for r in results) if counted else None,
                              "peakContext": max(peaks) if counted and peaks and all(p is not None for p in peaks) else None,
-                             "windowMatched": complete and all(r.get("loadedWindow") == h["numCtx"] for r in results)}
+                             "windowMatched": complete and all(r.get("loadedWindow") == h["numCtx"] for r in results),
+                             # Calls the door answered itself past the step budget (c17 F8): a run that ends there did not end by itself.
+                             "cappedCalls": sum(str(x.get("outcome", "")).startswith("capped") for r in results for x in (r.get("receipts") or [])),
+                             "promptTotal": sum(r["promptTotal"] for r in results) if counted else None,
+                             "firstBlockPrompt": first_block_prompt(results)}
                 arms[arm]["tokensPerSolved"] = arms[arm]["totalTokens"] / arms[arm]["passed"] if arms[arm]["totalTokens"] is not None and arms[arm]["passed"] else None
             for t in (t for t in group if t["arm"] == "base"):
                 opposite = next(x for x in group if x["arm"] == "atlias" and x["taskId"] == t["taskId"] and x["repeat"] == t["repeat"])
@@ -344,6 +371,9 @@ def summarize(manifest, attempts):
                             "measured20xNoTaskLoss": qualified and total_ratio is not None and peak_ratio is not None
                             and total_ratio >= 20 and peak_ratio >= 20 and lost == 0 and not any(p["completionLost"] for p in pairs)})
     return {"schema": SCHEMA, "manifest": manifest["id"], "generated": now(), "reports": reports,
+            # A control trial runs the bare client in both arms (tool search may differ per arm), so its
+            # second arm measures noise or one setting, never Atlias.
+            "control": manifest["spec"].get("control") is True,
             "qualification": "Local task-set evidence only; native capability, active skill and follow-up conformance require separate retained checks.",
             "goalComplete": False}
 
@@ -389,6 +419,16 @@ def report(root, manifest=None):
         def per(x):
             return "unknown" if x is None else f"{x:,.0f}"
         lines.append(f"| {r['host']} | {r['stage']} | {a['passed']}/{a['expected']} | {b['passed']}/{b['expected']} | {r.get('lost')} | {r.get('gained')} | {r.get('neverWorse')} | {per(a.get('tokensPerSolved'))} | {per(b.get('tokensPerSolved'))} | {ratio(r['totalReduction'])} | {ratio(r['peakReduction'])} | {r['measurementMatched']} |")
+    lines += ["", "| Host | Stage | Capped calls base | Capped calls Atlias | Base prompt, first usage block / counted | Atlias prompt, first usage block / counted |",
+              "|---|---|---|---|---|---|"]
+    for r in data["reports"]:
+        a, b = r["arms"]["base"], r["arms"]["atlias"]
+        def blocks(arm):
+            first, final = arm.get("firstBlockPrompt"), arm.get("promptTotal")
+            return "n/a" if first is None or not final else f"{first:,} / {final:,} ({(final - first) / final:+.1%})"
+        lines.append(f"| {r['host']} | {r['stage']} | {a.get('cappedCalls')} | {b.get('cappedCalls')} | {blocks(a)} | {blocks(b)} |")
+    if data.get("control"):
+        lines += ["", "CONTROL TRIAL: the second arm is the bare client too; only the settings the spec gives it per arm differ. Its numbers are noise or that setting, never Atlias."]
     lines += ["", "Solves come first (Gev, 2026-10-13: never worse than the bare client). Never worse means every pair matched and the Atlias arm solved at least as many matched tasks as base; the stage gate is stricter and holds on any lost task. One run per arm cannot tell a loss from noise: re-run a lost task before calling it a loss.",
               "", "Tokens are input plus output, cache reads counted as full input. The base arm is the bare client in an empty profile; a setting the spec gives one arm only (tool search, say) is not credited to Atlias.",
               "", data["qualification"], "", "All attempts, including failures and unknown spend, remain in ATTEMPTS.jsonl and receipts/. Changed code requires a new manifest."]
@@ -501,7 +541,7 @@ def backend(root):
 def arguments(root, manifest, trial):
     spec = manifest["spec"]
     host = next(h for h in spec["hosts"] if h["host"] == trial["host"])
-    enhanced = trial["arm"] == "atlias"
+    enhanced = trial["arm"] == "atlias" and spec.get("control") is not True
     source = pathlib.Path(root) / "source"
     work = pathlib.Path(root) / "work" / trial["key"]
     search = spec.get("toolSearch", False)
@@ -666,6 +706,29 @@ def selftest_cases():
           t["neverWorse"] is True and t["lost"] == 1 and t["gained"] == 1 and stage_gate(m, traded, "claude", "screen")["action"] == "hold")
     per_solve = summarize(m, attempts)["reports"][0]["arms"]
     check("tokens per solved task are reported per arm", per_solve["base"]["tokensPerSolved"] == 220 and per_solve["atlias"]["tokensPerSolved"] == 10)
+    blocks = copy.deepcopy(attempts)
+    for row in blocks:
+        row["result"]["receipts"] = [{"api": "messages", "slot": 0, "usage": [{"input_tokens": 4}, {"input_tokens": 1, "cache_read_input_tokens": 4, "output_tokens": 5}]}]
+    blocks[1]["result"]["receipts"].append({"api": "messages", "slot": None, "outcome": "capped: answered by the door, no model call"})
+    capped_arm = blocks[1]["trial"]["arm"]
+    arms = summarize(m, blocks)["reports"][0]["arms"]
+    check("calls the door answered past the budget are counted per arm",
+          arms[capped_arm]["cappedCalls"] == 1 and arms["base" if capped_arm == "atlias" else "atlias"]["cappedCalls"] == 0)
+    check("Claude's first usage block is summed beside the counted prompt",
+          arms["base"]["firstBlockPrompt"] == 16 and arms["base"]["promptTotal"] == 800 and arms["atlias"]["firstBlockPrompt"] == 16)
+    blocks[0]["result"]["receipts"][0]["usage"][0]["input_tokens"] = -1
+    check("a first usage block that is not a count leaves its arm's sum unknown, and a run with no Claude call has none",
+          summarize(m, blocks)["reports"][0]["arms"][blocks[0]["trial"]["arm"]]["firstBlockPrompt"] is None
+          and summarize(m, attempts)["reports"][0]["arms"]["base"]["firstBlockPrompt"] is None)
+    control = {"spec": {"hosts": [{"host": "claude", "numCtx": 100, "client": sys.executable}], "model": "m", "tasks": [], "control": True}}
+    enhanced_trial = next(t for t in p if t["arm"] == "atlias")
+    bare_second = arguments(pathlib.Path("."), control, enhanced_trial)
+    control["spec"]["control"] = False
+    normal_second = arguments(pathlib.Path("."), control, enhanced_trial)
+    check("a control trial runs its second arm bare and says so in the report",
+          not bare_second.controller_enhanced and bare_second.claude_plugin_dir == [] and normal_second.controller_enhanced
+          and normal_second.claude_plugin_dir and summarize({**m, "spec": {**m["spec"], "control": True}}, attempts)["control"] is True
+          and summarize(m, attempts)["control"] is False)
     no_completion = copy.deepcopy(attempts)
     no_completion[0]["result"]["nativeCompleted"] = False
     check("incomplete native base holds", stage_gate(m, no_completion, "claude", "screen")["action"] == "hold")
@@ -841,6 +904,19 @@ def selftest_cases():
             backwards = False
         check("a Codex-only trial is accepted and Codex before Claude is not", alone and not backwards)
         changed = copy.deepcopy(spec)
+        changed["control"] = True
+        validate(changed)
+        refused = []
+        for key, value in (("control", "yes"), ("atliasConfig", {"flags": {"leanBrief": True}}), ("claudeMods", ["mods/atlias-efficiency"])):
+            bad = copy.deepcopy(changed)
+            bad[key] = value
+            try:
+                validate(bad)
+                refused.append(False)
+            except ValueError:
+                refused.append(True)
+        check("a control trial is accepted bare and refused with Atlias config, mods, or a control flag that is not true or false", all(refused))
+        changed = copy.deepcopy(spec)
         changed["apiBase"] = "https://api.example.com"
         try:
             validate(changed)
@@ -871,6 +947,10 @@ def selftest(receipt_path):
                  'write(root / "STATE.json", {"manifest": manifest["id"], "phase": "held-stage-verdict", "next": trial, "gate": gate, "at": now()}); break')]
     mutants += [("Codex-only trial refused", 'not in (["claude"], ["codex"], ["claude", "codex"]):', 'not in (["claude"], ["claude", "codex"]):')]
     mutants += [("check copy left without a commit", '["add", "-A"], ["commit", "-q", "-m", label]', '["add", "-A"]')]
+    mutants += [("capped calls not counted", 'str(x.get("outcome", "")).startswith("capped")', 'False'),
+                ("bad first usage block counted", 'return sum(firsts) if firsts and all(f is not None for f in firsts) else None', 'return sum(f or 0 for f in firsts) if firsts else None'),
+                ("control arm runs Atlias", 'enhanced = trial["arm"] == "atlias" and spec.get("control") is not True', 'enhanced = trial["arm"] == "atlias"'),
+                ("control trial takes Atlias config", 'if spec.get("control") is True and (spec.get("atliasConfig")', 'if False and (spec.get("atliasConfig")')]
     source = pathlib.Path(__file__).read_text(encoding="utf-8")
     planted = []
     with tempfile.TemporaryDirectory() as temp:

@@ -109,6 +109,24 @@
       "timeout": false
     },
     {
+      "name": "window read only after the task",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "reload at another window matched",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "upstream error text dropped",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
       "name": "row marked uncounted trusted",
       "caught": true,
       "exit": 1,

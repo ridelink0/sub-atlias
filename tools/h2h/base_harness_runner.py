@@ -224,6 +224,21 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             self._note(f"{type(e).__name__}"[:40])
             self._send(502, {"error": {"message": f"the model server did not answer: {e}"[:300]}})
 
+    def _failed(self, rec, e):
+        """An upstream failure on a model call: its status, the start of its text (trial-07's HTTP 500
+        left nothing to read it by), an unknown count, and the same answer passed back to the harness."""
+        try:
+            body = e.read()
+        except Exception:
+            body = b""
+        rec.update(status=e.code, outcome=f"HTTP {e.code}", error=body[:300].decode("utf-8", errors="replace"))
+        with self.server.lock:
+            self.server.errors.append(f"HTTP {e.code}"[:200])
+        try:
+            self._send(e.code, body, e.headers.get("Content-Type") or "application/json")
+        except Exception:
+            pass
+
     def _stop_reply(self, stream):
         s = self.server
         now, mid = int(time.time()), "chatcmpl-step-limit"
@@ -355,13 +370,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                         with s.lock:
                             s.partial += 1
         except urllib.error.HTTPError as e:
-            rec.update(status=e.code, outcome=f"HTTP {e.code}")
-            with s.lock:
-                s.errors.append(f"HTTP {e.code}"[:200])
-            try:
-                self._send(e.code, e.read(), e.headers.get("Content-Type") or "application/json")
-            except Exception:
-                pass
+            self._failed(rec, e)
         except Exception as e:
             rec["outcome"] = f"{type(e).__name__}: {e}"[:200]
             with s.lock:
@@ -453,13 +462,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                         with s.lock:
                             s.partial += 1
         except urllib.error.HTTPError as e:
-            rec.update(status=e.code, outcome=f"HTTP {e.code}")
-            with s.lock:
-                s.errors.append(f"HTTP {e.code}"[:200])
-            try:
-                self._send(e.code, e.read(), e.headers.get("Content-Type") or "application/json")
-            except Exception:
-                pass
+            self._failed(rec, e)
         except Exception as e:
             rec["outcome"] = f"{type(e).__name__}: {e}"[:200]
             with s.lock:
@@ -546,13 +549,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                         with s.lock:
                             s.partial += 1
         except urllib.error.HTTPError as e:
-            rec.update(status=e.code, outcome=f"HTTP {e.code}")
-            with s.lock:
-                s.errors.append(f"HTTP {e.code}"[:200])
-            try:
-                self._send(e.code, e.read(), e.headers.get("Content-Type") or "application/json")
-            except Exception:
-                pass
+            self._failed(rec, e)
         except Exception as e:
             rec["outcome"] = f"{type(e).__name__}: {e}"[:200]
             with s.lock:
@@ -812,6 +809,41 @@ def loaded_window(api_base, model):
     return None
 
 
+class WindowWatch:
+    """Reads the loaded window every few seconds while the harness runs. One reading after the task
+    is not enough: in trial-06 the model started a command that never ended, Claude Code waited nine
+    minutes for it in the background, the server unloaded the idle model, and the reading after the
+    task found nothing, which held the whole trial."""
+    def __init__(self, api_base, model, every=10.0):
+        self.readings = []
+        self._stop = threading.Event()
+        self._thread = threading.Thread(target=self._run, args=(api_base, model, every), daemon=True)
+        self._thread.start()
+
+    def _run(self, api_base, model, every):
+        while not self._stop.wait(every):
+            w = loaded_window(api_base, model)
+            if w is not None:
+                self.readings.append(w)
+
+    def stop(self):
+        self._stop.set()
+        self._thread.join(timeout=15)
+        return list(self.readings)
+
+
+def window_of(readings, end, asked):
+    """The window to report for a task, and every window seen. No reading at all is unknown, never
+    matched; a model the server unloaded while idle gives no reading, not another window; any reading
+    at a window other than the one asked for is the one reported, so a reload at another window is
+    never passed off as matched."""
+    seen = [w for w in [*readings, end] if w is not None]
+    if not seen:
+        return None, []
+    other = next((w for w in seen if w != asked), None)
+    return (asked if other is None else other), sorted(set(seen))
+
+
 def run_one(task, a, shims):
     budget = a.budget or int(task.get("rounds") or 25)
     stamp = f"{task['id']}-{int(time.time() * 1000)}"
@@ -828,6 +860,7 @@ def run_one(task, a, shims):
     before = {p: sha(ws / p) for p in protect}
     door = Door(a.api_base, a.model, a.num_predict, budget)
     threading.Thread(target=door.serve_forever, daemon=True).start()
+    watch = WindowWatch(a.api_base, a.model)
     t0 = time.time()
     stop, rc, starts = "", None, 1
     log = state / "harness-output.txt"
@@ -852,6 +885,7 @@ def run_one(task, a, shims):
     finally:
         door.shutdown()
         door.server_close()
+        readings = watch.stop()
     agent_ms = int((time.time() - t0) * 1000)
     # What the harness itself left behind, listed before the hidden files are written: listed after,
     # the grader's own files looked as if the harness could have read them (council member h11, 2026-10-12).
@@ -861,8 +895,8 @@ def run_one(task, a, shims):
                                                          "errors": door.errors, "passed": door.passed, "partial": door.partial, "receipts": door.receipts}, indent=1), encoding="utf-8")
     except Exception:
         pass
-    window = loaded_window(a.api_base, a.model)
-    tampered = [p for p, h in before.items() if sha(ws / p) != h]
+    window, windows = window_of(readings, loaded_window(a.api_base, a.model), a.num_ctx)
+    tampered =[p for p, h in before.items() if sha(ws / p) != h]
     for p in tampered:  # grade against the shipped file, as atlias does
         (ws / p).write_bytes(task["files"][p].encode("utf-8"))
     for rel, body in (task.get("hidden") or {}).items():
@@ -911,7 +945,7 @@ def run_one(task, a, shims):
             "usageComplete": counted, "inputParts": split, "partialCalls": door.partial,
             # Whether the harness ended by itself, apart from whether the grader passed what it left.
             "nativeCompleted": rc == 0 and not door.capped and not door.errors and not door.partial and bool(usage),
-            "numCtx": a.num_ctx, "loadedWindow": window, "taskDigests": task_digests(task), "provenance": getattr(a, "provenance", None),
+            "numCtx": a.num_ctx, "loadedWindow": window, "loadedWindows": windows, "taskDigests": task_digests(task), "provenance": getattr(a, "provenance", None),
             "receipts": door.receipts,
             "refused": door.refused[:20], "modelErrors": door.errors[:20], "addedFiles": None if (passed and not a.keep) else added,
             "ms": int((time.time() - t0) * 1000), "agentMs": agent_ms,
