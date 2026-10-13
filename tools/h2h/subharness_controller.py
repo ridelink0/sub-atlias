@@ -310,6 +310,7 @@ def summarize(manifest, attempts):
                              "totalTokens": sum(r["promptTotal"] + r["outputTotal"] for r in results) if counted else None,
                              "peakContext": max(peaks) if counted and peaks and all(p is not None for p in peaks) else None,
                              "windowMatched": complete and all(r.get("loadedWindow") == h["numCtx"] for r in results)}
+                arms[arm]["tokensPerSolved"] = arms[arm]["totalTokens"] / arms[arm]["passed"] if arms[arm]["totalTokens"] is not None and arms[arm]["passed"] else None
             for t in (t for t in group if t["arm"] == "base"):
                 opposite = next(x for x in group if x["arm"] == "atlias" and x["taskId"] == t["taskId"] and x["repeat"] == t["repeat"])
                 a, b = by_key.get(t["key"], []), by_key.get(opposite["key"], [])
@@ -337,6 +338,9 @@ def summarize(manifest, attempts):
             reports.append({"host": h["host"], "stage": stage["name"], "arms": arms, "pairs": pairs,
                             "measurementMatched": qualified, "totalReduction": total_ratio, "peakReduction": peak_ratio,
                             "gained": gained, "lost": lost,
+                            "solvedBase": sum(p["basePass"] for p in pairs), "solvedAtlias": sum(p["atliasPass"] for p in pairs),
+                            # Gev, 2026-10-13: never worse than the bare client. The stage gate stays stricter (any lost task holds).
+                            "neverWorse": qualified and sum(p["atliasPass"] for p in pairs) >= sum(p["basePass"] for p in pairs),
                             "measured20xNoTaskLoss": qualified and total_ratio is not None and peak_ratio is not None
                             and total_ratio >= 20 and peak_ratio >= 20 and lost == 0 and not any(p["completionLost"] for p in pairs)})
     return {"schema": SCHEMA, "manifest": manifest["id"], "generated": now(), "reports": reports,
@@ -353,6 +357,8 @@ def stage_gate(manifest, attempts, host, stage):
         reasons.append("counts, windows, tasks or provenance are incomplete or unmatched")
     if measured["lost"] != 0:
         reasons.append("a task solved by base was lost")
+    if not measured["neverWorse"]:
+        reasons.append("never worse: the Atlias arm did not solve at least as many matched tasks as base, or the pairs are unmatched (Gev, 2026-10-13)")
     if any(p["completionLost"] for p in measured["pairs"]):
         reasons.append("a base native completion was lost")
     for arm in ("base", "atlias"):
@@ -374,13 +380,18 @@ def report(root, manifest=None):
     data = summarize(manifest, load_attempts(root, manifest))
     write(root / "REPORT.json", data)
     lines = ["# Native subharness measurements", "", "Same pinned model within each base/enhanced pair. No regular harness promotion.", "",
-             "| Host | Stage | Base passes | Atlias passes | Total reduction | Peak reduction | Matched |", "|---|---|---|---|---|---|---|"]
+             "| Host | Stage | Base solved | Atlias solved | Lost | Gained | Never worse | Base tokens per solve | Atlias tokens per solve | Total reduction | Peak reduction | Matched |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in data["reports"]:
         def ratio(x):
             return "unknown" if x is None else f"{x:.3f}x"
         a, b = r["arms"]["base"], r["arms"]["atlias"]
-        lines.append(f"| {r['host']} | {r['stage']} | {a['passed']}/{a['expected']} | {b['passed']}/{b['expected']} | {ratio(r['totalReduction'])} | {ratio(r['peakReduction'])} | {r['measurementMatched']} |")
-    lines += ["", data["qualification"], "", "All attempts, including failures and unknown spend, remain in ATTEMPTS.jsonl and receipts/. Changed code requires a new manifest."]
+        def per(x):
+            return "unknown" if x is None else f"{x:,.0f}"
+        lines.append(f"| {r['host']} | {r['stage']} | {a['passed']}/{a['expected']} | {b['passed']}/{b['expected']} | {r.get('lost')} | {r.get('gained')} | {r.get('neverWorse')} | {per(a.get('tokensPerSolved'))} | {per(b.get('tokensPerSolved'))} | {ratio(r['totalReduction'])} | {ratio(r['peakReduction'])} | {r['measurementMatched']} |")
+    lines += ["", "Solves come first (Gev, 2026-10-13: never worse than the bare client). Never worse means every pair matched and the Atlias arm solved at least as many matched tasks as base; the stage gate is stricter and holds on any lost task. One run per arm cannot tell a loss from noise: re-run a lost task before calling it a loss.",
+              "", "Tokens are input plus output, cache reads counted as full input. The base arm is the bare client in an empty profile; a setting the spec gives one arm only (tool search, say) is not credited to Atlias.",
+              "", data["qualification"], "", "All attempts, including failures and unknown spend, remain in ATTEMPTS.jsonl and receipts/. Changed code requires a new manifest."]
     (root / "REPORT.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     return data
 
@@ -644,6 +655,17 @@ def selftest_cases():
     lost_task = copy.deepcopy(attempts)
     lost_task[1]["result"]["pass"] = False
     check("task loss holds a cheap screen", stage_gate(m, lost_task, "claude", "screen")["action"] == "hold")
+    check("never worse is true when Atlias solves as many matched tasks as base", summarize(m, attempts)["reports"][0]["neverWorse"] is True)
+    check("never worse is false, and named in the hold, when Atlias solves fewer", summarize(m, lost_task)["reports"][0]["neverWorse"] is False
+          and any(x.startswith("never worse") for x in stage_gate(m, lost_task, "claude", "screen")["reasons"]))
+    traded = copy.deepcopy(lost_task)
+    lost_pair = (lost_task[1]["trial"]["taskId"], lost_task[1]["trial"]["repeat"])
+    next(x for x in traded if x["trial"]["arm"] == "base" and (x["trial"]["taskId"], x["trial"]["repeat"]) != lost_pair)["result"]["pass"] = False
+    t = summarize(m, traded)["reports"][0]
+    check("one gained and one lost is never worse, and the strict stage gate still holds on the loss",
+          t["neverWorse"] is True and t["lost"] == 1 and t["gained"] == 1 and stage_gate(m, traded, "claude", "screen")["action"] == "hold")
+    per_solve = summarize(m, attempts)["reports"][0]["arms"]
+    check("tokens per solved task are reported per arm", per_solve["base"]["tokensPerSolved"] == 220 and per_solve["atlias"]["tokensPerSolved"] == 10)
     no_completion = copy.deepcopy(attempts)
     no_completion[0]["result"]["nativeCompleted"] = False
     check("incomplete native base holds", stage_gate(m, no_completion, "claude", "screen")["action"] == "hold")
@@ -843,6 +865,8 @@ def selftest(receipt_path):
                 ("stage native completion gate bypassed", 'if measured["arms"][arm]["nativeCompleted"] != measured["arms"][arm]["expected"]:', 'if False:'),
                 ("stage task loss gate bypassed", 'if measured["lost"] != 0:', 'if False:')]
     mutants += [("stage gate not dispatched", 'if prerequisite:', 'if False:')]
+    mutants += [("never worse ignores solves", 'sum(p["atliasPass"] for p in pairs) >= sum(p["basePass"] for p in pairs)', 'True'),
+                ("never worse gate bypassed", 'if not measured["neverWorse"]:', 'if False:')]
     mutants += [("held host ends the other host's stages", 'held[trial["host"]] = {"next": trial, "gate": gate}',
                  'write(root / "STATE.json", {"manifest": manifest["id"], "phase": "held-stage-verdict", "next": trial, "gate": gate, "at": now()}); break')]
     mutants += [("Codex-only trial refused", 'not in (["claude"], ["codex"], ["claude", "codex"]):', 'not in (["claude"], ["claude", "codex"]):')]
