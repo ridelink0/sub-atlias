@@ -411,8 +411,15 @@ suite('reliability expert', 'hook budgets', () => {
   const worst = (core.PROBE_BUDGET_MS + graphMod.GODNODES_MS) / 1000;
   check('the brief cannot outlast the timeout it declares', sessionStart > worst + 5, { happened: 'SessionStart declares ' + sessionStart + 's, worst case inside is about ' + worst + 's', why: 'A SessionStart hook that times out gives the user no brief at all, on a fresh machine, every session. This is the defect that shipped in 1.2.0.', fix: 'Lower PROBE_BUDGET_MS or GODNODES_MS, or raise the timeout in hooks/hooks.json and CODEX_EVENTS together.' });
   check('the Codex hook declares the same budget as the plugin', hosts.CODEX_EVENTS.find((e) => e[0] === 'SessionStart')[2] === sessionStart, { happened: 'codex ' + hosts.CODEX_EVENTS.find((e) => e[0] === 'SessionStart')[2] + 's vs plugin ' + sessionStart + 's', why: 'The same code runs in both; a tighter budget in one host fails only there, which is the hardest kind of bug to see.', fix: 'Keep the SessionStart timeout in hooks/hooks.json and CODEX_EVENTS in step.' });
+  // Gemini CLI declares its budgets in milliseconds. This rule read only the plugin and Codex, so a
+  // SessionStart of 20 s on Gemini passed the suite and was below the 22 s the brief needs (council 1013b b08 F4, b09 F1).
+  const hostBudgets = { plugin: sessionStart, codex: hosts.CODEX_EVENTS.find((e) => e[0] === 'SessionStart')[2], gemini: hosts.GEMINI_EVENTS.find((e) => e[0] === 'SessionStart')[2] / 1000 };
+  const shortHosts = Object.entries(hostBudgets).filter(([, s]) => !(s > worst + 5)).map(([h]) => h);
+  check('every host gives the brief more than its worst case plus 5 seconds', shortHosts.length === 0, { happened: Object.entries(hostBudgets).map(([h, s]) => h + ' ' + s + 's').join(', ') + ' (worst case ' + worst + 's)', why: 'A SessionStart hook that times out gives the user no brief at all. Gemini CLI declared 20 s, below the 22 s the brief needs, and no test read that value.', fix: 'Raise the SessionStart timeout in lib/hosts.mjs GEMINI_EVENTS (milliseconds), and in hooks/hooks.json and CODEX_EVENTS (seconds) together.' });
   check('one interpreter probe is short', core.PROBE_MS <= 5000 && core.PROBE_BUDGET_MS <= 10000, { happened: 'probe ' + core.PROBE_MS + 'ms, budget ' + core.PROBE_BUDGET_MS + 'ms', why: 'On Windows a bare python stub can stall; six of those at fifteen seconds is a minute and a half.', fix: 'Keep PROBE_MS and PROBE_BUDGET_MS small.' });
   const cachePath = path.join(process.env.ATLIAS_HOME, 'python.json');
+  // This suite can run alone (node test/run.mjs "hook budgets"); earlier suites used to create the folder.
+  fs.mkdirSync(process.env.ATLIAS_HOME, { recursive: true });
   const saved = fs.existsSync(cachePath) ? fs.readFileSync(cachePath, 'utf8') : null;
   fs.writeFileSync(cachePath, JSON.stringify({ path: null, checked: Date.now() }));
   const t0 = Date.now();
