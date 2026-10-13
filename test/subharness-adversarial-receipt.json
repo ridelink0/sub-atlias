@@ -55,6 +55,48 @@
       "timeout": false
     },
     {
+      "name": "memory switch omits every section",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "compact text without its switch",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "another provider's tool text rewritten",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "brief ignores verify.doublePass",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "hooks-only brief still names tools",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "hooks-only block for every host",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "lean Codex block for every host",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
       "name": "malformed cache count read as 0",
       "caught": true,
       "exit": 1,
