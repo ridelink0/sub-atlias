@@ -37,6 +37,24 @@
       "timeout": false
     },
     {
+      "name": "listing cut without its own switch",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "long skill name cut",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "another plugin's listing cut",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
       "name": "malformed cache count read as 0",
       "caught": true,
       "exit": 1,
@@ -92,6 +110,12 @@
     },
     {
       "name": "instructions dropped on the way",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "native skill capability removed",
       "caught": true,
       "exit": 1,
       "timeout": false

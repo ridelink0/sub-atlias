@@ -16,8 +16,41 @@ export function placement(event, result, enabled, compatible) {
   return { ...result, isDeferred: true };
 }
 
+// RESEARCH-FIRST 0d and 0f: the skill listing is re-sent on every call and was 5,961 characters of
+// a 27,960-byte opening (trial-02, 2026-10-13). Every skill keeps its whole name and stays
+// available; only the listing's description is cut. A skill's own instructions are never touched.
+export const LISTING_CAP = 120;
+export const LISTING_NOTE = '\nDescriptions above are cut short by the atlias-efficiency mod. Every skill listed is still available, and its full instructions load unchanged when it is invoked.';
+
+export function briefListing(text, enabled) {
+  if (!enabled || typeof text !== 'string') return text;
+  const out = [];
+  let items = 0;
+  let cut = false;
+  for (const line of text.split('\n')) {
+    if (!line.startsWith('- ')) {
+      // After the first item, a line that is not an item is the rest of a description.
+      if (items) cut = true; else out.push(line);
+      continue;
+    }
+    items++;
+    const colon = line.indexOf(': ');
+    if (colon < 0 || line.length <= LISTING_CAP) { out.push(line); continue; }
+    const room = Math.max(colon + 1, line.lastIndexOf(' ', LISTING_CAP));
+    out.push(line.slice(0, room).trimEnd() + ' ...');
+    cut = true;
+  }
+  return cut ? out.join('\n') + LISTING_NOTE : text;
+}
+
 export function register(on, options = {}) {
   const enabled = options.enabled === true;
+  const listing = enabled && options.skillListing === true;
+  on('prompt.attachment', { type: 'skill_listing' }, async ($, e, next) => {
+    const result = await next(e);
+    if (!listing || e?.origin?.kind !== 'engine' || typeof result?.text !== 'string') return result;
+    return { ...result, text: briefListing(result.text, listing) };
+  }).catch(async ($, e, next) => next(e));
   on('tool.describe', async ($, e, next) => {
     const result = await next(e);
     if (!enabled) return result;

@@ -9,6 +9,12 @@
       "title": "Atlias efficiency",
       "description": "Defer supported built-in tools behind native ToolSearch. Requires a compatible endpoint.",
       "default": false
+    },
+    "skillListing": {
+      "type": "boolean",
+      "title": "Brief skill listing",
+      "description": "Cut each skill's description in the listing to one line. Skill names and a skill's own instructions are never changed. Needs Atlias efficiency on.",
+      "default": false
     }
   }
 }

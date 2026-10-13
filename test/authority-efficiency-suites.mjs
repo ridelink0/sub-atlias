@@ -56,5 +56,24 @@ export default async function authorityEfficiencySuites({ suite, asyncSuite, che
     const deferred = await hook(api, event, async () => result);
     check('qualified enabled hook retains original policy bytes', deferred.isDeferred === true && deferred.description === event.description && result.isDeferred === undefined,
       { happened: deferred, why: 'The source contract is immutable and full when loaded.', fix: 'Placement copies the result without mutating it.' });
+
+    const long = 'Use this skill whenever a chart is about to be made, in any output medium, ' + 'and read it before the first line of chart code. '.repeat(6);
+    const listed = ['Skills available:', '- atlias:double-check', '- dataviz: ' + long, 'TRIGGER when a chart is asked for.', '- init: Initialize a new CLAUDE.md file', '- ' + 'n'.repeat(150) + ': short words'].join('\n');
+    const brief = mod.briefListing(listed, true);
+    const lines = brief.slice(0, -mod.LISTING_NOTE.length).split('\n');
+    check('a brief listing keeps every skill name whole, in order, and cuts only descriptions', brief.endsWith(mod.LISTING_NOTE) && lines.length === 5 && lines[0] === 'Skills available:' && lines[1] === '- atlias:double-check' && lines[2].startsWith('- dataviz: Use this skill') && lines[2].endsWith(' ...') && lines[2].length <= mod.LISTING_CAP + 4 && lines[3] === '- init: Initialize a new CLAUDE.md file' && lines[4] === '- ' + 'n'.repeat(150) + ': ...',
+      { happened: lines, why: 'A skill the model cannot name is a skill it cannot call; the listing may lose words, never a skill.', fix: 'Cut after the name, at a word boundary under LISTING_CAP, and drop only continuation lines.' });
+    const short = 'Skills available:\n- init: Initialize a new CLAUDE.md file';
+    check('off, a listing with nothing to cut, and text that is not a string come back untouched', mod.briefListing(listed, false) === listed && mod.briefListing(short, true) === short && mod.briefListing(undefined, true) === undefined,
+      { happened: mod.briefListing(short, true), why: 'Off must be byte for byte the native listing, and the note must not appear where nothing was cut.', fix: 'Return the input itself unless a line was cut.' });
+    const hooks = (options) => { const map = {}; mod.register((name, a, b) => { map[name] = b || a; return { catch() {} }; }, options); return map; };
+    const listingEvent = { type: 'skill_listing', text: listed, origin: { kind: 'engine' } };
+    const through = async (options, e = listingEvent) => (await hooks(options)['prompt.attachment']({}, e, async (x) => ({ text: x.text }))).text;
+    const outcomes = [await through({ enabled: true, skillListing: true }), await through({ enabled: true }), await through({ skillListing: true }), await through({}), await through({ enabled: true, skillListing: true }, { ...listingEvent, origin: { kind: 'plugin', event: 'prompt.submit' } })];
+    check('the listing is cut only with both switches on, and only the engine\'s own listing', outcomes[0] === brief && outcomes.slice(1).every((text) => text === listed),
+      { happened: outcomes.map((text) => text.length), why: 'Each cut is its own switch under the master switch, and another plugin\'s text is not this mod\'s to shorten.', fix: 'Gate on enabled, skillListing and origin.kind === engine.' });
+    const dropped = await hooks({ enabled: true, skillListing: true })['prompt.attachment']({}, listingEvent, async () => ({ text: null }));
+    check('a listing another hook already left out stays out', dropped.text === null,
+      { happened: dropped, why: 'A null text means the attachment is omitted; rewriting it would put it back.', fix: 'Pass a non-string text through.' });
   });
 }

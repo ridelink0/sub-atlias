@@ -9,6 +9,11 @@ settings, and explicitly set `ENABLE_TOOL_SEARCH=true` only for a qualified endp
 this folder with `--plugin-dir`, alongside the Atlias plugin. Restart the session when changing
 mode; already stored context cannot be restored or rewritten by this mod.
 
+A second switch, `options.skillListing`, also default off and only read when `enabled` is on,
+cuts each description in the skill listing to one line of at most 120 characters. Every skill
+keeps its whole name and stays available, the listing says that it was cut, and a skill's own
+instructions are never changed. It does not depend on ToolSearch.
+
 Custom endpoints require actual tool-reference support. A recording probe only proves the
 installed client contract; a matched local-model benchmark must establish compatibility and
 quality. No token or 20x savings are claimed by this implementation.
