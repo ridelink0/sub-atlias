@@ -1,3 +1,12 @@
+# Live A/A evidence and queue correction
+
+Updated 2026-10-13T22:23:05.562546+00:00
+A/A task humanevalfix-python-104 has two verified native attempts, both passing, both complete usage and integrity true, actual32768 window. Base input75525/output1079/PEAK13581; second bare arm input75440/output997/PEAK13504. This is A/A, not Atlias improvement. Remaining task107 is still running in exec session44946; poll that live handle before inferring termination.
+
+Queuev1 incorrectly read ATTEMPTS.jsonl as full receipts; it is a hash-reference journal. Original retained, known defect receipt records it; v1 cannot launch batch with this schema. Corrected bounded-benchmark-queue-v2.py is confirmed waiting; its phase lives in receipts/root/bounded-benchmark-queue-v2.json. V2 uses frozen controller.verify/load_attempts to verify receipt hashes and declared task plan, then insists on exactly4 native/usage/integrity/window-qualified attempts before native batchmax20. No inference was restarted because of the reader error. Current usage8%; recovery20:30:41CDT and independent21:20 unchanged.
+
+---
+
 # Native benchmark queue and provider boundary checkpoint
 
 Updated 2026-10-13T22:17:43.271952+00:00
