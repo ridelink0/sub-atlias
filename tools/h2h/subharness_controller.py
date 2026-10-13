@@ -94,8 +94,10 @@ def validate(spec):
         raise ValueError("candidate must be a simple label")
     positive(spec.get("continuationMinimum", 20), "continuationMinimum")
     hosts = spec.get("hosts")
-    if not isinstance(hosts, list) or not hosts or [h.get("host") for h in hosts] not in (["claude"], ["claude", "codex"]):
-        raise ValueError("hosts must be Claude first, optionally followed by Codex")
+    if not isinstance(hosts, list) or not hosts or [h.get("host") for h in hosts] not in (["claude"], ["codex"], ["claude", "codex"]):
+        # Codex alone is allowed: a candidate that changes only what Codex is sent (no MCP
+        # server, a shorter instruction block) has nothing new to measure on Claude.
+        raise ValueError("hosts must be Claude, Codex, or Claude followed by Codex")
     for h in hosts:
         positive(h["numCtx"], "numCtx")
         positive(h.get("numPredict", 2048), "numPredict")
@@ -803,6 +805,20 @@ def selftest_cases():
         check("disposable check copy has a commit to stamp; frozen source stays without a repository",
               logged.returncode == 0 and re.fullmatch(rb"[0-9a-f]{7,40}\s*", logged.stdout) and not (trial / "source/.git").exists())
         changed = copy.deepcopy(spec)
+        changed["hosts"] = [{"host": "codex", "client": sys.executable, "numCtx": 100, "codexHomeFrom": str(source)}]
+        try:
+            validate(changed)
+            alone = True
+        except ValueError:
+            alone = False
+        changed["hosts"] = [changed["hosts"][0], copy.deepcopy(spec["hosts"][0])]
+        try:
+            validate(changed)
+            backwards = True
+        except ValueError:
+            backwards = False
+        check("a Codex-only trial is accepted and Codex before Claude is not", alone and not backwards)
+        changed = copy.deepcopy(spec)
         changed["apiBase"] = "https://api.example.com"
         try:
             validate(changed)
@@ -829,6 +845,7 @@ def selftest(receipt_path):
     mutants += [("stage gate not dispatched", 'if prerequisite:', 'if False:')]
     mutants += [("held host ends the other host's stages", 'held[trial["host"]] = {"next": trial, "gate": gate}',
                  'write(root / "STATE.json", {"manifest": manifest["id"], "phase": "held-stage-verdict", "next": trial, "gate": gate, "at": now()}); break')]
+    mutants += [("Codex-only trial refused", 'not in (["claude"], ["codex"], ["claude", "codex"]):', 'not in (["claude"], ["claude", "codex"]):')]
     mutants += [("check copy left without a commit", '["add", "-A"], ["commit", "-q", "-m", label]', '["add", "-A"]')]
     source = pathlib.Path(__file__).read_text(encoding="utf-8")
     planted = []

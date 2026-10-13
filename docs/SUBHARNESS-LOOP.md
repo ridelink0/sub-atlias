@@ -64,7 +64,7 @@ Write a JSON specification outside the source tree. The candidate's original def
 }
 ```
 
-Replace the example IDs, paths and model with the predeclared real task sets and available clients. Use the existing 10-task smoke and 60-task screen. Select 250 confirmation tasks disjoint from the screen before examining candidate outcomes. An optional fourth `ultimate` stage can declare all existing Ultimate corpus IDs, repeated at least twice. To prepare Claude first while Codex qualification is pending, declare only the Claude host, then prepare a separate complete manifest for Codex; do not revise a started manifest.
+Replace the example IDs, paths and model with the predeclared real task sets and available clients. Use the existing 10-task smoke and 60-task screen. Select 250 confirmation tasks disjoint from the screen before examining candidate outcomes. An optional fourth `ultimate` stage can declare all existing Ultimate corpus IDs, repeated at least twice. To prepare Claude first while Codex qualification is pending, declare only the Claude host, then prepare a separate complete manifest for Codex; do not revise a started manifest. A manifest may also declare Codex alone, for a candidate that changes only what Codex is sent.
 
 The same `model` name is pinned in every arm. Each host's two arms get the same context, output cap, per-task round budget, timeout and sampling (`temperature=0.2`, enforced by the existing meter). The server must actually load the requested window; recording `numCtx` does not establish that it did. If two hosts need different loaded windows, declare those windows and explicitly prepare the model server for each host before continuing at its stage boundary. Both arms within each host remain matched.
 
