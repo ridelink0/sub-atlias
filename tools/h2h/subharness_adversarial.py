@@ -1,11 +1,20 @@
-"""Planted regressions in an isolated worktree; restores every source in finally."""
+"""Planted regressions in a disposable copy; the calling checkout is never mutated."""
+import argparse
+import hashlib
 import json
 import pathlib
+import shutil
 import sys
 import tempfile
 from owned_process import run_tree
 
-root = pathlib.Path(__file__).resolve().parents[2]
+source = pathlib.Path(__file__).resolve().parents[2]
+ap = argparse.ArgumentParser(description=__doc__)
+ap.add_argument('--receipt', default=str(source / 'test/subharness-adversarial-receipt.json'))
+args = ap.parse_args()
+disposable = tempfile.TemporaryDirectory(prefix='atlias-planted-')
+root = pathlib.Path(disposable.name) / 'source'
+shutil.copytree(source, root, symlinks=True, ignore=shutil.ignore_patterns('.git', 'node_modules', '__pycache__'))
 NODE = ["node", "test/run.mjs", "authority:", "efficiency:"]
 LEDGER = [sys.executable, "tools/h2h/base_harness_accounting_test.py"]
 RUNNER = "tools/h2h/base_harness_runner.py"
@@ -49,7 +58,7 @@ CODEX_F = ["node", "test/run.mjs", "Codex F", "claims against evidence"]
 cases += [
     ("unknown outcome clears a failure", "lib/integrity.mjs", "sameCheck(l, e) && l.outcome === 'pass'", "sameCheck(l, e) && l.outcome !== 'fail'", CODEX_F),
     ("quoted spacing collapsed", "lib/integrity.mjs", ": canonicalCommand(a.command) === canonicalCommand(b.command));", ": String(a.command).replace(/\\s+/g, ' ').trim() === String(b.command).replace(/\\s+/g, ' ').trim());", CODEX_F),
-    ("checkId ignored", "lib/integrity.mjs", "a.checkId && b.checkId ? a.checkId === b.checkId : ", "", CODEX_F),
+    ("checkId ignored", "lib/integrity.mjs", "a.checkId || b.checkId ? Boolean(a.checkId && b.checkId && a.checkId === b.checkId) : ", "", CODEX_F),
     ("hook records no checkId", "lib/track.mjs", "verify, ...(verify ? checkId(payload, command) : {}) };", "verify };", CODEX_F),
     ("alternating window ignores edits", "lib/guard.mjs", "i > lastAlt; i--) if (evs[i].kind === 'edit' && !evs[i].failed && !revertsEarlier(evs, i)) { lastAlt = i; break; }", "i > lastAlt; i--) if (false) { lastAlt = i; break; }", CODEX_F),
     ("failed edit resets the alternating guard", "lib/guard.mjs", "&& !evs[i].failed && !revertsEarlier(evs, i)) { lastAlt = i; break; }", " && !revertsEarlier(evs, i)) { lastAlt = i; break; }", CODEX_F),
@@ -60,24 +69,41 @@ cases += [
     ("space before > /dev/sd slips by", "lib/guard.mjs", "|>\\s*\\/dev\\/(sd|hd|vd|xvd|nvme|mmcblk|disk)/i", "/i", ["node", "test/run.mjs", "guards"]),
     ("quoted or globbed home target slips by", "lib/guard.mjs", "[\\\\/]?\\*?[\"']?(?=$|[\\s;&|)`'\"\\\\])/, why: 'recursive delete aimed at a root", "(\"|\\s|$)/, why: 'recursive delete aimed at a root", ["node", "test/run.mjs", "guards"]),
     ("door ignores a cut reply", "tools/h2h/base_harness_runner.py", "if why in CUT_STOPS and not rec.get(\"cut\"):", "if False:", LEDGER),
-    ("open quote split anyway", "lib/guard.mjs", "const texts = parts && !parts.open ? parts", "const texts = parts ? parts", CODEX_F),
+    ("both open-quote protections removed", "lib/guard.mjs", ["const texts = parts && !parts.open ? parts", "if (quote) return null;"], ["const texts = parts ? parts", "/* open quote accepted */"], CODEX_F),
     ("substitution taken as read-only", "lib/guard.mjs", "if (/\\$\\(|`|<\\(/.test(part.text) || part.bare.includes('>')) return false;", "", CODEX_F),
     ("hook ignores the positions switch", "lib/guard.mjs", "destructiveReason(command, Boolean(cfg.flags && cfg.flags.guardCommandPositions === true))", "destructiveReason(command)", CODEX_F),
     ("no-check rule without its flag", "lib/brief.mjs", "if (!flags.briefNoCheckRule) return false;", "", ["node", "test/run.mjs", "no check is named"]),
-    ("no-check rule where a check exists", "lib/brief.mjs", "try { return !visibleCheck(cwd); } catch { return false; }", "return true;", ["node", "test/run.mjs", "no check is named"]),
+    ("no-check rule where a check exists", "lib/brief.mjs", "try { return !visibleCheck(cwd, { uncertainty }) && uncertainty.length === 0; } catch { return false; }", "return true;", ["node", "test/run.mjs", "no check is named"]),
     ("tool list ignores its flag", "lib/brief.mjs", "flags.briefAllTools ? TOOLS_ALL : TOOLS_LISTED", "TOOLS_ALL", ["node", "test/run.mjs", "no check is named"]),
     ("Stop timeout back to 30", "lib/hosts.mjs", "['Stop', 'stop', 45]", "['Stop', 'stop', 30]", ["node", "test/run.mjs", "45 seconds on every host"]),
     ("ledger drops middle requests", "lib/loop.mjs", "if (state.asks.length > 20 && !exact)", "if (state.asks.length > 20)", CODEX_F),
 ]
+TRANSITION = ['node', 'test/run.mjs', 'exact requests survive']
+BATCH = ['node', 'test/run.mjs', 'native batches']
+cases += [
+    ('off legacy load looks complete', 'lib/agent.mjs', 'missing: Boolean(c.authorityMissing || !valid)', 'missing: false', TRANSITION),
+    ('off pruning looks complete', 'lib/loop.mjs', 'state.authorityMissing = true;', 'state.authorityMissing = false;', TRANSITION),
+    ('immediate exact save drops private history', 'lib/agent.mjs', 'pending && Array.isArray(pending.asks) ? [...pending.asks, ...(state.asks || [])] : state.asks', 'state.asks', TRANSITION),
+    ('batch permits fabricated agent identity', 'mods/atlias-transaction/hooks/register.mjs', "'consent', 'agentId',", "'consent',", BATCH),
+    ('batch ignores permission refusal', 'mods/atlias-transaction/hooks/register.mjs', "if (permission?.decision === 'deny')", 'if (false)', BATCH),
+    ('batch continues after tool error', 'mods/atlias-transaction/hooks/register.mjs', "if (status !== 'executed') { halted = status; break; }", 'if (false) { halted = status; break; }', BATCH),
+    ('batch pretends uncertain effects are absent', 'mods/atlias-transaction/hooks/register.mjs', "effects: 'unknown'", "effects: 'none'", BATCH),
+]
 rows = []
+original_hashes = {rel: hashlib.sha256((source / rel).read_bytes()).hexdigest() for _, rel, *_ in cases}
 for name, rel, old, new, *cmd in cases:
     p = root / rel
+    if not p.resolve().is_relative_to(root.resolve()):
+        raise RuntimeError('mutation target escapes the disposable copy')
     before = p.read_bytes()
     try:
         text = before.decode("utf-8").replace("\r\n", "\n")
-        if text.count(old) != 1:
-            raise RuntimeError(f"mutation anchor not unique: {name}")
-        p.write_bytes(text.replace(old, new, 1).encode("utf-8"))
+        changes = zip(old, new) if isinstance(old, list) else [(old, new)]
+        for needle, replacement in changes:
+            if text.count(needle) != 1:
+                raise RuntimeError(f"mutation anchor not unique: {name}")
+            text = text.replace(needle, replacement, 1)
+        p.write_bytes(text.encode("utf-8"))
         with tempfile.TemporaryFile() as out:
             rc, timed = run_tree(cmd[0] if cmd else NODE, cwd=str(root), timeout=180, stdout=out)
             out.seek(0)
@@ -97,8 +123,10 @@ for cmd in (NODE, LEDGER, RESP):
     restored.append((rc, timed))
 rc = max(abs(r) for r, _ in restored)
 timed = any(t for _, t in restored)
-receipt = {"mutations": rows, "restoredFunctionalExit": rc, "restoredFunctionalTimeout": timed}
-target = root / "test" / "subharness-adversarial-receipt.json"
+source_intact = all(hashlib.sha256((source / rel).read_bytes()).hexdigest() == digest for rel, digest in original_hashes.items())
+receipt = {"mutations": rows, "restoredFunctionalExit": rc, "restoredFunctionalTimeout": timed, "sourceIntact": source_intact}
+target = pathlib.Path(args.receipt).resolve()
+target.parent.mkdir(parents=True, exist_ok=True)
 target.write_bytes(json.dumps(receipt, indent=2).encode("utf-8"))
-if not all(r["caught"] for r in rows) or rc != 0 or timed:
+if not all(r["caught"] for r in rows) or rc != 0 or timed or not source_intact:
     sys.exit(1)

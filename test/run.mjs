@@ -63,8 +63,20 @@ const { config } = core;
 const only = process.argv.slice(2);
 const results = [];
 let current = null;
+// Gev's no-PID rule: explicitly report these omissions, never count them as
+// passing. The default test run is unchanged. Use an isolated TEMP/TMP folder.
+const noPid = process.env.ATLIAS_TEST_NO_PID_KILL === '1';
+function omitted(expert, name) {
+  if (!noPid) return false;
+  if (!['process tree expert', 'timeout expert'].includes(expert)
+    && name !== 'the check is stopped at its bound, and off changes nothing'
+    && name !== 'help runs nothing, and an eval stops when whatever started it is gone') return false;
+  skipped.push({ suite: name, test: name, why: 'ATLIAS_TEST_NO_PID_KILL=1: this case requires PID-directed process termination; not verified in this run.' });
+  return true;
+}
 function suite(expert, name, fn) {
   if (only.length && !only.some((o) => name.toLowerCase().includes(o.toLowerCase()))) return;
+  if (omitted(expert, name)) return;
   current = { expert, name, passed: 0, failed: [] };
   results.push(current);
   try { fn(); } catch (e) { current.failed.push({ test: '(suite crashed)', happened: String(e && e.stack || e), why: 'A crash means every later check in this suite did not run.', fix: 'Fix the exception first, then re-run this suite alone.' }); }
@@ -72,6 +84,7 @@ function suite(expert, name, fn) {
 // The same, for a suite whose checks have to await something.
 async function asyncSuite(expert, name, fn) {
   if (only.length && !only.some((o) => name.toLowerCase().includes(o.toLowerCase()))) return;
+  if (omitted(expert, name)) return;
   current = { expert, name, passed: 0, failed: [] };
   results.push(current);
   try { await fn(); } catch (e) { current.failed.push({ test: '(suite crashed)', happened: String(e && e.stack || e), why: 'A crash means every later check in this suite did not run.', fix: 'Fix the exception first, then re-run this suite alone.' }); }
@@ -453,7 +466,9 @@ suite('measurement expert', 'bench', () => {
   progress.setNext(PROJECT, 'x'.repeat(300));
   progress.update(PROJECT, loud, 'y'.repeat(3000));
   const loudBrief = benchMod.briefCost(PROJECT);
-  check('a noisy session cannot inflate the brief without bound', loudBrief.chars < 4200, { happened: loudBrief.chars + ' characters after forty edits and a long reply', why: 'The brief is paid once per session whatever else happens; a handoff note that grows with the session turns the cheapest part of the harness into the most expensive.', fix: 'Lower brief.progressChars, or trim what progress.build puts in the note.' });
+  const loudText = brief.build({ cwd: PROJECT, session_id: 'bench', source: 'startup' }, 'claude');
+  const handoff = loudText.match(/\n## Handoff from the last stretch of work\n([\s\S]*?)(?=\n## |$)/)?.[1]?.trimEnd() || '';
+  check('a noisy session cannot inflate the handoff without bound', handoff.length > 0 && handoff.length <= config().brief.progressChars, { happened: `${handoff.length} handoff characters, ${loudBrief.chars} whole-brief characters after forty edits and a long reply`, why: 'Session noise is bounded by the configured handoff budget; fixed project paths can legitimately make the whole brief longer.', fix: 'Bound the session handoff without truncating authority or confusing fixed path overhead with unbounded session growth.' });
   check('the note still says how much it left out', /and \d+ more earlier in the session/.test(progress.read(PROJECT)) , { happened: (progress.read(PROJECT) || '').slice(0, 200), why: 'Silent truncation reads as "these are all the files", which is worse than a longer note.', fix: 'Keep the and N more line in progress.build.' });
   const cost = benchMod.briefCost(PROJECT);
   check('the brief cost is measured, not guessed', cost.chars > 0 && cost.tokens === Math.ceil(cost.chars / 4), { happened: JSON.stringify(cost), why: 'The one cost atlias imposes on every session should be the number it is most precise about.', fix: 'briefCost builds the real brief and counts it.' });
@@ -1013,10 +1028,11 @@ await (await import('./toolset-suites.mjs')).default({ suite, asyncSuite, check,
 await (await import('./meter-suites.mjs')).default({ suite, asyncSuite, check, fs, path, ROOT });
 await (await import('./authority-efficiency-suites.mjs')).default({ suite, asyncSuite, check, fs, path, PROJECT });
 await (await import('./public-subharness-suites.mjs')).default({ suite, asyncSuite, check, core, router, track, brief, fs, path, PROJECT });
-await (await import('./oracle-ledger-suites.mjs')).default({ asyncSuite, check, ROOT, spawnSync });
+await (await import('./oracle-ledger-suites.mjs')).default({ asyncSuite, check, skip, ROOT, spawnSync });
 await (await import('./finishgreen-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./standalone-suites.mjs')).default({ asyncSuite, check, TMP });
 await (await import('./sampling-suites.mjs')).default({ asyncSuite, check, TMP, fs, path });
+await (await import('./transaction-suites.mjs')).default({ asyncSuite, check });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
 
 let failed = 0;

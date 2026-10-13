@@ -67,6 +67,12 @@ export default async function guardHookSuites({ suite, check, core }) {
     const gitDanger = [
       'git -C D:/repo reset --hard', 'git --no-pager -C "D:/repo with spaces" clean -fd',
       'git -C D:/repo push origin main --force', 'git -C ../repo checkout -- .',
+      'git --git-dir=/tmp/repo-meta reset --hard', 'git --git-dir /tmp/repo-meta reset --hard',
+      'git --work-tree=/tmp/repo clean -fd', 'git --work-tree /tmp/repo branch -D topic',
+      'git --git-dir="D:/repo with spaces/.git" --work-tree "D:/repo with spaces" reset --hard',
+      'git --bare push origin main --force', 'git --no-replace-objects push origin main -f',
+      'git --namespace=private push origin main --force', 'git --exec-path=/tmp/git push origin main --force',
+      'git -c core.pager=cat push origin main --force', 'git --config-env=core.pager=TASK_PAGER push origin main --force',
     ];
     check('the same global options never hide Git discard operations, with either flag setting', gitDanger.every((c) => guard.destructiveReason(c, true) && guard.destructiveReason(c, false)),
       { happened: JSON.stringify(gitDanger.map((c) => guard.destructiveReason(c, true))), why: 'Allowing global-option readers must not open destructive Git forms.', fix: 'Recognize reviewed global options in the destructive Git pattern as well.' });

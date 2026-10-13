@@ -78,7 +78,7 @@ export default async function skillIndexSuites({ suite, asyncSuite, check, core,
   suite('skill index expert', 'skill index: off, the default, puts nothing in the system message', () => {
     const none = off(PROJ);
     const dflt = loop.systemPrompt(PROJ, { hasGraph: false, instructions: '' });
-    check('with the setting at its default there is no index, no heading, no doubled blank line and no skill name', dflt === none && !/Skills/.test(dflt) && !/SKILL\.md/.test(dflt) && !dflt.includes(NL + NL + NL) && !/\s$/.test(dflt) && ![HOME_A, HOME_B, 'si-alpha-check', 'harness', 'double-check'].some((n) => dflt.includes(n)),
+    check('with the setting at its default there is no index, no heading, no doubled blank line and no skill name', dflt === none && !/Skills/.test(dflt) && !/SKILL\.md/.test(dflt) && !dflt.includes(NL + NL + NL) && !/\s$/.test(dflt) && ![HOME_A, HOME_B, 'si-alpha-check', 'double-check'].some((n) => dflt.includes(n)) && !/^\s*- harness(?:\s|:|\()/m.test(dflt),
       { happened: dflt.slice(-260), why: 'This is the whole saving: the index was about 1,440 characters on every call.', fix: 'skills.indexFor returns an empty string for off, and systemPrompt then adds nothing.' });
     const withRules = off(PROJ, { instructions: 'RULE ONE' });
     check('with project instructions the message ends in exactly one blank line and then the instructions', withRules === none + NL + NL + 'RULE ONE' && !withRules.includes(NL + NL + NL),

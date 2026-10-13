@@ -1,3 +1,21 @@
+# Council checkpoint before native model measurements
+
+Updated 2026-10-13T21:58:25.310485+00:00
+Gev's active goals remain 20x native TOTAL and full PEAK with zero task losses, then Codex, and separate4x Nanobot. Neither goal is achieved. All20 distinct Luna initial and second-peer reports are saved in D:/harness-work/atlias-luna-council-1013; root reviewed the reported boundaries and corrected overclaims/timing where actual receipts differ.
+
+New source: default-off native batch mod routes operations through native tool.check refusal preflight then tool.call; advertises actual profile names, retains unknown tools/providers, full diagnostics, error stops and uncertain effects. Permission-denial typing, native cancellation and general transcript/actor propagation remain unqualified. Exact history now handles off-load/on-enable, off pruning and immediate save transitions without changing off serialization fields. Git global discard forms extended. Controller20x flag requires both native arms complete; duplicate-key coverage and Markdown native fractions/qualification made explicit. Test no-PID mode records9 exclusions; parser fixtures corrected for sandbox paths. Standalone planted tests use disposable copies.
+
+Evidence: broad safe suite1432/1432,209suites,9 exclusions actualexit0 (before later targeted changes); targeted transitions41/41 and batch26/26; native scriptedv5 all22 assertions exit0, inference=false; final controller69/69 plus25/25plants exit0; subharness regressions59/59caught, restoredNode30/30/accounting36/36/Responses13/13, sourceIntact=true, exit0. Its disposable cleanup printed a Windows file-lock warning; resource cleanup is not certified. Earlier failed iterations are retained, including direct mutation restoration failure; known unchanged efficiency module restored byte-exact fromHEAD (SHA aad50a545d9ce1286d000293405999f2f3ed6f1fa7840ae011cfc8c28a8d4664).
+
+Local model load actualexit0: Ollama0.35.1, qwen3.5:9b-32k digest57a1a12692be950543a274d68e4e20c397f93401869caff4ccc88056e84fbd07, actualcontext32768. Empty-prompt loading separately recorded. No native task inference yet. GPUlease free after loading; recheck before new acquisition.
+
+Next: freeze this commit; prepare/run benchmark-specs/aa-calibration.json (2pairs, bothbare+ToolSearchtrue) then native-batch-smoke.json (10pairs, sameToolSearch/model/client/window/output). Run in NEW council-owned benchmark folders, max-task boundaries4/20, preserve all failures and unknowns. Same-user hidden-grader access and direct-loopback isolation remain unqualified; all grades/ratios descriptive, no20x qualification claim. Old held trials/queue/evolveSTOP untouched. Regular OpenAI URL/ID/error bounds and skill-body version dedup remain pending, as do actor isolation and Codex/native confirmation/4xNano runs.
+
+Before reserve ends: re-read usage, save artifacts/progress, schedule measured reset+7minutes in Chicago, verify saved TOML, preserve daily21:20 and Claude relay. No paidAPI/reset redemption/push. Natural reset estimate was already stated once on this resumed request.
+
+---
+Prior work-plan history preserved:
+
 # Gev's Atlias council continuation, 2026-10-13
 
 Priority: native subharness, regular harness secondary. Original20x TOTAL/full-PEAK and separate4x Nanobot goals remain unproven. Finish twenty distinct gpt-6-luna members, shared board replies and a second peer round; root reproduces every actionable finding. Preserve exact follow-ups and public BYO API/model/key-env/user-declared pricing.

@@ -48,6 +48,40 @@ export default async function authorityEfficiencySuites({ suite, asyncSuite, che
       const off = JSON.parse(fs.readFileSync(file, 'utf8'));
       check('flag-off session shape retains the original fields without new authority fields', !Object.hasOwn(off, 'asks') && !Object.hasOwn(off, 'authorityMissing') && !Object.hasOwn(agent.loadChat(state.sid, PROJECT), 'asks'),
         { happened: Object.keys(off).join(','), why: 'Existing frozen comparisons must keep the old persistence path when the feature is off.', fix: 'Gate save and restore fields behind authorityLedger.' });
+      const legacyOff = agent.loadChat(state.sid, PROJECT);
+      loop.rememberAsk(legacyOff, 'Off-mode follow-up.', false);
+      process.env[key] = '1';
+      const legacyBefore = JSON.stringify(legacyOff.messages);
+      check('loading a legacy session off then enabling exact mode cannot erase older authority', /cannot compact/.test(loop.compact(legacyOff, 2)) && JSON.stringify(legacyOff.messages) === legacyBefore,
+        { happened: legacyOff.authorityMissing, why: 'The setting can change after load; completeness must survive that transition.', fix: 'Keep private resume completeness even when public authority fields are off.' });
+      agent.saveChat(state);
+      process.env[key] = '0';
+      const completeOff = agent.loadChat(state.sid, PROJECT);
+      loop.rememberAsk(completeOff, 'Temporary off-mode amendment.', false);
+      completeOff.messages.push({ role: 'user', content: 'Temporary off-mode amendment.' }, { role: 'assistant', content: 'observed' });
+      process.env[key] = '1';
+      loop.compact(completeOff, 2);
+      const completeText = completeOff.messages.map(m => m.content).join('\n');
+      check('a complete saved ledger restored off retains A/B/A when later enabled', completeOff.asks.length === 4 && completeOff.asks[0] === a && completeOff.asks[2] === a && completeText.split(a).length === 3 && completeText.includes('Temporary off-mode amendment.'),
+        { happened: completeOff.asks?.length, why: 'A temporary mode change must neither discard a complete ledger nor duplicate requests.', fix: 'Promote the private saved ledger exactly once before exact compaction.' });
+      const pruned = { asks: [], messages: [{ role: 'system', content: 'system' }] };
+      for (let i = 0; i < 24; i++) {
+        const ask = i === 1 ? 'Do not change the schema.' : 'Off request ' + i;
+        loop.rememberAsk(pruned, ask, false);
+        pruned.messages.push({ role: 'user', content: ask }, { role: 'assistant', content: 'observed' });
+      }
+      const prunedBefore = JSON.stringify(pruned.messages);
+      check('legacy off-mode pruning marks history incomplete before a later exact cut', pruned.asks.length === 20 && /cannot compact/.test(loop.compact(pruned, 2, true)) && JSON.stringify(pruned.messages) === prunedBefore,
+        { happened: pruned.authorityMissing, why: 'A later flag cannot reconstruct an off-mode request that was already dropped.', fix: 'Mark irreversible request pruning and retain existing context.' });
+      agent.saveChat(state);
+      process.env[key] = '0';
+      const saveTransition = agent.loadChat(state.sid, PROJECT);
+      loop.rememberAsk(saveTransition, 'Save immediately after enabling.', false);
+      process.env[key] = '1';
+      agent.saveChat(saveTransition);
+      const savedTransition = agent.loadChat(state.sid, PROJECT);
+      check('saving immediately after an off-to-on transition retains the complete private ledger', savedTransition.asks.length === 4 && savedTransition.asks[0] === a && savedTransition.asks[2] === a && savedTransition.asks[3] === 'Save immediately after enabling.' && !savedTransition.authorityMissing,
+        { happened: savedTransition.asks?.length, why: 'A save can happen before a new exact remember or compact call promotes the ledger.', fix: 'Read private resume metadata when serializing exact state.' });
     } finally { if (previous === undefined) delete process.env[key]; else process.env[key] = previous; }
   });
   const long = 'Never change the schema.\r\n' + 'detail '.repeat(800) + 'Keep END_AUTHORITY_1012 exactly.';

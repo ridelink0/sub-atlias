@@ -323,7 +323,8 @@ def summarize(manifest, attempts):
                 trials = [t for t in group if t["arm"] == arm]
                 rows = [a for t in trials for a in by_key.get(t["key"], [])]
                 results = [a["result"] for a in rows]
-                complete = len(rows) == len(trials) and all(a["outcome"] == "measured" for a in rows)
+                complete = (len(rows) == len(trials) and all(a["outcome"] == "measured" for a in rows)
+                            and all(len(by_key.get(t["key"], [])) == 1 for t in trials))
                 counted = complete and all(r.get("usageComplete") is True and count(r.get("promptTotal")) is not None and count(r.get("outputTotal")) is not None for r in results)
                 peaks = [count(r.get("peakContext")) for r in results]
                 arms[arm] = {"expected": len(trials), "attempts": len(rows), "complete": complete,
@@ -369,7 +370,8 @@ def summarize(manifest, attempts):
                             # Gev, 2026-10-13: never worse than the bare client. The stage gate stays stricter (any lost task holds).
                             "neverWorse": qualified and sum(p["atliasPass"] for p in pairs) >= sum(p["basePass"] for p in pairs),
                             "measured20xNoTaskLoss": qualified and total_ratio is not None and peak_ratio is not None
-                            and total_ratio >= 20 and peak_ratio >= 20 and lost == 0 and not any(p["completionLost"] for p in pairs)})
+                            and total_ratio >= 20 and peak_ratio >= 20 and lost == 0
+                            and a["nativeCompleted"] == a["expected"] and b["nativeCompleted"] == b["expected"]})
     return {"schema": SCHEMA, "manifest": manifest["id"], "generated": now(), "reports": reports,
             # A control trial runs the bare client in both arms (tool search may differ per arm), so its
             # second arm measures noise or one setting, never Atlias.
@@ -431,15 +433,16 @@ def report(root, manifest=None):
     data = summarize(manifest, load_attempts(root, manifest))
     write(root / "REPORT.json", data)
     lines = ["# Native subharness measurements", "", "Same pinned model within each base/enhanced pair. No regular harness promotion.", "",
-             "| Host | Stage | Base solved | Atlias solved | Lost | Gained | Never worse | Base tokens per solve | Atlias tokens per solve | Total reduction | Peak reduction | Matched |",
-             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
+             "Matched describes measurement conditions. Native completion and the separate 20x/no-loss flag must also hold; ratios alone never qualify a candidate.", "",
+             "| Host | Stage | Base solved | Atlias solved | Base native complete | Atlias native complete | Lost | Gained | Never worse | Base tokens per solve | Atlias tokens per solve | Total reduction | Peak reduction | Matched | 20x with no task loss |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in data["reports"]:
         def ratio(x):
             return "unknown" if x is None else f"{x:.3f}x"
         a, b = r["arms"]["base"], r["arms"]["atlias"]
         def per(x):
             return "unknown" if x is None else f"{x:,.0f}"
-        lines.append(f"| {r['host']} | {r['stage']} | {a['passed']}/{a['expected']} | {b['passed']}/{b['expected']} | {r.get('lost')} | {r.get('gained')} | {r.get('neverWorse')} | {per(a.get('tokensPerSolved'))} | {per(b.get('tokensPerSolved'))} | {ratio(r['totalReduction'])} | {ratio(r['peakReduction'])} | {r['measurementMatched']} |")
+        lines.append(f"| {r['host']} | {r['stage']} | {a['passed']}/{a['expected']} | {b['passed']}/{b['expected']} | {a['nativeCompleted']}/{a['expected']} | {b['nativeCompleted']}/{b['expected']} | {r.get('lost')} | {r.get('gained')} | {r.get('neverWorse')} | {per(a.get('tokensPerSolved'))} | {per(b.get('tokensPerSolved'))} | {ratio(r['totalReduction'])} | {ratio(r['peakReduction'])} | {r['measurementMatched']} | {r['measured20xNoTaskLoss']} |")
     lines += ["", "| Host | Stage | Capped calls base | Capped calls Atlias | Base prompt, first usage block / counted | Atlias prompt, first usage block / counted |",
               "|---|---|---|---|---|---|"]
     for r in data["reports"]:
@@ -810,8 +813,19 @@ def selftest_cases():
     changed = copy.deepcopy(attempts)
     changed[1]["result"]["nativeCompleted"] = False
     check("native completion loss blocks 20x", summarize(m, changed)["reports"][0]["measured20xNoTaskLoss"] is False)
+    for incomplete_arm in (0, 1):
+        for completion in (False, None):
+            changed = copy.deepcopy(attempts)
+            changed[incomplete_arm]["result"]["nativeCompleted"] = completion
+            check("either arm incomplete or unknown blocks report 20x " + str(incomplete_arm) + str(completion),
+                  summarize(m, changed)["reports"][0]["measured20xNoTaskLoss"] is False)
     check("missing task remains incomplete", summarize(m, attempts[:-1])["reports"][0]["totalReduction"] is None)
     check("duplicate attempts are retained and block ratio", summarize(m, attempts + [attempts[0]])["reports"][0]["totalReduction"] is None)
+    changed = copy.deepcopy(attempts)
+    changed[1] = copy.deepcopy(changed[0])
+    duplicate_report = summarize(m, changed)["reports"][0]
+    check("duplicate replacing a missing planned key cannot populate complete totals",
+          not duplicate_report["arms"]["base"]["complete"] and duplicate_report["arms"]["base"]["totalTokens"] is None)
     with tempfile.TemporaryDirectory() as temp:
         root = pathlib.Path(temp)
         a = retain(root, m, p[0], attempts[0]["result"])
@@ -975,8 +989,9 @@ def selftest(receipt_path):
     mutants = [("unknown usage accepted", 'r.get("usageComplete") is True and count', 'True and count'),
                ("wrong window accepted", 'all(r.get("loadedWindow") == h["numCtx"] for r in results)', 'True'),
                ("model mismatch accepted", 'pa.get("model") == pb.get("model")', 'True'),
-               ("task loss accepted", 'and lost == 0 and not any', 'and True and not any'),
-               ("native completion loss accepted", 'not any(p["completionLost"] for p in pairs)', 'True'),
+               ("task loss accepted", 'and peak_ratio >= 20 and lost == 0', 'and peak_ratio >= 20 and True'),
+               ("incomplete native arm labelled 20x", 'and a["nativeCompleted"] == a["expected"] and b["nativeCompleted"] == b["expected"]', 'and True'),
+               ("native completion loss accepted", 'and b["nativeCompleted"] == b["expected"]', 'and True'),
                ("output spend erased", 'sum(r["promptTotal"] + r["outputTotal"] for r in results)', 'sum(r["promptTotal"] for r in results)'),
                ("receipt tamper accepted", 'digest(read(receipt)) != item["receiptHash"]', 'False')]
     mutants += [("unknown peak gate bypassed", 'and count(a["peakContext"]) is not None and count(b["peakContext"]) is not None', 'and True'),
