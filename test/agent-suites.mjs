@@ -715,6 +715,25 @@ export default async function agentSuites({ suite, asyncSuite, check, core, agen
     check('auto picks the openai engine after claude and codex, before ollama', agentMod.ENGINE_ORDER.join(',') === 'claude,codex,openai,ollama', { happened: agentMod.ENGINE_ORDER.join(','), why: 'A configured endpoint is a deliberate choice; a local Ollama is usually a fallback.', fix: 'Check ENGINE_ORDER.' });
   });
 
+  await asyncSuite('provider boundary expert', 'OpenAI endpoint boundary', async () => {
+    const cfg = (openaiUrl) => ({ openaiUrl, openaiModel: 'fixture-model' });
+    const evidence = { happened: 'endpoint crossed its boundary', why: 'Readiness and dispatch must both reject an unsafe endpoint before keys or prompts leave.', fix: 'Use the shared parsed API URL policy in both paths.' };
+    const env = { ATLIAS_API_KEY: 'SYNTHETIC-ONLY' };
+    for (const url of ['http://api.example.test/v1', 'http://localhost.attacker.example/v1', 'http://127.attacker.example/v1', 'http://user:secret@127.0.0.1/v1', 'http://127.0.0.1/v1?key=secret', 'http://127.0.0.1/v1#secret', 'file:///tmp/endpoint', 'not a URL']) {
+      let sent = 0;
+      const r = await loop.openaiChat(cfg(url), env, { post: async () => { sent++; return { status: 200, json: {} }; } })([], null);
+      check(`unsafe endpoint is rejected at readiness and dispatch: ${url}`, !loop.openaiReady(cfg(url), env) && !loop.openaiReady(cfg(url), {}) && sent === 0 && Boolean(r.error) && !r.error.includes('secret'), evidence);
+    }
+    for (const url of ['http://localhost:1234/v1', 'http://127.0.0.1:1234/v1/', 'http://[::1]:1234/v1', 'https://api.example.test/v1']) {
+      let request;
+      const r = await loop.openaiChat(cfg(url), env, { post: async (...args) => { request = args; return { status: 200, json: { choices: [{ message: { content: 'okay' } }] } }; } })([{ role: 'user', content: 'follow-up' }], null);
+      check(`valid selected endpoint preserves model, prompt and key: ${url}`, loop.openaiReady(cfg(url), env) && r.content === 'okay' && request?.[0].endsWith('/v1/chat/completions') && request?.[1].model === 'fixture-model' && request?.[1].messages[0].content === 'follow-up' && request?.[2].authorization === 'Bearer SYNTHETIC-ONLY', evidence);
+    }
+    check('HTTPS lookalikes do not qualify for keyless local readiness', !loop.openaiReady(cfg('https://localhost.attacker.example/v1'), {}), evidence);
+    const failure = await loop.openaiChat(cfg('http://127.0.0.1:1/v1'), {}, { post: async () => ({ status: 403, text: 'SYNTHETIC-SECRET-BODY' }) })([], null);
+    check('provider error reports its status without echoing its body', failure.error.includes('403') && !failure.error.includes('SYNTHETIC-SECRET-BODY'), evidence);
+  });
+
   await asyncSuite('modes expert', 'sub-harness, harness, or both', async () => {
     check('old saved choices read as both', ['ask', 'agent', 'sub-harness', '', undefined].every((v) => settings.normalizeMode(v) === 'both') && settings.normalizeMode('SUB') === 'sub', { happened: ['ask', 'agent', 'sub-harness'].map(settings.normalizeMode).join(','), why: 'Older versions saved the chooser answer without reading it; honouring it now would silently switch hooks off for people who never chose that.', fix: 'Check normalizeMode.' });
     check('typing atlias does what the mode says', settings.bareCommand('both', true) === 'chooser' && settings.bareCommand('sub', true) === 'status' && settings.bareCommand('standalone', true) === 'agent' && settings.bareCommand('standalone', false) === 'help', { happened: ['both', 'sub', 'standalone'].map((m) => settings.bareCommand(m, true)).join(','), why: 'A mode that changes nothing is a setting that does nothing.', fix: 'Check bareCommand.' });

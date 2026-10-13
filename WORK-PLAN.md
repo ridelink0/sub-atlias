@@ -1,3 +1,18 @@
+# Native benchmark queue and provider boundary checkpoint
+
+Updated 2026-10-13T22:17:43.271952+00:00
+Gev's20x TOTAL/PEAK zero-loss subharness target and4x regular Nanobot target remain active and unproved. All20 Luna reviews and20 peer reviews complete; senior disposition D:/harness-work/atlias-luna-council-1013/ROOT-REVIEW.md.
+
+Frozen native source cbef76e remains unchanged in prepared trials. A/A max4 currently preflight; hidden bounded-benchmark-queue.py waits for terminal receipt and exactly4 fully metered/native/integrity/window-qualified attempts before batch max20. Actual status/receipts in council benchmarks and receipts/root. An ongoing command is not success. Do not launch another controller against an existing lease or replace failed receipts.
+
+New regular fix shares public profile URL policy with OpenAI readiness and dispatch, rejects remoteHTTP/lookalikes/URLcredentials before sending, and removes raw provider error-body echo. Functional26/26 actualexit0; adversarial4/4 plants caught, control/restoredexit0, original source intact. Full broad run has not been repeated after this change; earlier broad1432/1432 and frozen preflight1444/1444 each omit9 PID-dependent cases. Syntax and diff checks passed; resource cleanup remains unqualified due prior TempDirectory WinError32 warning.
+
+Next: inspect A/A PREFLIGHT and ATTEMPTS, batch REPORT/gates; finish local paired Claude results before Codex. Address actor isolation and exact skill-body versions, native call-ID/duplicate/all-or-none checks, response byte bounds and grader/deadline qualification. Preserve Claude f4-f10 worktrees, held old trials, local GPU ownership, daily21:20 wake and relay. Local server11435 qwen3.5:9b-32k only; no paid APIs, no PID killing, no publishing.
+
+Measured Codex reset2026-10-14T01:23:41Z; existing recovery heartbeat updated20:30:41CDT Oct13. Saved TOML verified420sec afterreset. Goal must remain active; budget exhaustion does not achieve either target.
+
+---
+
 # Council checkpoint before native model measurements
 
 Updated 2026-10-13T21:58:25.310485+00:00
