@@ -244,12 +244,16 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             return self._messages(raw)
         if route.endswith("/v1/responses") or route.endswith("/v1/responses/compact"):
             return self._responses(raw, route[route.index("/v1/responses"):])
-        if "/responses" in route:  # a generation path the door does not meter is refused, never let through
+        # Only known non-generation helpers may pass without model metering.
+        # Unknown POSTs can include /api/generate, embeddings or new generation
+        # routes, so forwarding them would silently omit their cost.
+        if route in ("/api/show", "/v1/messages/count_tokens"):
+            return self._pass(raw)
+        else:
             with self.server.lock:
-                self.server.receipts.append({"api": "responses", "path": route[:120], "slot": None, "outcome": "refused: not a metered path"})
+                self.server.receipts.append({"api": "responses" if "/responses" in route else "unmetered", "path": route[:120], "slot": None, "outcome": "refused: not a metered path"})
                 self.server.errors.append(f"refused unmetered POST {route}"[:200])
             return self._send(501, {"error": {"message": "this path is not metered by the door", "type": "invalid_request_error"}})
-        self._pass(raw)
 
     def _pass(self, raw):
         """Anything that is not a chat call (the model list, say) goes to Ollama unchanged."""

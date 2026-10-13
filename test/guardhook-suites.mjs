@@ -56,6 +56,22 @@ export default async function guardHookSuites({ suite, check, core }) {
     check('a failed edit, or no edit, leaves the alternating guard as it was', denied(failed[5]) && denied(plain[5]), { happened: JSON.stringify([failed.map(denied), plain.map(denied)]), why: 'A failed edit changed nothing, so the calls are still a loop.', fix: 'Skip edit events marked failed.' });
   });
   suite('guard command positions', 'a search for a word is not the command it names (Codex F5)', () => {
+    const word = 'task' + 'kill';
+    const gitSearch = [
+      'git -C D:/repo grep -n ' + word + ' -- lib/guard.mjs',
+      'git --no-pager -C "D:/repo with spaces" -C sub grep -n "' + word + '" -- .',
+      "git -C 'D:/repo with spaces' diff --word-diff-regex=" + word,
+    ];
+    check('known Git global options and quoted paths preserve literal reader searches', gitSearch.every((c) => guard.destructiveReason(c, true) === null),
+      { happened: JSON.stringify(gitSearch.map((c) => guard.destructiveReason(c, true))), why: 'The global -C path is not the Git subcommand; falsely denying this reader costs an extra context round.', fix: 'Tokenize quoted arguments and skip only reviewed global options before the reader subcommand.' });
+    const gitDanger = [
+      'git -C D:/repo reset --hard', 'git --no-pager -C "D:/repo with spaces" clean -fd',
+      'git -C D:/repo push origin main --force', 'git -C ../repo checkout -- .',
+    ];
+    check('the same global options never hide Git discard operations, with either flag setting', gitDanger.every((c) => guard.destructiveReason(c, true) && guard.destructiveReason(c, false)),
+      { happened: JSON.stringify(gitDanger.map((c) => guard.destructiveReason(c, true))), why: 'Allowing global-option readers must not open destructive Git forms.', fix: 'Recognize reviewed global options in the destructive Git pattern as well.' });
+    check('unknown global options and config overrides stay conservative', guard.destructiveReason('git -c core.pager=' + word + ' --paginate log', true) !== null && guard.destructiveReason('git --unknown grep ' + word, true) !== null,
+      { happened: 'unknown/config option controls', why: 'Config and pager settings can introduce execution; they are not a proven literal reader.', fix: 'Do not skip unknown options or -c in readOnly.' });
     const kill = 'task' + 'kill';
     const search = `rg -n '${kill}' audit.mjs`;
     check('with guardCommandPositions off, a literal search for a process-kill word is still flagged (stored runs reproduce)', guard.destructiveReason(search) !== null, { happened: 'not flagged', why: 'The flag-off guard must not move.', fix: 'Use the whole-line match unless positions is true.' });

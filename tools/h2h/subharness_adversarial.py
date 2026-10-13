@@ -38,7 +38,7 @@ cases = [
     ("responses count taken unchecked", RUNNER, 'p, c = _count(u.get("input_tokens")), _count(u.get("output_tokens"))', 'p, c = u.get("input_tokens"), u.get("output_tokens")', RESP),
     ("responses stream without end not partial", RUNNER, "if ended is None:", "if False:", RESP),
     ("previous_response_id let through", RUNNER, 'if body.get("previous_response_id"):', "if False:", RESP),
-    ("unmetered responses path let through", RUNNER, 'if "/responses" in route:', "if False:", RESP),
+    ("unmetered POST path let through", RUNNER, 'if route in ("/api/show", "/v1/messages/count_tokens"):', "if True:", RESP),
     ("instructions dropped on the way", RUNNER, 'body["max_output_tokens"] = s.num_predict', 'body["max_output_tokens"] = s.num_predict; body.pop("instructions", None)', RESP),
     ("native skill capability removed", RUNNER, 'argv += ["-"]', 'argv += ["-c", "skills.include_instructions=false", "-"]', RESP),
     ("real skills root leaks into Codex", RUNNER, 'if skill_file:', 'if False:', RESP),

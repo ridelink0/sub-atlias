@@ -405,18 +405,24 @@ def stage_gate(manifest, attempts, host, stage):
 
 
 def smoke_gate(manifest, attempts, host):
-    """Before the long screen (council 1013b, b02): hold when the smoke already fails never worse,
-    that is the Atlias arm solved fewer matched tasks than base, or the pairs are unmatched. trial-07
-    and trial-08 each ran hours of screen after a smoke that had already failed it. Only the solve
-    rule applies here: the 20x minimum is the screen's to judge. "smokeGate": false in the spec
-    turns it off."""
+    """Hold before the expensive screen on any task loss, unmatched measurement or incomplete
+    native execution. Aggregate solve gains cannot offset a lost task. Ratios are judged at the
+    screen. A declared smokeGate:false diagnostic bypass is never qualified smoke evidence."""
     measured = next(r for r in summarize(manifest, attempts)["reports"] if r["host"] == host and r["stage"] == "smoke")
     reasons = []
-    if manifest["spec"].get("smokeGate", True) is not False and not measured["neverWorse"]:
-        reasons.append("never worse at smoke: the Atlias arm solved fewer matched tasks than base, or the pairs are unmatched (Gev, 2026-10-13)")
+    bypassed = manifest["spec"].get("smokeGate", True) is False
+    if not bypassed:
+        if measured["neverWorse"] is not True:
+            reasons.append("never worse at smoke: the Atlias arm solved fewer matched tasks than base, or the pairs are unmatched (Gev, 2026-10-13)")
+        if measured.get("lost") != 0:
+            reasons.append("taskwise quality at smoke: no lost task may be offset by gains")
+        for arm in ("base", "atlias"):
+            if measured["arms"][arm]["expected"] != measured["arms"][arm]["nativeCompleted"]:
+                reasons.append(f"native completion at smoke: {arm} did not complete every task")
     inputs = [a for a in attempts if a["trial"]["host"] == host and a["trial"]["stage"] == "smoke"]
     return {"manifest": manifest["id"], "host": host, "stage": "smoke", "gate": "smoke", "attemptsHash": digest(inputs),
-            "measurement": measured, "reasons": reasons, "action": "hold" if reasons else "continue"}
+            "measurement": measured, "reasons": reasons, "bypassed": bypassed,
+            "qualified": not bypassed and not reasons, "action": "hold" if reasons else "continue"}
 
 
 def report(root, manifest=None):
@@ -732,10 +738,15 @@ def selftest_cases():
     check("a smoke that is never worse lets the screen start, whatever its token ratio", smoke_gate(sm, as_smoke(below), "claude")["action"] == "continue")
     check("a smoke where Atlias solved fewer holds the screen, and says why", smoke_gate(sm, as_smoke(lost_task), "claude")["action"] == "hold"
           and smoke_gate(sm, as_smoke(lost_task), "claude")["reasons"][0].startswith("never worse at smoke"))
-    check("a smoke that traded one task for another is never worse and lets the screen start", smoke_gate(sm, as_smoke(traded), "claude")["action"] == "continue")
+    check("a smoke trade holds despite equal aggregate solves", smoke_gate(sm, as_smoke(traded), "claude")["action"] == "hold")
+    for arm in ("base", "atlias"):
+        incomplete_smoke = as_smoke(below)
+        next(a for a in incomplete_smoke if a["trial"]["arm"] == arm)["result"]["nativeCompleted"] = False
+        check(f"a smoke with incomplete {arm} native execution holds despite unchanged grades", smoke_gate(sm, incomplete_smoke, "claude")["action"] == "hold")
     off = copy.deepcopy(sm)
     off["spec"]["smokeGate"] = False
     check("smokeGate false in the spec turns the smoke gate off", smoke_gate(off, as_smoke(lost_task), "claude")["action"] == "continue")
+    check("a diagnostic smoke bypass is explicitly unqualified", smoke_gate(off, as_smoke(lost_task), "claude")["bypassed"] and not smoke_gate(off, as_smoke(lost_task), "claude")["qualified"])
     per_solve = summarize(m, attempts)["reports"][0]["arms"]
     check("tokens per solved task are reported per arm", per_solve["base"]["tokensPerSolved"] == 220 and per_solve["atlias"]["tokensPerSolved"] == 10)
     blocks = copy.deepcopy(attempts)
@@ -973,6 +984,9 @@ def selftest(receipt_path):
                 ("stage native completion gate bypassed", 'if measured["arms"][arm]["nativeCompleted"] != measured["arms"][arm]["expected"]:', 'if False:'),
                 ("stage task loss gate bypassed", 'if measured["lost"] != 0:', 'if False:')]
     mutants += [("stage gate not dispatched", 'if prerequisite:', 'if False:')]
+    mutants += [("smoke task loss gate bypassed", 'if measured.get("lost") != 0:', 'if False:'),
+                ("smoke native completion gate bypassed", 'if measured["arms"][arm]["expected"] != measured["arms"][arm]["nativeCompleted"]:', 'if False:'),
+                ("diagnostic smoke claims qualification", '"qualified": not bypassed and not reasons', '"qualified": not reasons')]
     mutants += [("never worse ignores solves", 'sum(p["atliasPass"] for p in pairs) >= sum(p["basePass"] for p in pairs)', 'True'),
                 ("never worse gate bypassed", 'if not measured["neverWorse"]:', 'if False:')]
     mutants += [("held host ends the other host's stages", 'held[trial["host"]] = {"next": trial, "gate": gate}',
