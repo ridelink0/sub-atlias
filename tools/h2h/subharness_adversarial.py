@@ -51,8 +51,8 @@ cases += [
     ("quoted spacing collapsed", "lib/integrity.mjs", ": canonicalCommand(a.command) === canonicalCommand(b.command));", ": String(a.command).replace(/\\s+/g, ' ').trim() === String(b.command).replace(/\\s+/g, ' ').trim());", CODEX_F),
     ("checkId ignored", "lib/integrity.mjs", "a.checkId && b.checkId ? a.checkId === b.checkId : ", "", CODEX_F),
     ("hook records no checkId", "lib/track.mjs", "verify, ...(verify ? checkId(payload, command) : {}) };", "verify };", CODEX_F),
-    ("alternating window ignores edits", "lib/guard.mjs", "i > lastAlt; i--) if (evs[i].kind === 'edit' && !evs[i].failed) { lastAlt = i; break; }", "i > lastAlt; i--) if (false) { lastAlt = i; break; }", CODEX_F),
-    ("failed edit resets the alternating guard", "lib/guard.mjs", "&& !evs[i].failed) { lastAlt = i; break; }", ") { lastAlt = i; break; }", CODEX_F),
+    ("alternating window ignores edits", "lib/guard.mjs", "i > lastAlt; i--) if (evs[i].kind === 'edit' && !evs[i].failed && !revertsEarlier(evs, i)) { lastAlt = i; break; }", "i > lastAlt; i--) if (false) { lastAlt = i; break; }", CODEX_F),
+    ("failed edit resets the alternating guard", "lib/guard.mjs", "&& !evs[i].failed && !revertsEarlier(evs, i)) { lastAlt = i; break; }", " && !revertsEarlier(evs, i)) { lastAlt = i; break; }", CODEX_F),
     ("positions applied without the switch", "lib/guard.mjs", "const parts = positions && !UNREADABLE.test(line) ? simpleCommands(line) : null;", "const parts = simpleCommands(line);", CODEX_F),
     # Council 1013b (b06, b07, b09): each new guard rule and the door's cut reading has a test that fails without it.
     ("positions reads a pipe into a shell", "lib/guard.mjs", "positions && !UNREADABLE.test(line)", "positions", CODEX_F),
