@@ -156,8 +156,109 @@ def main():
         check("a harness gets a home of its own, the door as its only proxy, the shims first on its path and nothing secret from this process",
               "BASE_H2H_SECRET_KEY" not in env and env["HOME"].startswith(state) and env["USERPROFILE"] == env["HOME"] and env["HTTPS_PROXY"] == door.base
               and env["NO_PROXY"].startswith("127.0.0.1") and path.split(os.pathsep)[:2] == ["SHIMS", "RG"] and env["TIKTOKEN_CACHE_DIR"] == "T" and os.path.isdir(env["TMP"]), {k: env[k] for k in ("HOME", "HTTPS_PROXY")})
-    # Claude's wire format (/v1/messages), which base Claude Code speaks and Ollama answers: the same door, the same rules.
+    # Council 1013b (b10 F3, b11): OpenCode reads %ProgramData%\opencode as a system config folder. Its run is given the
+    # task's state folder as ProgramData, and no other harness's environment changes.
     import argparse
+    import subprocess
+    TITLE = "You are a title generator. You output ONLY a thread title."  # packages/core/src/plugin/agent.ts PROMPT_TITLE (d2905b8 and 026b106)
+    with tempfile.TemporaryDirectory() as state:
+        check("OpenCode's environment names the task's state folder as ProgramData, so its system config folder is never read",
+              B.offline_env(state, door, "SHIMS", harness="opencode").get("ProgramData") == state)
+        check("no other harness gets a ProgramData of ours",
+              "ProgramData" not in B.offline_env(state, door, "SHIMS", harness="nanobot") and "ProgramData" not in B.offline_env(state, door, "SHIMS"))
+    # Council 1013b (b10 F5, b11 F1): OpenCode's title call is its own request, not one of its steps. Its tokens count in
+    # every total; the budget counts the other calls. Every other harness counts it as before.
+    def post_to(d, body):
+        req = urllib.request.Request(d.base + "/v1/chat/completions", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}, method="POST")
+        try:
+            with opener.open(req, timeout=20) as r:
+                return r.status, r.read().decode()
+        except urllib.error.HTTPError as e:
+            return e.code, e.read().decode()
+
+    up = f"http://127.0.0.1:{fake.server_address[1]}"
+    title_req = {"model": "m", "messages": [{"role": "system", "content": TITLE + " Nothing else."}, {"role": "user", "content": "fix"}]}
+    work_req = {"model": "m", "messages": [{"role": "user", "content": "fix"}]}
+    tdoor = B.Door(up, "qwen3.5:9b", 2048, 1, skip_titles=True)
+    threading.Thread(target=tdoor.serve_forever, daemon=True).start()
+    n0 = len(seen)
+    post_to(tdoor, title_req)
+    t1 = (len(seen), tdoor.calls, tdoor.titles, tdoor.capped)
+    post_to(tdoor, work_req)
+    t2 = (len(seen), tdoor.calls, tdoor.titles, tdoor.capped)
+    _, b_over = post_to(tdoor, work_req)
+    t3 = (len(seen), tdoor.calls, tdoor.titles, tdoor.capped)
+    check("OpenCode's title call goes to the model and is not counted against a budget of one; the first working call is within it, the second is stopped",
+          t1 == (n0 + 1, 1, 1, 0) and t2 == (n0 + 2, 2, 1, 0) and t3 == (n0 + 2, 3, 1, 1) and B.STOP_TEXT in b_over, (t1, t2, t3))
+    check("the title call and the working call both count in the ledger, and the stopped call adds nothing",
+          tdoor.usage == [(111, 22), (111, 22)] and len(tdoor.receipts) == 3, (tdoor.usage, len(tdoor.receipts)))
+    check("the title call's receipt says it was a title; the working call's does not, and the stopped one says it was capped",
+          tdoor.receipts[0].get("title") is True and "title" not in tdoor.receipts[1] and tdoor.receipts[2]["outcome"].startswith("capped"), tdoor.receipts)
+    ndoor = B.Door(up, "qwen3.5:9b", 2048, 1)
+    threading.Thread(target=ndoor.serve_forever, daemon=True).start()
+    post_to(ndoor, title_req)
+    post_to(ndoor, work_req)
+    check("a door not built for OpenCode counts the same title request like any other call, as before",
+          ndoor.calls == 2 and ndoor.capped == 1 and ndoor.titles == 0 and "title" not in ndoor.receipts[0], (ndoor.calls, ndoor.capped, ndoor.titles))
+    kdoor = B.Door(up, "qwen3.5:9b", 2048, 0, skip_titles=True)
+    threading.Thread(target=kdoor.serve_forever, daemon=True).start()
+    post_to(kdoor, {"model": "m", "messages": [{"role": "user", "content": TITLE}]})
+    post_to(kdoor, {"model": "m", "messages": [{"role": "system", "content": [{"type": "text", "text": TITLE + " Nothing else."}]}, {"role": "user", "content": "fix"}]})
+    check("the title text in a user message is an ordinary call, and a title sent as text parts of the system message is recognised",
+          kdoor.capped == 1 and kdoor.titles == 1 and kdoor.calls == 2, (kdoor.capped, kdoor.titles, kdoor.calls))
+    for d in (tdoor, ndoor, kdoor):
+        d.shutdown()
+    # run_one, end to end, with a stand-in for the harness that makes OpenCode's calls: its title, then two working calls.
+    # Run once as OpenCode (the title is apart from the budget) and once as Claude Code (it is not).
+    calls_src = (
+        "import json, sys, urllib.error, urllib.request\n"
+        "base, marker = sys.argv[1], sys.argv[2]\n"
+        "op = urllib.request.build_opener(urllib.request.ProxyHandler({}))\n"
+        "def post(msgs):\n"
+        "    req = urllib.request.Request(base + '/v1/chat/completions', data=json.dumps({'model': 'm', 'messages': msgs}).encode(), headers={'Content-Type': 'application/json'}, method='POST')\n"
+        "    try:\n"
+        "        op.open(req, timeout=20).read()\n"
+        "    except urllib.error.HTTPError:\n"
+        "        pass\n"
+        "post([{'role': 'system', 'content': marker + ' Nothing else.'}, {'role': 'user', 'content': 'fix'}])\n"
+        "post([{'role': 'user', 'content': 'fix'}])\n"
+        "post([{'role': 'user', 'content': 'fix'}])\n")
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as work:
+        script = pathlib.Path(work) / "calls.py"
+        script.write_text(calls_src, encoding="utf-8")
+        seen_env = {}
+
+        def stand_in(name):
+            def cmd(a, task, ws, state, door, budget, env):
+                seen_env[name] = dict(env)
+                return [sys.executable, str(script), door.base, TITLE], str(ws), None
+            return cmd
+        ra = argparse.Namespace(harness="opencode", model="qwen3.5:9b", num_ctx=16384, num_predict=2048, api_base=up, work=work, budget=0, keep=True,
+                                start_timeout=60, task_timeout=60, ripgrep="", tiktoken_cache=work, provenance=None)
+        saved = {k: B.HARNESS[k] for k in ("opencode", "claude")}
+        try:
+            B.HARNESS["opencode"], B.HARNESS["claude"] = stand_in("opencode"), stand_in("claude")
+            row_oc = B.run_one({"id": "oc", "files": {}, "check": [sys.executable, "-c", "pass"], "rounds": 1, "prompt": "fix"}, ra, work)
+            ra.harness = "claude"
+            row_cl = B.run_one({"id": "cl", "files": {}, "check": [sys.executable, "-c", "pass"], "rounds": 1, "prompt": "fix"}, ra, work)
+        finally:
+            B.HARNESS.update(saved)
+        oc_log = json.loads(pathlib.Path(row_oc["state"], "door-log.json").read_text(encoding="utf-8"))
+    check("in OpenCode's run the title is apart from the budget: two calls to the model (title and one working call), titleCalls 1, the second working call stopped, and both sent calls in the totals",
+          row_oc["rounds"] == 2 and row_oc.get("titleCalls") == 1 and "step limit reached (1 further" in row_oc["stop"] and row_oc["promptTotal"] == 222 and row_oc["outputTotal"] == 44,
+          (row_oc["rounds"], row_oc.get("titleCalls"), row_oc["stop"], row_oc["promptTotal"], row_oc["outputTotal"]))
+    check("OpenCode's run is given the task's state folder as ProgramData, and its title call is marked in the receipts and in the door's log",
+          seen_env["opencode"].get("ProgramData") == row_oc["state"] and row_oc["receipts"][0].get("title") is True
+          and oc_log.get("titles") == 1, (seen_env["opencode"].get("ProgramData"), row_oc["state"], oc_log.get("titles")))
+    check("a Claude Code run counts that same first call against its budget as before: one call sent, two stopped, and no title field or ProgramData of ours",
+          row_cl["rounds"] == 1 and "titleCalls" not in row_cl and "step limit reached (2 further" in row_cl["stop"] and "ProgramData" not in seen_env["claude"] and "title" not in row_cl["receipts"][0],
+          (row_cl["rounds"], row_cl["stop"]))
+    # Council 1013b (c): the help names the v2.0.28 source as an example for --opencode-source. Wide columns, so no word wraps.
+    helped = subprocess.run([sys.executable, str(pathlib.Path(B.__file__)), "--help"], capture_output=True, timeout=120,
+                            env={**os.environ, "COLUMNS": "400", "PYTHONIOENCODING": "utf-8"})
+    check("the help names D:/harness-work/opencode-v2.0.28 as an example for --opencode-source",
+          helped.returncode == 0 and "D:/harness-work/opencode-v2.0.28" in helped.stdout.decode("utf-8", "replace"), helped.returncode)
+    # Claude's wire format (/v1/messages), which base Claude Code speaks and Ollama answers: the same door, the same rules.
     import shutil
     door2 = B.Door(f"http://127.0.0.1:{fake.server_address[1]}", "qwen3.5:9b", 2048, 3)
     threading.Thread(target=door2.serve_forever, daemon=True).start()

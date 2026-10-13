@@ -56,10 +56,12 @@ class Door(http.server.ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = False
 
-    def __init__(self, upstream, model, num_predict, budget):
+    def __init__(self, upstream, model, num_predict, budget, skip_titles=False):
         super().__init__(("127.0.0.1", 0), DoorHandler)
         self.upstream = upstream.rstrip("/")
         self.model, self.num_predict, self.budget = model, num_predict, budget
+        self.skip_titles = skip_titles  # OpenCode only: its title calls are kept apart from the budget (council 1013b)
+        self.titles = 0         # title calls seen; they are in calls, usage and receipts, not in the budget
         self.lock = threading.Lock()
         self.calls = 0          # chat calls asked for
         self.usage = []         # one (prompt, output) per call sent to the model; None where Ollama gave no count
@@ -142,6 +144,23 @@ def ended_cut(receipts):
     on a reply that was never finished, which is not ending by itself (council 1013b, b02 b10 b11 b14)."""
     sent = [r for r in receipts if r.get("slot") is not None]
     return bool(sent) and bool(sent[-1].get("cut"))
+
+
+TITLE_MARKER = "You are a title generator. You output ONLY a thread title."  # OpenCode's title agent (packages/core/src/plugin/agent.ts PROMPT_TITLE, d2905b8 and 026b106)
+
+
+def is_title_call(body):
+    """OpenCode's title request: the title agent's prompt is its system message, sent as a string or as text parts.
+    A user message that happens to carry the same words is an ordinary call (council 1013b, b10 F5, b11 F1)."""
+    for m in body.get("messages") or []:
+        if not isinstance(m, dict) or m.get("role") != "system":
+            continue
+        c = m.get("content")
+        if isinstance(c, list):
+            c = "".join(p["text"] for p in c if isinstance(p, dict) and isinstance(p.get("text"), str))
+        if isinstance(c, str) and TITLE_MARKER in c:
+            return True
+    return False
 
 
 def _message_usage(u):
@@ -513,7 +532,10 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             s.calls += 1
             if s.first is None:
                 s.first = time.time()
-            over = s.calls > s.budget
+            title = s.skip_titles and is_title_call(body)  # OpenCode's title call: sent, counted in every total, not in the budget
+            if title:
+                s.titles += 1
+            over = not title and s.calls - s.titles > s.budget
             if over:
                 s.capped += 1
                 s.receipts.append({"api": "chat", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})
@@ -523,6 +545,8 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                 slot = len(s.usage)
                 s.usage.append(None)
                 rec = {"api": "chat", "stream": stream, "slot": slot, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": []}
+                if title:
+                    rec["title"] = True
                 s.receipts.append(rec)
         if over:
             return self._stop_reply(stream)
@@ -636,7 +660,7 @@ def run_harness(argv, *, cwd, env, door, start_limit, task_limit, stdout, stdin_
         release(p)
 
 
-def offline_env(state, door, shims, extra_path=(), extra=None):
+def offline_env(state, door, shims, extra_path=(), extra=None, harness=""):
     """A child environment built from nothing: what a process needs to start, a home of its own
     under `state`, and proxies that lead to the door, which refuses anything but the model."""
     env = {}
@@ -658,6 +682,8 @@ def offline_env(state, door, shims, extra_path=(), extra=None):
                 "NO_PROXY": "127.0.0.1,localhost,::1", "no_proxy": "127.0.0.1,localhost,::1",
                 "NO_COLOR": "1", "DO_NOT_TRACK": "1", "PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"})
     env.update(extra or {})
+    if harness == "opencode":  # OpenCode's system config folder is %ProgramData%\opencode; this folder has none (council 1013b, b10 F3, b11)
+        env["ProgramData"] = str(state)
     return env
 
 
@@ -891,7 +917,7 @@ def run_one(task, a, shims):
     shipped = {str(p.relative_to(ws)).replace("\\", "/") for p in ws.rglob("*") if p.is_file()}
     protect = task.get("protect") or []
     before = {p: sha(ws / p) for p in protect}
-    door = Door(a.api_base, a.model, a.num_predict, budget)
+    door = Door(a.api_base, a.model, a.num_predict, budget, skip_titles=a.harness == "opencode")
     threading.Thread(target=door.serve_forever, daemon=True).start()
     watch = WindowWatch(a.api_base, a.model)
     t0 = time.time()
@@ -901,7 +927,7 @@ def run_one(task, a, shims):
         # Start-up caches kept between tasks, so no task pays for them again and neither harness needs
         # the network: nanobot's token-counter file, and bun's compiled copy of OpenCode's source.
         caches = {"TIKTOKEN_CACHE_DIR": str(a.tiktoken_cache)} if a.harness == "nanobot" else {"BUN_RUNTIME_TRANSPILER_CACHE_PATH": str(pathlib.Path(a.work) / "_bun-cache")} if a.harness == "opencode" else {}
-        env = offline_env(state, door, shims, extra_path=[pathlib.Path(a.ripgrep).parent] if a.harness == "opencode" and a.ripgrep else (), extra=caches)
+        env = offline_env(state, door, shims, extra_path=[pathlib.Path(a.ripgrep).parent] if a.harness == "opencode" and a.ripgrep else (), extra=caches, harness=a.harness)
         argv, cwd, stdin_text = HARNESS[a.harness](a, task, ws, state, door, budget, env)
         with open(log, "wb") as buf:
             rc, stopped = run_harness(argv, cwd=cwd, env=env, door=door, start_limit=a.start_timeout, task_limit=a.task_timeout, stdout=buf, stdin_text=stdin_text)
@@ -925,7 +951,8 @@ def run_one(task, a, shims):
     added = sorted(str(p.relative_to(ws)).replace("\\", "/") for p in ws.rglob("*") if p.is_file() and str(p.relative_to(ws)).replace("\\", "/") not in shipped)[:40]
     try:  # what went through the door, kept beside the harness's own output
         (state / "door-log.json").write_text(json.dumps({"calls": door.calls, "usage": door.usage, "capped": door.capped, "refused": door.refused,
-                                                         "errors": door.errors, "passed": door.passed, "partial": door.partial, "receipts": door.receipts}, indent=1), encoding="utf-8")
+                                                         "errors": door.errors, "passed": door.passed, "partial": door.partial, "receipts": door.receipts,
+                                                         **({"titles": door.titles} if door.skip_titles else {})}, indent=1), encoding="utf-8")
     except Exception:
         pass
     window, windows = window_of(readings, loaded_window(a.api_base, a.model), a.num_ctx)
@@ -982,7 +1009,7 @@ def run_one(task, a, shims):
             # Whether the harness ended by itself, apart from whether the grader passed what it left.
             # A run whose last model reply ended at the output cap stopped on an unfinished reply.
             "nativeCompleted": rc == 0 and not door.capped and not door.errors and not door.partial and bool(usage) and not cut_last,
-            "cutCalls": door.cut, "endedCut": cut_last,
+            "cutCalls": door.cut, "endedCut": cut_last, **({"titleCalls": door.titles} if door.skip_titles else {}),
             "numCtx": a.num_ctx, "loadedWindow": window, "loadedWindows": windows, "taskDigests": task_digests(task), "provenance": getattr(a, "provenance", None),
             "receipts": door.receipts,
             "refused": door.refused[:20], "modelErrors": door.errors[:20], "addedFiles": None if (passed and not a.keep) else added,
@@ -1042,7 +1069,8 @@ def main():
     ap.add_argument("--start-timeout", type=int, default=600, help="seconds a harness may take to make its first model call")
     ap.add_argument("--nanobot", default="D:/harness-work/venvs/nanobot/Scripts/nanobot.exe")
     ap.add_argument("--bun", default="D:/harness-work/atlias-opencode-1009/runtime/bun-windows-x64/bun.exe")
-    ap.add_argument("--opencode-source", default="D:/harness-work/atlias-opencode-1009/upstream")
+    ap.add_argument("--opencode-source", default="D:/harness-work/atlias-opencode-1009/upstream",
+                    help="OpenCode source tree the run is made from (its bun is --bun); example for OpenCode v2.0.28: --opencode-source D:/harness-work/opencode-v2.0.28")
     ap.add_argument("--ripgrep", default="D:/harness-work/atlias-opencode-1009/runtime/rg/rg.exe")
     ap.add_argument("--tiktoken-cache", default="D:/harness-work/tiktoken-cache", help="where nanobot's token-counter file is kept (filled once, with the network)")
     ap.add_argument("--claude", default="C:/Users/OWNER/AppData/Roaming/npm/node_modules/@anthropic-ai/claude-code/bin/claude.exe", help="the Claude Code program itself, not the npm launcher script")
