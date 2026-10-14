@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import shutil
 import sys
@@ -124,6 +125,9 @@ cases += [
     ('retry usage drops earlier attempts', 'lib/loop.mjs', 'requestUsages.push(r.json?.usage || null);', 'requestUsages.splice(0, requestUsages.length, r.json?.usage || null);', PROTOCOL),
     ('model error discards request accounting', 'lib/loop.mjs', 'Array.isArray(res?.requestUsages) ? res.requestUsages', 'Array.isArray(res?.requestUsages) ? (res.error ? [] : res.requestUsages)', PROTOCOL),
 ]
+# Removing Windows-only clock slack has no behavioral effect on other hosts.
+if os.name != 'nt':
+    cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
 rows = []
 original_hashes = {rel: hashlib.sha256((source / rel).read_bytes()).hexdigest() for _, rel, *_ in cases}
 for name, rel, old, new, *cmd in cases:
