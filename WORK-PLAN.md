@@ -1,3 +1,14 @@
+# Windows clock discrepancy fixed; new native freeze required
+
+Updated 2026-10-14T03:13:09.078525+00:00
+Research0f/9. aa32-run-r1 actualexit2, preflight00failed1543/1544 on parent-shell/worker-edit detection; zero inference, preserve failed manifest3ca03664. Native32preflight-r1 actualexit0, all8checks passed, including1544/1544+9omissions and90plants, but nativebatch unstarted pending calibration. Root diagnostic12focused iterations and full1544/1544 passed; observed filesystem-clock issue explains intermittent result, not assumed test success.
+
+Measured500 immediate writes in receipts/root/ntfs-clock-probe.json:322mtime values predating Date.now, minimum-13.926ms. gate.shellChangedFiles now allows32ms Windows slack,0 elsewhere; old dirt still excluded. Smallest functional windows-clock-functional-r2 actual40/40exit0; planted removal caught exit1/originalsourceintact. Test diagnostics retained. Commit this fix and create NEW r2 candidates, never mutate r1 snapshots. Need full frozen r2 preflight before native A/A4 thenClaude20 thenCodex20. No paid APIs, no PID killing, private11435 qwen3.5:9b-32k only.
+
+Native Codex recording fixture actual3 exits0 perarm with forcedcompaction. Exactoriginal/followups/project preservedboth; selectedskillbody aftercompact falsebase/trueAtlias. Atlias fullprofile, not lean benchmark profile; protocol fixtureusage/charactercounts are not savings. Broker audit L19 sayspermissions/actor propagation/cancellation/image-PDF fidelity still need current-build native receipts. No20x/4x achievement,9PID omissions/cleanup caveat remain.
+
+---
+
 # Native32budget recovery candidate: source verified
 
 Updated 2026-10-14T02:54:47.445234+00:00

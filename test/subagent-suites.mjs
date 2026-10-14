@@ -62,24 +62,30 @@ export default async function subagentSuites({ suite, asyncSuite, check, skip, c
   });
 
   suite('subagents apart expert', 'subagents apart: a main shell change to a file a subagent also edited is still held', () => {
+    const since = 100000;
+    const full = path.join(TMP, 'clock-edge.py');
+    const status = () => ({ stdout: '?? clock-edge.py\n' });
+    const why = { happened: 'filesystem and event clocks disagreed', why: 'On Windows a fresh write can appear milliseconds older than its prompt boundary.', fix: 'Apply the bounded Windows mtime tolerance while excluding old dirt.' };
+    check('shellChangedFiles tolerates a Windows filesystem tick without pulling in old dirt', gate.shellChangedFiles(TMP, since, { run: status, mtime: () => since - 16 }).includes(full) === (process.platform === 'win32') && gate.shellChangedFiles(TMP, since, { run: status, mtime: () => since - 10000 }).length === 0, why);
     const probe = spawnSync('git', ['--version'], { encoding: 'utf8' });
     if (probe.status !== 0) { skip('a main shell change is still held', 'git is not on PATH'); return; }
     // The main session changes a.py through the shell (no edit event), then a subagent edits the same file.
     // Git lists a.py once; only the main session's own change is the reason to hold the reply.
     const shared = (flag) => withFlag(flag, () => {
       const dir = project();
-      spawnSync('git', ['init', '-q'], { cwd: dir, encoding: 'utf8' });
+      const initialized = spawnSync('git', ['init', '-q'], { cwd: dir, encoding: 'utf8' });
       const s = session(dir);
       fs.writeFileSync(path.join(dir, 'a.py'), 'def a():\n    return 1\n');
       track.postTool({ session_id: s, cwd: dir, tool_name: 'Bash', tool_input: { command: 'echo x >> a.py' }, tool_response: { stdout: '', exit_code: 0 } });
       writeTool(dir, s, 'a.py', 'def a():\n    return 2\n', AGENT);
-      return stop(dir, s);
+      const out = stop(dir, s);
+      return { out, diagnostic: { initialized: initialized.status, turn: gate.turnEvents(s), mtime: fs.statSync(path.join(dir, 'a.py')).mtimeMs, status: core.gitStatusShort(dir) } };
     });
     const on = shared('1');
     const off = shared(null);
-    check('with subagentsApart on, a main shell change to a file a subagent also edited is still held', blocked(on),
+    check('with subagentsApart on, a main shell change to a file a subagent also edited is still held', blocked(on.out),
       { happened: JSON.stringify(on), why: 'If the subagent\'s edit hides the file from git, a shell edit of the main session goes unchecked (the false negative f3 found).', fix: 'turnEvents: apart is empty when the main session ran a shell command this turn.' });
-    check('with subagentsApart off, the same script is held, as before', blocked(off),
+    check('with subagentsApart off, the same script is held, as before', blocked(off.out),
       { happened: JSON.stringify(off), why: 'Off must stay the gate as it was.', fix: 'Keep the apart filter behind the flag.' });
   });
 

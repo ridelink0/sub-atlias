@@ -102,6 +102,7 @@ cases += [
     ('actor authority namespace is dropped', 'lib/core.mjs', "return tag.subagent && sid !== 'no-session' ? `actor-${sha(JSON.stringify([sid, tag.subagent]))}` : sid;", 'return sid;', ACTORS),
     ('oversized event loses actor', 'lib/core.mjs', "...(out.subagent ? { subagent: out.subagent } : {}), oversized: true", 'oversized: true', ACTORS),
     ('worker consumes parent gate flags', 'lib/gate.mjs', 'const metaSid = actorSession(payload, cfg);', 'const metaSid = sid;', ACTORS),
+    ('Windows filesystem tick loses shell edits', 'lib/gate.mjs', 'stat(full) >= since - MTIME_SLOP_MS', 'stat(full) >= since', ACTORS),
     ('recovered check loses actor', 'lib/track.mjs', '.map((ev) => ({ ...ev, ...subagentTag(payload, config()) }))', '', ACTORS),
     ('handoff pools actor events', 'lib/progress.mjs', "!apart || (e.subagent || '') === actor", 'true', ACTORS),
     ('worker overwrites parent handoff', 'lib/progress.mjs', "config().flags.subagentsApart && actor ? `progress-actor-${sha(actor)}.md` : 'progress.md'", "'progress.md'", ACTORS),
