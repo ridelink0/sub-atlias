@@ -147,6 +147,20 @@ cases += [
     ('worker native-tool route hidden from the model', 'mods/atlias-transaction/hooks/register.mjs', 'Workers use standalone native tools through ToolSearch.', '', BATCH),
 ]
 # Removing Windows-only clock slack has no behavioral effect on other hosts.
+READ_VIEW = ['node', 'test/run.mjs', 'native read views']
+cases += [
+    ('Read dedup option inverted', 'mods/atlias-transaction/hooks/register.mjs', 'options.deduplicateTextReads === true', 'options.deduplicateTextReads !== true', READ_VIEW),
+    ('Read dedup dispatch ignored', 'mods/atlias-transaction/hooks/register.mjs', 'compactReads ? compactTextRead(nativeText) : nativeText', 'nativeText', READ_VIEW),
+    ('Read dedup contract omitted', 'mods/atlias-transaction/hooks/register.mjs', 'Exact numbered Read text is retained;', '', READ_VIEW),
+    ('Read dedup accepts diagnostic text', 'mods/atlias-transaction/hooks/text-read.mjs', 'numbered(file.content, file.startLine) === native.text', 'true', READ_VIEW),
+    ('Read dedup encodes without benefit', 'mods/atlias-transaction/hooks/text-read.mjs', 'Math.min(textGain, transportGain) > 0', 'true', READ_VIEW),
+    ('Read dedup ignores count mismatch', 'mods/atlias-transaction/hooks/text-read.mjs', "if (file.numLines !== file.content.split('\\n').length) return native;", 'if (false) return native;', READ_VIEW),
+    ('Read decoder ignores count mismatch', 'mods/atlias-transaction/hooks/text-read.mjs', "if (file.numLines !== content.split('\\n').length) return null;", 'if (false) return null;', READ_VIEW),
+    ('Read dedup discards truncation metadata', 'mods/atlias-transaction/hooks/text-read.mjs', '...file, content: { from:', 'filePath: file.filePath, numLines: file.numLines, startLine: file.startLine, totalLines: file.totalLines, content: { from:', READ_VIEW),
+    ('Read decoder ignores line prefix', 'mods/atlias-transaction/hooks/text-read.mjs', 'if (!lines[index].startsWith(prefix)) return null;', 'if (false) return null;', READ_VIEW),
+    ('Read decoder drops CR characters', 'mods/atlias-transaction/hooks/text-read.mjs', 'content = restored.join', "content = restored.map(line => line.replace(/\\r/g, '')).join", READ_VIEW),
+    ('Read decoder accepts unknown source', 'mods/atlias-transaction/hooks/text-read.mjs', "recipe.from !== 'native.text'", 'false', READ_VIEW),
+]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
 # Validate all anchors before spending time on the first planted execution.

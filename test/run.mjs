@@ -1036,6 +1036,7 @@ await (await import('./finishgreen-suites.mjs')).default({ suite, asyncSuite, ch
 await (await import('./standalone-suites.mjs')).default({ asyncSuite, check, TMP });
 await (await import('./sampling-suites.mjs')).default({ asyncSuite, check, TMP, fs, path });
 await (await import('./transaction-suites.mjs')).default({ asyncSuite, check });
+await (await import('./text-read-view-suites.mjs')).default({ asyncSuite, check });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
 
 let failed = 0;

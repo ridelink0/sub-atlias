@@ -1,5 +1,6 @@
 // RESEARCH-FIRST 0f; PLAN-1013 items 10/11: combine mechanical calls through
 // the native permission path. Experimental, disabled by default, no model calls.
+import { compactTextRead } from './text-read.mjs';
 export const NAME = 'mcp__atlias-transaction__batch';
 export const LIMIT = 8;
 export const TOOLS = ['Read', 'Edit', 'Write', 'Bash', 'PowerShell'];
@@ -64,13 +65,15 @@ export function state(result) {
 export function register(on, options = {}) {
   const enabled = options.enabled === true;
   const defer = enabled && options.deferBuiltins === true;
+  const compactReads = enabled && options.deduplicateTextReads === true;
+  const spec = compactReads ? { ...SPEC, description: SPEC.description + ' Exact numbered Read text is retained; duplicated file.content may be represented by {from:"native.text",format:"line-number-tab-v1"} (remove each numbered prefix) or format:"text-v1" (identical text). All file metadata is retained.' } : SPEC;
   let available = null;
   on('session.start', async ($, e, next) => {
     if (enabled) {
       const names = (await $.tool.list()).map(t => t.name);
       const operations = TOOLS.filter(n => names.includes(n));
       if (operations.length) {
-        await $.tool.register({ ...SPEC, inputSchema: { ...SPEC.inputSchema, properties: {
+        await $.tool.register({ ...spec, inputSchema: { ...SPEC.inputSchema, properties: {
           operations: { ...SPEC.inputSchema.properties.operations, items: { ...SPEC.inputSchema.properties.operations.items, properties: {
             ...SPEC.inputSchema.properties.operations.items.properties, tool: { type: 'string', enum: operations },
           } } },
@@ -122,7 +125,7 @@ export function register(on, options = {}) {
             halted = 'require-native-read';
             break;
           }
-          results.push({ index: results.length, tool: op.tool, status, native: nativeText });
+          results.push({ index: results.length, tool: op.tool, status, native: compactReads ? compactTextRead(nativeText) : nativeText });
         } else if (op.tool === 'Read') {
           const native = {};
           if (typeof result?.text === 'string') native.text = result.text;

@@ -5,6 +5,7 @@
   "description": "Experimental native tool batches; each operation uses Claude Code's ordinary tool permission path.",
   "userConfig": {
     "enabled": { "type": "boolean", "title": "Native tool batches", "description": "Register a bounded sequential batch tool. Requires native qualification on the installed client.", "default": false },
-    "deferBuiltins": { "type": "boolean", "title": "Defer built-in tools", "description": "Keep native tools available through ToolSearch while loading the batch tool upfront. Requires ENABLE_TOOL_SEARCH=true.", "default": false }
+    "deferBuiltins": { "type": "boolean", "title": "Defer built-in tools", "description": "Keep native tools available through ToolSearch while loading the batch tool upfront. Requires ENABLE_TOOL_SEARCH=true.", "default": false },
+    "deduplicateTextReads": { "type": "boolean", "title": "Deduplicate text Read results", "description": "Keep exact native text and metadata; represent a verified duplicate file.content with a reversible recipe. Experimental; requires same-model quality qualification.", "default": false }
   }
 }
