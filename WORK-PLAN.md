@@ -1,3 +1,27 @@
+# Native32budget recovery candidate: source verified
+
+Updated 2026-10-14T02:54:47.445234+00:00
+Private f4 integration and recovery fixes are ready for a local commit. Actual receipts: broad recovery-broad-functional-v2 exit0,1542/1542 across225suites,9PID cases explicitly skipped; recovery-boundary-plants-v2 exit0,90/90caught,sourceIntacttrue/restoredexit0; controller69/69functional+25/25planted; later MCP shared-scope39/39exit0; harness_verify17filesparse. Peer adversarial reread confirmed the four source findings fixed, and identified shared MCP progress scope. This tool intentionally has no trusted worker identity: documented and tested shared parent-project steering, not claimed private; worker hook notes/ledgers/gates are separate. Shared working-directory isolation, native worker transcript shape and disposable cleanup remain unqualified.
+
+Next: commit this private root, freeze aa-calibration-32b-r1 and native-batch-32b-r1 from already-saved specs, run full frozen preflight, then bounded Claude A/A4attempts and enhanced20attempts only after calibration qualification, Codex next. GPU is idle and abandoned unchanged lease7924 archived with two owner and two private11435idle observations; arm-c12/60 partial remains interrupted. All old evidence and Claude staged cherry-pick preserved. Same local qwen3.5:9b-32k model only, explicit32steps,32768window,2048output,ToolSearchtrueboth. Neither20x nor4x achieved; do not infer successful inference from launches, caps or commandexit alone.
+
+---
+
+# Recovery boundary fixes: verification running
+
+Updated 2026-10-14T02:51:17.419148+00:00
+Subharness priority. Root HEAD f636de7; private f4 59065c8 imported without touching Claude's staged cherry-pick in atlias-subharness-1012. Root integration remains dirty until reviewed checks terminate. RESEARCH-FIRST0f/9: retain actor identity, exact authority, complete request accounting and native capabilities.
+
+Focused functional recovery-boundaries-functional-v5 actualexit0:80/80. Added worker transcript-check tags, actor-specific handoff event/storage paths and metadata, prompt-start git window when isolation is enabled, exact skill-version bodies once per rendered context behind default-off authorityBodiesOnce, strict native tool IDs/argument identity/call bounds, incremental byte-limit handling. OpenAI transport failures stop without blind retry; HTTP retries retain every known or unknown usage attempt before errors/fallbacks. Earlier v4 actualfailed72/74 is preserved: fixture used status instead of stop.reason; real shell-edit window began after shell completion and is fixed under the isolation flag. Broad v1 actualfailed1526/1527 due missing apiUrl/localUrl direct coverage; focused new direct coverage passes. No failed receipt is overwritten.
+
+Controller recovery-controller-check-v1 actualexit0:69functional/25planted. Prior boundary plants v1 actualexit0:81/81 caught, originalsourceintact; current expanded90plants session26344 and broad session4319 are RUNNING, not success. Nine PID-dependent omissions remain explicit; disposable-temp cleanup warning remains an unresolved qualification caveat. Peer reviewer L20 is rereading the changed source.
+
+Regular4x arm-c owner7924 disappeared without DONE;12/60 partial rows remain unqualified. Two independent CIM owner/job snapshots and two private11435 /api/ps idle checks retained under council/receipts/root/gpu-dead-owner-7924. Its unchanged lease was quarantined, not deleted; partial trial/config/log preserved. No PID termination or automatic retry of interrupted spend. All Claude worktrees/relay and21:20 wake remain untouched.
+
+Next: inspect actual broad/planted endings and peer reread, fix only real failures, commit private integration. Freeze NEW aa-calibration-32b-r1 and native-batch-32b-r1 specs already in council/scratch/root; explicit32step budget, qwen3.5:9b-32k/private11435 only,32768window/2048output/matchedToolSearchtrue. Preflight frozen copies then bounded A/A4 attempts, strict calibration qualification, enhanced Claude20attempts, then Codex. Preserve all old manifests/trials. Neither20x nor4x achieved; don't report launch as completion.
+
+---
+
 # Reset recovery: complete cost measurement remains separate
 
 Updated 2026-10-14T01:52:39.710201+00:00

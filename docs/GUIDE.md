@@ -45,6 +45,8 @@ Inside: `/status`, `/diff`, `/review` (the engine reviews the uncommitted change
 
 Hosts: **Claude Code** (plugin), **Codex** (hooks, MCP, AGENTS.md), **Antigravity** (MCP, GEMINI.md), **Gemini CLI** (MCP, optional hooks), then Cursor, Windsurf, OpenCode, Amp, Zed, Kiro, Droid, Aider, Trae, Cline, Continue, CodeBuddy, Hermes and Pi, each in its own config shape. MCP tools, shared by all of them: `harness_recall`, `harness_remember`, `harness_progress`, `harness_verify`, `harness_digest`, `graph_query`, `graph_affected`, `graph_explain`, `harness_bench`, `harness_status`. Memory is written in Claude Code's own format, so every host shares one memory.
 
+With `flags.subagentsApart` enabled, worker hook events, verification state, exact request/skill ledgers and generated handoff notes are actor-specific. The MCP `harness_progress` tool intentionally shares the parent project note and `next.md` across hosts and workers; MCP provides no trusted actor identity. Use it for shared project steering, not private worker notes. This flag does not isolate the working directory or shared MCP state. `flags.authorityBodiesOnce` separately renders identical selected skill bodies once in the same authority context while retaining every occurrence and amended body; both flags default off.
+
 ## Tests
 
 ```

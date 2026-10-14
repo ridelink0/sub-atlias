@@ -63,7 +63,7 @@ cases += [
     ("unknown outcome clears a failure", "lib/integrity.mjs", "sameCheck(l, e) && l.outcome === 'pass'", "sameCheck(l, e) && l.outcome !== 'fail'", CODEX_F),
     ("quoted spacing collapsed", "lib/integrity.mjs", ": canonicalCommand(a.command) === canonicalCommand(b.command));", ": String(a.command).replace(/\\s+/g, ' ').trim() === String(b.command).replace(/\\s+/g, ' ').trim());", CODEX_F),
     ("checkId ignored", "lib/integrity.mjs", "a.checkId || b.checkId ? Boolean(a.checkId && b.checkId && a.checkId === b.checkId) : ", "", CODEX_F),
-    ("hook records no checkId", "lib/track.mjs", "verify, ...(verify ? checkId(payload, command) : {}) };", "verify };", CODEX_F),
+    ("hook records no checkId", "lib/track.mjs", "verify, ...(verify ? checkId(payload, command) : {}), ...subagentTag(payload, cfg) };", "verify, ...subagentTag(payload, cfg) };", CODEX_F),
     ("alternating window ignores edits", "lib/guard.mjs", "i > lastAlt; i--) if (evs[i].kind === 'edit' && !evs[i].failed && !revertsEarlier(evs, i)) { lastAlt = i; break; }", "i > lastAlt; i--) if (false) { lastAlt = i; break; }", CODEX_F),
     ("failed edit resets the alternating guard", "lib/guard.mjs", "&& !evs[i].failed && !revertsEarlier(evs, i)) { lastAlt = i; break; }", " && !revertsEarlier(evs, i)) { lastAlt = i; break; }", CODEX_F),
     ("positions applied without the switch", "lib/guard.mjs", "const parts = positions && !UNREADABLE.test(line) ? simpleCommands(line) : null;", "const parts = simpleCommands(line);", CODEX_F),
@@ -84,6 +84,9 @@ cases += [
 ]
 TRANSITION = ['node', 'test/run.mjs', 'exact requests survive']
 BATCH = ['node', 'test/run.mjs', 'native batches']
+ACTORS = ['node', 'test/run.mjs', 'subagents apart']
+SKILLS = ['node', 'test/run.mjs', 'skill versions']
+PROTOCOL = ['node', 'test/run.mjs', 'native protocol']
 cases += [
     ('off legacy load looks complete', 'lib/agent.mjs', 'missing: Boolean(c.authorityMissing || !valid)', 'missing: false', TRANSITION),
     ('off pruning looks complete', 'lib/loop.mjs', 'state.authorityMissing = true;', 'state.authorityMissing = false;', TRANSITION),
@@ -92,6 +95,33 @@ cases += [
     ('batch ignores permission refusal', 'mods/atlias-transaction/hooks/register.mjs', "if (permission?.decision === 'deny')", 'if (false)', BATCH),
     ('batch continues after tool error', 'mods/atlias-transaction/hooks/register.mjs', "if (status !== 'executed') { halted = status; break; }", 'if (false) { halted = status; break; }', BATCH),
     ('batch pretends uncertain effects are absent', 'mods/atlias-transaction/hooks/register.mjs', "effects: 'unknown'", "effects: 'none'", BATCH),
+    ('repeat guards pool parallel actors', 'lib/guard.mjs', "eventsTail(sid).filter((e) => !cfg.flags.subagentsApart || (e.subagent || '') === (tag.subagent || ''));", 'eventsTail(sid);', ACTORS),
+    ('actor edit tag is dropped', 'lib/track.mjs', "...(after ? { after } : {}), ...subagentTag(payload, cfg)", "...(after ? { after } : {})", ACTORS),
+    ('main gate pools actors', 'lib/gate.mjs', 'turn: apartOn ? rest.filter(mine) : rest,', 'turn: rest,', ACTORS),
+    ('worker prompt moves parent boundary', 'lib/gate.mjs', "&& (actor === null || !evs[i].subagent || evs[i].subagent === actor)", '', ACTORS),
+    ('actor authority namespace is dropped', 'lib/core.mjs', "return tag.subagent && sid !== 'no-session' ? `actor-${sha(JSON.stringify([sid, tag.subagent]))}` : sid;", 'return sid;', ACTORS),
+    ('oversized event loses actor', 'lib/core.mjs', "...(out.subagent ? { subagent: out.subagent } : {}), oversized: true", 'oversized: true', ACTORS),
+    ('worker consumes parent gate flags', 'lib/gate.mjs', 'const metaSid = actorSession(payload, cfg);', 'const metaSid = sid;', ACTORS),
+    ('recovered check loses actor', 'lib/track.mjs', '.map((ev) => ({ ...ev, ...subagentTag(payload, config()) }))', '', ACTORS),
+    ('handoff pools actor events', 'lib/progress.mjs', "!apart || (e.subagent || '') === actor", 'true', ACTORS),
+    ('worker overwrites parent handoff', 'lib/progress.mjs', "config().flags.subagentsApart && actor ? `progress-actor-${sha(actor)}.md` : 'progress.md'", "'progress.md'", ACTORS),
+    ('frontend hint metadata pools actors', 'lib/router.mjs', 'const metaSid = actorSession(payload, cfg);', 'const metaSid = sid;', ACTORS),
+    ('worker startup overwrites parent metadata', 'lib/brief.mjs', 'const sid = actorSession(payload);', "const sid = payload.session_id || 'no-session';", ACTORS),
+    ('skill versions ignore opt-in', 'lib/authority.mjs', "cfg.flags.authorityBodiesOnce && r.kind === 'skill'", "r.kind === 'skill'", SKILLS),
+    ('skill versions discard amended bodies', 'lib/authority.mjs', 'JSON.stringify([r.file, r.text])', 'JSON.stringify([r.file])', SKILLS),
+    ('repeated skill occurrence is dropped', 'lib/authority.mjs', 'if (first !== undefined) return title +', "if (first !== undefined) return '' +", SKILLS),
+    ('native missing id executes', 'lib/loop.mjs', "typeof tc.id !== 'string' || !tc.id.trim() || ids.has(tc.id)", 'ids.has(tc.id)', PROTOCOL),
+    ('native duplicate id executes', 'lib/loop.mjs', '|| ids.has(tc.id)', '', PROTOCOL),
+    ('native call set has no bound', 'lib/loop.mjs', 'raw.length > MAX_NATIVE_CALLS', 'false', PROTOCOL),
+    ('native protocol refusal executes text fallback', 'lib/loop.mjs', "if (res.protocolError) return stopWith", 'if (false) return stopWith', PROTOCOL),
+    ('function parameter changes tool identity', 'lib/loop.mjs', "['tool', '__proto__', 'constructor', 'prototype'].includes(k)", "['__proto__', 'constructor', 'prototype'].includes(k)", PROTOCOL),
+    ('provider response has no byte bound', 'lib/loop.mjs', 'if (bytes > maxBytes)', 'if (false)', PROTOCOL),
+    ('provider response counts characters', 'lib/loop.mjs', "Buffer.byteLength(x, 'utf8')", 'x.length', PROTOCOL),
+    ('permanent resource refusal retries', 'lib/loop.mjs', 'r.retryable !== false && (r.status === 429', '(r.status === 429', PROTOCOL),
+    ('request timeout becomes retryable', 'lib/loop.mjs', "finish({ status: 0, error: 'timed out', retryable: false })", "finish({ status: 0, error: 'timed out' })", PROTOCOL),
+    ('uncertain transport status retries', 'lib/loop.mjs', 'r.status === 429 || r.status >= 500', 'r.status === 429 || r.status >= 500 || r.status === 0', PROTOCOL),
+    ('retry usage drops earlier attempts', 'lib/loop.mjs', 'requestUsages.push(r.json?.usage || null);', 'requestUsages.splice(0, requestUsages.length, r.json?.usage || null);', PROTOCOL),
+    ('model error discards request accounting', 'lib/loop.mjs', 'Array.isArray(res?.requestUsages) ? res.requestUsages', 'Array.isArray(res?.requestUsages) ? (res.error ? [] : res.requestUsages)', PROTOCOL),
 ]
 rows = []
 original_hashes = {rel: hashlib.sha256((source / rel).read_bytes()).hexdigest() for _, rel, *_ in cases}
