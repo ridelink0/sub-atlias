@@ -2,6 +2,10 @@
 
 Research basis: RESEARCH-FIRST sections 0f and 9. These are exploratory local results, not a public 20x or 4x claim. Frozen benchmark source is 937b427; later source fixes require a new manifest.
 
+## Historical recovery snapshot (superseded by NATIVE-SMOKE-VERIFIED-1014.md)
+
+The Codex queue has since completed and the Read fixes have been committed privately. See [current verified measurements](NATIVE-SMOKE-VERIFIED-1014.md) and WORK-PLAN.md for current statuses. The remainder below preserves the earlier evidence state.
+
 ## Completed Claude smoke
 
 Ten paired tasks used installed native Claude Code and the same private qwen3.5:9b-32k model, 32768 runtime window and 32-request budget. Root verified all twenty receipt hashes and recomputed the stored report. Controller terminal exit was 0; every attempt was completely metered.

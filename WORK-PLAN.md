@@ -1,3 +1,17 @@
+# Recovery checkpoint, 2026-10-14T07:42:42.408730+00:00
+
+Source fix commit 3fe46ad is reviewed and committed in this private worktree. Frozen r2 source 937b427 remains immutable. The existing native recovery queue is terminal exit 0; do not relaunch it. Claude20: base 8/10 versus Atlias 10/10, zero lost and two gained, TOTAL 1.32436x, full PEAK 2.06270x; base native 9/10 (one cap), Atlias 10/10. Codex20: 7/10 both, zero lost/gained, TOTAL 1.06193x, full PEAK 1.23099x, native 10/10 both. Root verified twenty receipt hashes per host and recomputed the reports. AA4 stock variation 1.62584x TOTAL is calibration noise. Neither 20x nor 4x achieved; all results remain exploratory.
+
+Current source functional receipts: integrated 59/59, controller 69/69 plus 25/25 planted, new deferred native CLI fixture 24/24 with exit 0. Adversarial peer reread covered all 33 recovery files and the three isolated Read files; root reviewed every changed source file and fixed recovered check identity, optional truncation metadata and report gate visibility. Standalone text/check-ID plants caught 10/10 with baseline/restored exit 0 and original source intact. Earlier broad 1573/1573 was not a clean frozen-version run; do not use it as final exact-source proof.
+
+New r3 manifest 9a030abd58bddcebda2205bf72ce00c1e31e5879812065d6f423c15cfc6cb379 has full preflight running in session 79698 through scratch/root/preflight-candidate-r3.py. Inspect actual PREFLIGHT, fresh private/controller per-case JSON archives and terminal receipt native-r3-preflight only after it finishes. No inference started for r3. Preserve all old manifests/failed trials and the isolated WIP, which is not installed in the main harness.
+
+Count reconciliation: r2 Claude 05.log has 91 unique successful planted-break observations, terminal exit 0 and verified log hash. Its per-case JSON was not archived. The old 52-private/30-public JSONs are a separate evidence epoch, not 82 plus nine remaining cases. Native worker/cancel/PDF and measured-profile followup conformance, same-user grader isolation, nine PID omissions and prior disposable cleanup warning remain explicit.
+
+Next: inspect r3 full preflight and two archived fresh receipts; diagnose prompt anatomy from actual startup differences before another capture; secondary fresh matched regular Atlias/Nanobot adapter with complete per-request counts and an ownership-safe lease. Reuse existing reviewers only. No paid APIs or Windows PID killing. Preserve Claude worktrees/cherry-pick/relay and Gev's 21:20 wake. At usage cutoff, save/commit and update the existing recovery automation using a FRESH measured reset plus seven minutes, verify saved TOML with UTC preserved.
+
+---
+
 # Native Claude smoke finished; Codex running; modality fix under review
 
 Stop-gate evidence correction: directly re-read frozenClaudePREFLIGHT andverifiedall8logSHA256s; all8terminalexits0/nottimed. 00.logexplicit1545/1545 across226suites,9skipped. Directadversarialreceiptsconfirm52/52privateand30/30publicmutationscaught, restoredfunctionalexits0; publicbyteExactRestoretrue. Earlier91aggregateclaimisNOTfullyreconciledbythesereceipts; treatitunverifieduntilremaining9arelocated/counteddistinctly. Do notrepeat91asverified. No newtestslaunched; source/WIPunchanged.
