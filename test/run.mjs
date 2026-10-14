@@ -1085,6 +1085,7 @@ await (await import('./authority-efficiency-suites.mjs')).default({ suite, async
 await (await import('./public-subharness-suites.mjs')).default({ suite, asyncSuite, check, core, router, track, brief, fs, path, PROJECT });
 await (await import('./oracle-ledger-suites.mjs')).default({ asyncSuite, check, skip, ROOT, spawnSync });
 await (await import('./finishgreen-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
+await (await import('./preload-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./standalone-suites.mjs')).default({ asyncSuite, check, TMP });
 await (await import('./sampling-suites.mjs')).default({ asyncSuite, check, TMP, fs, path });
 await (await import('./transaction-suites.mjs')).default({ asyncSuite, check });
