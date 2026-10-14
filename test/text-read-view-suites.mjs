@@ -30,8 +30,8 @@ async function batch(options, value) {
 
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
-export default function addSuites({ asyncSuite, check }) {
-  asyncSuite('context expert', 'native read views: lossless duplicate content', async () => {
+export default async function addSuites({ asyncSuite, check }) {
+  await asyncSuite('context expert', 'native read views: lossless duplicate content', async () => {
     const info = { happened: 'A text result was represented once.', why: 'Reducing copied evidence must preserve exact native text and metadata.', fix: 'Only encode proven duplicates and restore their complete content.' };
     for (const [name, content, start, extra] of [
       ['ordinary', 'actual source body '.repeat(40), 1, {}],
