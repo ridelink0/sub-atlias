@@ -330,6 +330,8 @@ def summarize(manifest, attempts):
                 arms[arm] = {"expected": len(trials), "attempts": len(rows), "complete": complete,
                              "passed": sum(r.get("pass") is True for r in results),
                              "nativeCompleted": sum(r.get("nativeCompleted") is True for r in results),
+                             "measurementComplete": sum(r.get("measurementComplete") is True for r in results),
+                             "measurementUnknown": sum(type(r.get("measurementComplete")) is not bool for r in results),
                              "usageComplete": counted,
                              "totalTokens": sum(r["promptTotal"] + r["outputTotal"] for r in results) if counted else None,
                              "peakContext": max(peaks) if counted and peaks and all(p is not None for p in peaks) else None,
@@ -443,14 +445,15 @@ def report(root, manifest=None):
         def per(x):
             return "unknown" if x is None else f"{x:,.0f}"
         lines.append(f"| {r['host']} | {r['stage']} | {a['passed']}/{a['expected']} | {b['passed']}/{b['expected']} | {a['nativeCompleted']}/{a['expected']} | {b['nativeCompleted']}/{b['expected']} | {r.get('lost')} | {r.get('gained')} | {r.get('neverWorse')} | {per(a.get('tokensPerSolved'))} | {per(b.get('tokensPerSolved'))} | {ratio(r['totalReduction'])} | {ratio(r['peakReduction'])} | {r['measurementMatched']} | {r['measured20xNoTaskLoss']} |")
-    lines += ["", "| Host | Stage | Capped calls base | Capped calls Atlias | Base prompt, first usage block / counted | Atlias prompt, first usage block / counted |",
-              "|---|---|---|---|---|---|"]
+    lines += ["", "Measurement completeness means all provider spend is terminal and counted. It does not mean native completion or task success. Older receipts without that field remain unknown.", "",
+              "| Host | Stage | Base measurement complete | Atlias measurement complete | Capped calls base | Capped calls Atlias | Base prompt, first usage block / counted | Atlias prompt, first usage block / counted |",
+              "|---|---|---|---|---|---|---|---|"]
     for r in data["reports"]:
         a, b = r["arms"]["base"], r["arms"]["atlias"]
         def blocks(arm):
             first, final = arm.get("firstBlockPrompt"), arm.get("promptTotal")
             return "n/a" if first is None or not final else f"{first:,} / {final:,} ({(final - first) / final:+.1%})"
-        lines.append(f"| {r['host']} | {r['stage']} | {a.get('cappedCalls')} | {b.get('cappedCalls')} | {blocks(a)} | {blocks(b)} |")
+        lines.append(f"| {r['host']} | {r['stage']} | {a.get('measurementComplete')}/{a['expected']} (unknown {a.get('measurementUnknown')}) | {b.get('measurementComplete')}/{b['expected']} (unknown {b.get('measurementUnknown')}) | {a.get('cappedCalls')} | {b.get('cappedCalls')} | {blocks(a)} | {blocks(b)} |")
     if data.get("control"):
         lines += ["", "CONTROL TRIAL: the second arm is the bare client too; only the settings the spec gives it per arm differ. Its numbers are noise or that setting, never Atlias."]
     lines += ["", "Solves come first (Gev, 2026-10-13: never worse than the bare client). Never worse means every pair matched and the Atlias arm solved at least as many matched tasks as base; the stage gate is stricter and holds on any lost task. One run per arm cannot tell a loss from noise: re-run a lost task before calling it a loss.",

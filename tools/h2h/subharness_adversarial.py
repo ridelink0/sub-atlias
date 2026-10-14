@@ -52,6 +52,10 @@ cases = [
     ("native skill capability removed", RUNNER, 'argv += ["-"]', 'argv += ["-c", "skills.include_instructions=false", "-"]', RESP),
     ("real skills root leaks into Codex", RUNNER, 'if skill_file:', 'if False:', RESP),
     ("capped call leaves no receipt", RUNNER, 's.receipts.append({"api": "messages", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})', "pass", LEDGER),
+    ("partial spend marked measured", RUNNER, 'or door.partial or not door.usage:', 'or not door.usage:', [sys.executable, "tools/h2h/base_harness_measurement_test.py"]),
+    ("invalid token count marked measured", RUNNER, 'or any(_count(v) is None for v in u) for u in door.usage)', 'for u in door.usage)', [sys.executable, "tools/h2h/base_harness_measurement_test.py"]),
+    ("duplicate provider slot marked measured", RUNNER, 'or sorted(slots) != list(range(len(door.usage)))', '', [sys.executable, "tools/h2h/base_harness_measurement_test.py"]),
+    ("unreceipted request marked measured", RUNNER, 'and door.calls == len(door.usage) + door.capped)', 'and True)', [sys.executable, "tools/h2h/base_harness_measurement_test.py"]),
 ]
 # Codex's audit of 2026-10-13, F1 to F5: one planted break on the line each fix rests on.
 CODEX_F = ["node", "test/run.mjs", "Codex F", "claims against evidence"]
@@ -115,7 +119,7 @@ for name, rel, old, new, *cmd in cases:
         p.write_bytes(before)
 
 restored = []
-for cmd in (NODE, LEDGER, RESP):
+for cmd in (NODE, LEDGER, RESP, [sys.executable, "tools/h2h/base_harness_measurement_test.py"]):
     with tempfile.TemporaryFile() as out:
         rc, timed = run_tree(cmd, cwd=str(root), timeout=180, stdout=out)
         out.seek(0)

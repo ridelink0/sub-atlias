@@ -1,3 +1,16 @@
+# Reset recovery: complete cost measurement remains separate
+
+Updated 2026-10-14T01:52:39.710201+00:00
+Live reset recovery has94% of the five-hour window remaining. Prior4% cutoff is historical; work resumes under Gev's scheduled heartbeat. Two focused Luna reviewers reused; all20 initial and20 peer reviews remain complete, no council respawn.
+
+New observational runner measurementComplete checks a zero-exit terminal client, no timeout/provider error/partial stream, every input/output count, exact unique provider slots, and one receipt per request including explicitly unsent budget stops. Native completion, grades, and the20x gate are unchanged. Added budgetCapped and report coverage/unknown fields. Functional17/17; full disposable adversarial63/63 caught, restored Node30/30/accounting36/36/Responses13/13/measurement17/17, actualexit0 and original source intact. Nine PID-dependent cases remain excluded from broad checks; cleanup qualification remains separate.
+
+Research basis: RESEARCH-FIRST0f and9 (separate TOTAL/full PEAK, authority and capability). The claimed universal Claude minimum floor used character estimates and is not a proved token lower bound; official Mods expose prompt.compose/prompt.section and tool APIs. A reduced authority-preserving profile is possible to test, still unqualified. Updated notes in council/recovery-research. Never use --bare capability removal as a matched full-capability gain.
+
+GPU lease is held by live Claude regular4x arm-c process7924, started01:19Z; preserve it and queued ownership. Prepare a NEW explicit32-request A/A then batch10-pair smoke, same local model/ToolSearch/client/window/output and bounded runs4/20. Keep old A/A failures and pending batch manifest unchanged. Before freezing: integrate reviewed f4 in this root checkout only, close actor guard pooling, retain exact selected skill versions once behind a default-off flag, and validate malformed regular native calls. Protect Claude's staged cherry-pick and all live installations.
+
+---
+
 # Usage guard cutoff audit
 
 Updated 2026-10-13T22:28:34.060601+00:00

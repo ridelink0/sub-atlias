@@ -146,6 +146,29 @@ def ended_cut(receipts):
     return bool(sent) and bool(sent[-1].get("cut"))
 
 
+def measured_complete(rc, stopped, door):
+    """Complete cost observation, separately from native/task completion.
+
+    A budget stop spent no model tokens for its synthetic reply. Every request
+    that did reach the provider still needs one terminal, counted receipt.
+    """
+    if rc != 0 or stopped or door.errors or door.partial or not door.usage:
+        return False
+    if any(not isinstance(u, (list, tuple)) or len(u) != 2
+           or any(_count(v) is None for v in u) for u in door.usage):
+        return False
+    sent = [r for r in door.receipts if r.get("slot") is not None]
+    slots = [r.get("slot") for r in sent]
+    if (any(type(slot) is not int for slot in slots)
+        or sorted(slots) != list(range(len(door.usage)))
+        or any(r.get("outcome") != "complete" for r in sent)):
+        return False
+    caps = [r for r in door.receipts if str(r.get("outcome", "")).startswith("capped:")]
+    return (all(r.get("slot") is None for r in caps)
+            and _count(door.capped) is not None and len(caps) == door.capped
+            and door.calls == len(door.usage) + door.capped)
+
+
 TITLE_MARKER = "You are a title generator. You output ONLY a thread title."  # OpenCode's title agent (packages/core/src/plugin/agent.ts PROMPT_TITLE, d2905b8 and 026b106)
 
 
@@ -1010,6 +1033,8 @@ def run_one(task, a, shims):
             "peakPrompt": max(toks or [0]) if counted else None,
             "peakContext": max([p + o for p, o in usage] or [0]) if counted else None,
             "usageComplete": counted, "inputParts": split, "partialCalls": door.partial,
+            "measurementComplete": measured_complete(rc, stopped, door),
+            "budgetCapped": door.capped,
             # Whether the harness ended by itself, apart from whether the grader passed what it left.
             # A run whose last model reply ended at the output cap stopped on an unfinished reply.
             "nativeCompleted": rc == 0 and not door.capped and not door.errors and not door.partial and bool(usage) and not cut_last,
