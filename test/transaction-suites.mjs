@@ -30,6 +30,17 @@ export default async function transactionSuites({ asyncSuite, check }) {
     const op = { tool: 'Read', args: { file_path: '/fixture.txt' } };
     check('the registration and bound are explicit', SPEC.name === 'batch' && NAME === 'mcp__atlias-transaction__batch' && LIMIT === 8 && SPEC.isDeferred === false, info);
     check('the model sees the text-only boundary and native route', SPEC.description.includes('text only') && SPEC.description.includes('require-native-read') && SPEC.description.includes('standalone Read through ToolSearch'), info);
+    check('the model sees the worker native-tool route', SPEC.description.includes('Workers use standalone native tools through ToolSearch.'), info);
+    for (const agentId of ['host-worker-id', '', 123, {}]) {
+      const worker = fixture();
+      const handler = worker.hooks.find(h => h.event === 'tool.call').hook;
+      const response = JSON.parse((await handler(worker.api, { operations: [op], agentId }, worker.next)).result);
+      check('native actor metadata stops worker batches before any preflight/effects', response.status === 'require-native-tools' && response.attempted === 0 && worker.calls.length === 0, info);
+    }
+    const main = fixture();
+    const mainHandler = main.hooks.find(h => h.event === 'tool.call').hook;
+    const mainResponse = JSON.parse((await mainHandler(main.api, { operations: [op], agentId: null }, main.next)).result);
+    check('explicit native main actor keeps text batching', mainResponse.status === 'executed' && mainResponse.attempted === 1, info);
     const off = fixture({ enabled: false });
     await off.hooks.find(h => h.event === 'session.start').hook(off.api, {}, off.next);
     check('off registers no tool', off.calls.length === 0, info);
@@ -79,6 +90,10 @@ export default async function transactionSuites({ asyncSuite, check }) {
     const failed = fixture(undefined, { call: async () => { attempts++; return { result: { stderr: 'middle assertion failure' }, text: 'middle assertion failure', isError: true }; } });
     const failedAnswer = await failed.batch([op, op]);
     check('tool errors retain text diagnostics and stop dependent operations', attempts === 1 && failedAnswer.status === 'tool-error' && failedAnswer.results[0].native.text === 'middle assertion failure' && failedAnswer.results[0].native.isError === true, info);
+    let shellErrors = 0;
+    const failedShell = fixture(undefined, { call: async () => { shellErrors++; return { result: { stderr: 'Exact shell failure.' }, text: 'Exact shell failure.', isError: true }; } });
+    const shellErrorAnswer = await failedShell.batch([{ tool: 'Bash', args: { command: 'node check.mjs' } }, op]);
+    check('non-Read native failures keep their full result and stop later operations', shellErrors === 1 && shellErrorAnswer.status === 'tool-error' && shellErrorAnswer.results[0].native.result.stderr === 'Exact shell failure.', info);
     const errorWithOpaque = fixture(undefined, { call: async () => ({ result: { base64: 'OPAQUE_BINARY_SENTINEL' }, text: 'Exact native error.\nSecond diagnostic line.', isError: true }) });
     const errorAnswer = await errorWithOpaque.batch([op, op]);
     check('native error text is lossless while opaque error payload stays out', errorAnswer.attempted === 1 && errorAnswer.results[0].native.text === 'Exact native error.\nSecond diagnostic line.' && !JSON.stringify(errorAnswer).includes('OPAQUE_BINARY_SENTINEL'), info);

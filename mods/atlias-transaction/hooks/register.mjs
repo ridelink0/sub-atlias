@@ -6,7 +6,7 @@ export const TOOLS = ['Read', 'Edit', 'Write', 'Bash', 'PowerShell'];
 export const DEFERRED = ['Agent', 'Bash', 'PowerShell', 'CronCreate', 'CronDelete', 'CronList', 'Edit', 'EnterWorktree', 'ExitWorktree', 'Glob', 'Grep', 'ListAgents', 'NotebookEdit', 'Read', 'ReportFindings', 'ScheduleWakeup', 'SendMessage', 'Skill', 'TaskStop', 'WebFetch', 'WebSearch', 'Workflow', 'Write'];
 export const SPEC = {
   name: 'batch',
-  description: 'Run up to 8 native operations in order, stopping on refusal or tool error. Each operation uses its native argument names and permissions. Supply absolute file paths. Batch Read supports text only; image, PDF, page or unknown Read results stop with require-native-read. Use standalone Read through ToolSearch for those inputs. Use a batch for independent text reads, or edits followed by a visible project check. Results report execution and text diagnostics; completion does not establish that a test passed. Use native tools and ToolSearch for anything else.',
+  description: 'Run up to 8 native operations in order, stopping on refusal or tool error. Each operation uses its native argument names and permissions. Supply absolute file paths. Batch Read supports text only; image, PDF, page or unknown Read results stop with require-native-read. Use standalone Read through ToolSearch for those inputs. Workers use standalone native tools through ToolSearch. Use a batch for independent text reads, or edits followed by a visible project check. Results report execution and text diagnostics; completion does not establish that a test passed. Use native tools and ToolSearch for anything else.',
   isDeferred: false,
   inputSchema: { type: 'object', properties: { operations: { type: 'array', minItems: 1, maxItems: LIMIT, items: {
     type: 'object', properties: { tool: { type: 'string', enum: TOOLS }, args: { type: 'object' } }, required: ['tool', 'args'], additionalProperties: false,
@@ -91,6 +91,10 @@ export function register(on, options = {}) {
     const problem = invalid(e.operations);
     if (problem) return { result: JSON.stringify({ status: 'invalid', executed: 0, error: problem }) };
     const results = [];
+    // Current native $.tool.call loses the child's agentId for inner operations.
+    // Do not attribute a worker's effects/checks to the parent. The host owns
+    // this event field; model arguments cannot supply identity.
+    if (e.agentId !== undefined && e.agentId !== null) return { result: JSON.stringify({ status: 'require-native-tools', attempted: 0, total: e.operations.length, reason: 'Worker batch actor propagation is unqualified; use standalone native tools through ToolSearch.', results }) };
     let halted = null;
     const unsupported = e.operations.find(unsupportedReadPlan);
     if (unsupported) return { result: JSON.stringify({ status: 'require-native-read', attempted: 0, total: e.operations.length, reason: unsupportedReadPlan(unsupported), results }) };

@@ -12,10 +12,14 @@ from owned_process import run_tree
 source = pathlib.Path(__file__).resolve().parents[2]
 ap = argparse.ArgumentParser(description=__doc__)
 ap.add_argument('--receipt', default=str(source / 'test/subharness-adversarial-receipt.json'))
+ap.add_argument('--anchors-only', action='store_true', help='validate every planted source anchor without copying or running checks')
 args = ap.parse_args()
-disposable = tempfile.TemporaryDirectory(prefix='atlias-planted-')
-root = pathlib.Path(disposable.name) / 'source'
-shutil.copytree(source, root, symlinks=True, ignore=shutil.ignore_patterns('.git', 'node_modules', '__pycache__'))
+if args.anchors_only:
+    root = source
+else:
+    disposable = tempfile.TemporaryDirectory(prefix='atlias-planted-')
+    root = pathlib.Path(disposable.name) / 'source'
+    shutil.copytree(source, root, symlinks=True, ignore=shutil.ignore_patterns('.git', 'node_modules', '__pycache__'))
 NODE = ["node", "test/run.mjs", "authority:", "efficiency:"]
 LEDGER = [sys.executable, "tools/h2h/base_harness_accounting_test.py"]
 RUNNER = "tools/h2h/base_harness_runner.py"
@@ -94,7 +98,8 @@ cases += [
     ('immediate exact save drops private history', 'lib/agent.mjs', 'pending && Array.isArray(pending.asks) ? [...pending.asks, ...(state.asks || [])] : state.asks', 'state.asks', TRANSITION),
     ('batch permits fabricated agent identity', 'mods/atlias-transaction/hooks/register.mjs', "'consent', 'agentId',", "'consent',", BATCH),
     ('batch ignores permission refusal', 'mods/atlias-transaction/hooks/register.mjs', "if (permission?.decision === 'deny')", 'if (false)', BATCH),
-    ('batch continues after tool error', 'mods/atlias-transaction/hooks/register.mjs', "if (status !== 'executed') { halted = status; break; }", 'if (false) { halted = status; break; }', BATCH),
+    ('batch continues after tool error', 'mods/atlias-transaction/hooks/register.mjs', "results.push({ index: results.length, tool: op.tool, status, native });\n          if (status !== 'executed') { halted = status; break; }", 'results.push({ index: results.length, tool: op.tool, status, native });\n          if (false) { halted = status; break; }', BATCH),
+    ('non-Read batch continues after tool error', 'mods/atlias-transaction/hooks/register.mjs', "results.push({ index: results.length, tool: op.tool, status, native: result });\n          if (status !== 'executed') { halted = status; break; }", 'results.push({ index: results.length, tool: op.tool, status, native: result });\n          if (false) { halted = status; break; }', BATCH),
     ('batch pretends uncertain effects are absent', 'mods/atlias-transaction/hooks/register.mjs', "effects: 'unknown'", "effects: 'none'", BATCH),
     ('repeat guards pool parallel actors', 'lib/guard.mjs', "eventsTail(sid).filter((e) => !cfg.flags.subagentsApart || (e.subagent || '') === (tag.subagent || ''));", 'eventsTail(sid);', ACTORS),
     ('actor edit tag is dropped', 'lib/track.mjs', "...(after ? { after } : {}), ...subagentTag(payload, cfg)", "...(after ? { after } : {})", ACTORS),
@@ -125,9 +130,39 @@ cases += [
     ('retry usage drops earlier attempts', 'lib/loop.mjs', 'requestUsages.push(r.json?.usage || null);', 'requestUsages.splice(0, requestUsages.length, r.json?.usage || null);', PROTOCOL),
     ('model error discards request accounting', 'lib/loop.mjs', 'Array.isArray(res?.requestUsages) ? res.requestUsages', 'Array.isArray(res?.requestUsages) ? (res.error ? [] : res.requestUsages)', PROTOCOL),
 ]
+cases += [
+    ('binary plan guard removed', 'mods/atlias-transaction/hooks/register.mjs', 'const unsupported = e.operations.find(unsupportedReadPlan);', 'const unsupported = null;', ['node', 'test/run.mjs', 'native batches']),
+    ('opaque Read result accepted', 'mods/atlias-transaction/hooks/register.mjs', 'const nativeText = textReadResult(result);', 'const nativeText = result;', ['node', 'test/run.mjs', 'native batches']),
+    ('later effects after opaque Read', 'mods/atlias-transaction/hooks/register.mjs', "halted = 'require-native-read';\n            break;", "halted = 'require-native-read';\n            continue;", ['node', 'test/run.mjs', 'native batches']),
+    ('Read errors lose diagnostics', 'mods/atlias-transaction/hooks/register.mjs', 'native.text = result.text;', 'void result.text;', ['node', 'test/run.mjs', 'native batches']),
+    ('text-only tool contract hidden', 'mods/atlias-transaction/hooks/register.mjs', 'Batch Read supports text only;', '', ['node', 'test/run.mjs', 'native batches']),
+    ('malformed text body accepted', 'mods/atlias-transaction/hooks/register.mjs', "|| typeof file.content !== 'string'", '|| false', ['node', 'test/run.mjs', 'native batches']),
+    ('opaque extra file fields accepted', 'mods/atlias-transaction/hooks/register.mjs', 'if (Object.keys(file).some(k => !READ_FILE_KEYS.has(k))) return null;', 'if (false) return null;', ['node', 'test/run.mjs', 'native batches']),
+    ('optional native truncation flag dropped', 'mods/atlias-transaction/hooks/register.mjs', "'totalLines', 'truncatedByTokenCap']);", "'totalLines']);", ['node', 'test/run.mjs', 'native batches']),
+    ('recovered checks lack identity', 'lib/track.mjs', 'verify: true, ...checkId({ cwd }, command), outcome:', 'verify: true, outcome:', ['node', 'test/run.mjs', 'transcript recovery:']),
+    ('recovered identity hashes clipped command', 'lib/track.mjs', '...checkId({ cwd }, command), outcome:', '...checkId({ cwd }, clip(command, 300)), outcome:', ['node', 'test/run.mjs', 'transcript recovery:']),
+]
+cases += [
+    ('worker batch drops the native actor boundary', 'mods/atlias-transaction/hooks/register.mjs', "if (e.agentId !== undefined && e.agentId !== null)", 'if (false)', BATCH),
+    ('worker native-tool route hidden from the model', 'mods/atlias-transaction/hooks/register.mjs', 'Workers use standalone native tools through ToolSearch.', '', BATCH),
+]
 # Removing Windows-only clock slack has no behavioral effect on other hosts.
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
+# Validate all anchors before spending time on the first planted execution.
+for name, rel, old, new, *_ in cases:
+    text = (root / rel).read_bytes().decode("utf-8").replace("\r\n", "\n")
+    if isinstance(old, list) and (not isinstance(new, list) or len(old) != len(new)):
+        raise RuntimeError(f"mutation replacements do not match anchors: {name}")
+    changes = zip(old, new) if isinstance(old, list) else [(old, new)]
+    for needle, replacement in changes:
+        if text.count(needle) != 1:
+            raise RuntimeError(f"mutation anchor not unique: {name}")
+        text = text.replace(needle, replacement, 1)
+if args.anchors_only:
+    print(json.dumps({"anchors": len(cases), "passed": True, "execution": False}))
+    sys.exit(0)
+
 rows = []
 original_hashes = {rel: hashlib.sha256((source / rel).read_bytes()).hexdigest() for _, rel, *_ in cases}
 for name, rel, old, new, *cmd in cases:
