@@ -1,3 +1,15 @@
+# Gev's updated scope, 2026-10-14T10:40:37.679135+00:00
+
+Gev accepts the regular Nanobot progress as close enough and now directs work to the SUBHARNESS: use Claude Mods to disable selected expensive Claude Code components, replace their needed behavior in Atlias, and use token-efficient pipelines. This acceptance changes priority; it does not establish a qualified4x Nanobot result. Stop regular-harness adapter work unless it is required for subharness measurement. Do not restart the council or the completed benchmark queue.
+
+Current live Codex meter: seven percent of the five-hour window remains, below Gev's clean-cutoff rule. No new implementation or model job starts now. The existing recovery wake remains October14 06:45:42 America/Chicago, measured reset11:38:42Z plus seven minutes. Read the research and atlias-work before proposing or implementing replacements.
+
+After reset: inspect current installed Claude Code Mods capabilities and actual wire/prompt overhead, then select the highest-impact components that can be replaced while preserving their user-facing function. Review both token-efficient pipeline research documents and PLAN-1013 against the current source. Reuse the already reviewed transaction/ToolSearch, actor isolation and continuity evidence; preserve permissions, diagnostics, images/PDF handling, original/followup instructions and selected skills. New model-facing Read encodings still require quality qualification. Count all local pipeline/model calls, retries and failures in full TOTAL/PEAK. Compare base Claude Code versus Claude+Atlias with the same model and configuration, then Codex. Preserve frozen source/manifests and original failed trials. Do not claim20x or an improvement from character/byte savings alone.
+
+The runtime/source checkpoint remains7fede5d with reviewed r4 preflight. The completed r2 benchmarks and all qualification limits below remain valid evidence. Existing scratch prototypes remain unmerged; regular-adapter defects are historical pending findings, not the next priority.
+
+---
+
 # Clean usage boundary, 2026-10-14T09:06:10.243747+00:00
 
 Five-hour live reading at 09:04:10Z: 11% remaining; estimates vary across three concurrent sessions. No new model run or substantial job started at this boundary. Recovery heartbeat was updated through the app and saved TOML verified: October 14, 06:45:42 America/Chicago = measured reset 11:38:42Z plus seven minutes. Receipt: council/receipts/root/usage-reset-schedule-verified-r6.json. Python timezone data was unavailable; Node Intl performed the America/Chicago conversion. Daily21:20 wake and Claude relay unchanged.
