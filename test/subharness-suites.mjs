@@ -6,9 +6,49 @@
 // check, said "no check ran this turn", asked for the second pass, and the
 // model re-ran the passing check before replying. Each check here pins one of
 // the changes that study led to.
+import * as integrity from '../lib/integrity.mjs';
+
 export default async function subharnessSuites({ suite, check, core, gate, track, router, brief, PROJECT, fs, path }) {
   const sid = (n) => 'subharness-' + n;
   const BS = String.fromCharCode(92);
+
+  suite('recovered check identity expert', 'transcript recovery: preserve full check identity without promoting unknown results', () => {
+    const flag = 'ATLIAS_FLAG_CHECK_FAIL_DOMINATES';
+    const before = process.env[flag];
+    const why = { happened: 'a recovered check did not match the live check identity', why: 'An explicit same-check pass can resolve a failure; a clipped command or another directory cannot.', fix: 'Compute checkId from the full recovered command and cwd under the existing flag.' };
+    const long = 'npm test -- --label "' + 'x'.repeat(350) + ' tail-a"';
+    let number = 0;
+    const recover = (original, command = original, cwd = PROJECT, known = true) => {
+      const session = sid('recovered-id-' + (++number));
+      router.prompt({ session_id: session, cwd: PROJECT, prompt: 'Run the project check' });
+      track.postToolFailure({ session_id: session, cwd: PROJECT, tool_name: 'Bash', tool_input: { command: original }, error: 'Exit code 1' });
+      const turn = gate.turnEvents(session).turn;
+      const failure = turn.find(e => e.kind === 'shell' && e.outcome === 'fail');
+      const transcript = path.join(PROJECT, 'recovered-id-' + number + '.jsonl');
+      const rows = [
+        { type: 'user', message: { role: 'user', content: 'Run the project check' } },
+        { type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id: 'check', name: 'Bash', input: { command } }] } },
+        { type: 'user', toolUseResult: { stdout: 'Recorded diagnostic.', stderr: '', ...(known ? { exit_code: 0 } : {}) }, message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'check', content: 'Recorded diagnostic.', is_error: false }] } },
+      ];
+      fs.writeFileSync(transcript, rows.map(r => JSON.stringify(r)).join('\n') + '\n');
+      const found = track.recoverChecks({ session_id: session, cwd, transcript_path: transcript }, turn);
+      return { found, failure, unresolved: integrity.unresolvedFailure(turn) };
+    };
+    try {
+      process.env[flag] = '1';
+      const same = recover(long);
+      check('an explicit recovered pass matches the full live check and clears its failure', same.found.length === 1 && same.found[0].checkId === same.failure.checkId && same.unresolved === null, why);
+      const tail = recover(long, long.replace('tail-a', 'tail-b'));
+      check('different command tails beyond 300 characters stay different checks', tail.found[0]?.checkId !== tail.failure.checkId && tail.unresolved === tail.failure, why);
+      const directory = recover('npm test', 'npm test', path.join(PROJECT, 'another-directory'));
+      check('the same command in another directory cannot clear the failure', directory.found[0]?.checkId !== directory.failure.checkId && directory.unresolved === directory.failure, why);
+      const unknown = recover('npm test', 'npm test', PROJECT, false);
+      check('a recovered result without exit metadata stays unknown and leaves the failure', unknown.found[0]?.outcome === 'unknown' && unknown.unresolved === unknown.failure, why);
+      process.env[flag] = '0';
+      const off = recover('npm test');
+      check('flag-off recovery adds no identity field', !Object.hasOwn(off.found[0], 'checkId') && !Object.hasOwn(off.failure, 'checkId'), why);
+    } finally { if (before == null) delete process.env[flag]; else process.env[flag] = before; }
+  });
 
   suite('check recognition expert', 'what counts as a check in a host session', () => {
     const yes = [

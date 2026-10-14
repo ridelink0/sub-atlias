@@ -432,7 +432,22 @@ def smoke_gate(manifest, attempts, host):
 def report(root, manifest=None):
     root = pathlib.Path(root)
     manifest = manifest or verify(root)
-    data = summarize(manifest, load_attempts(root, manifest))
+    attempts = load_attempts(root, manifest)
+    data = summarize(manifest, attempts)
+    # Keep measured ratios and gate decisions as separate report fields. A smoke
+    # diagnostic bypass may continue while remaining explicitly unqualified.
+    data["gateDecisions"] = []
+    for host in manifest["spec"]["hosts"]:
+        for stage in manifest["spec"]["stages"]:
+            if stage["name"] == "smoke":
+                decision = smoke_gate(manifest, attempts, host["host"])
+                data["gateDecisions"].append({"host": host["host"], "stage": stage["name"], "gate": "smoke",
+                                               "action": decision["action"], "qualified": decision["qualified"],
+                                               "bypassed": decision["bypassed"], "reasons": decision["reasons"]})
+            else:
+                decision = stage_gate(manifest, attempts, host["host"], stage["name"])
+                data["gateDecisions"].append({"host": host["host"], "stage": stage["name"], "gate": "stage",
+                                               "action": decision["action"], "reasons": decision["reasons"]})
     write(root / "REPORT.json", data)
     lines = ["# Native subharness measurements", "", "Same pinned model within each base/enhanced pair. No regular harness promotion.", "",
              "Matched describes measurement conditions. Native completion and the separate 20x/no-loss flag must also hold; ratios alone never qualify a candidate.", "",
@@ -454,6 +469,15 @@ def report(root, manifest=None):
             first, final = arm.get("firstBlockPrompt"), arm.get("promptTotal")
             return "n/a" if first is None or not final else f"{first:,} / {final:,} ({(final - first) / final:+.1%})"
         lines.append(f"| {r['host']} | {r['stage']} | {a.get('measurementComplete')}/{a['expected']} (unknown {a.get('measurementUnknown')}) | {b.get('measurementComplete')}/{b['expected']} (unknown {b.get('measurementUnknown')}) | {a.get('cappedCalls')} | {b.get('cappedCalls')} | {blocks(a)} | {blocks(b)} |")
+    lines += ["", "## Gate decisions", "",
+              "Smoke has a separate quality/native gate. A diagnostic smoke bypass can continue while remaining unqualified. Later-stage continuation gates have their own action and reasons; measured ratios alone do not imply that a gate passed.",
+              "", "| Host | Stage | Gate | Action | Qualified | Diagnostic bypass | Reasons |",
+              "|---|---|---|---|---|---|---|"]
+    for decision in data["gateDecisions"]:
+        qualified = decision.get("qualified")
+        bypassed = decision.get("bypassed")
+        reasons = "none" if not decision["reasons"] else "<br>".join(str(x).replace("|", "\\|") for x in decision["reasons"])
+        lines.append(f"| {decision['host']} | {decision['stage']} | {decision['gate']} | {decision['action']} | {qualified if qualified is not None else 'n/a'} | {bypassed if bypassed is not None else 'n/a'} | {reasons} |")
     if data.get("control"):
         lines += ["", "CONTROL TRIAL: the second arm is the bare client too; only the settings the spec gives it per arm differ. Its numbers are noise or that setting, never Atlias."]
     lines += ["", "Solves come first (Gev, 2026-10-13: never worse than the bare client). Never worse means every pair matched and the Atlias arm solved at least as many matched tasks as base; the stage gate is stricter and holds on any lost task. One run per arm cannot tell a loss from noise: re-run a lost task before calling it a loss.",

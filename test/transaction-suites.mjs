@@ -1,4 +1,4 @@
-import { register, invalid, state, SPEC, LIMIT, NAME, DEFERRED } from '../mods/atlias-transaction/hooks/register.mjs';
+import { register, invalid, state, SPEC, LIMIT, NAME, DEFERRED, unsupportedReadPlan, textReadResult } from '../mods/atlias-transaction/hooks/register.mjs';
 
 function fixture(options = { enabled: true }, overrides = {}) {
   const hooks = [];
@@ -17,7 +17,7 @@ function fixture(options = { enabled: true }, overrides = {}) {
       if (!e.input || Object.keys(e).some(k => !['tool', 'input'].includes(k))) throw Error('wrong native permission envelope');
       return { decision: 'allow' };
     }),
-    call: overrides.call || (async e => { calls.push(['call', e]); return { result: { stdout: 'exact diagnostic', stderr: '' }, text: 'exact diagnostic' }; }),
+    call: overrides.call || (async e => { calls.push(['call', e]); return e.tool === 'Read' ? { result: { type: 'text', file: { filePath: '/fixture.txt', content: 'exact diagnostic', numLines: 1, startLine: 1, totalLines: 1 } }, text: 'exact diagnostic' } : { result: { stdout: 'exact diagnostic', stderr: '' }, text: 'exact diagnostic' }; }),
   }, env: { get: async () => 'true' } };
   const next = async e => e;
   next.signal = signal.signal;
@@ -29,13 +29,41 @@ export default async function transactionSuites({ asyncSuite, check }) {
     const info = { happened: 'native batch fixture', why: 'Batching must not bypass authority or turn unknown execution into passing evidence.', fix: 'Preserve preflight, full diagnostics, refusal and partial-effect states.' };
     const op = { tool: 'Read', args: { file_path: '/fixture.txt' } };
     check('the registration and bound are explicit', SPEC.name === 'batch' && NAME === 'mcp__atlias-transaction__batch' && LIMIT === 8 && SPEC.isDeferred === false, info);
+    check('the model sees the text-only boundary and native route', SPEC.description.includes('text only') && SPEC.description.includes('require-native-read') && SPEC.description.includes('standalone Read through ToolSearch'), info);
     const off = fixture({ enabled: false });
     await off.hooks.find(h => h.event === 'session.start').hook(off.api, {}, off.next);
     check('off registers no tool', off.calls.length === 0, info);
     const good = fixture();
     const answer = await good.batch(Array(LIMIT).fill(op));
     check('a batch at its bound executes each operation with native arguments', answer.attempted === LIMIT && answer.status === 'executed' && good.calls.every(([, e]) => e.tool === 'Read' && e.file_path === '/fixture.txt'), info);
-    check('full native diagnostics are preserved without a passing-test claim', answer.results.every(r => r.native.text === 'exact diagnostic' && r.native.result.stdout === 'exact diagnostic') && !Object.hasOwn(answer, 'passed'), info);
+    check('full native diagnostics are preserved without a passing-test claim', answer.results.every(r => r.native.text === 'exact diagnostic' && r.native.result.type === 'text') && !Object.hasOwn(answer, 'passed'), info);
+    check('text Read results keep only the explicit native text shape', answer.results[0].native.result.type === 'text' && answer.results[0].native.result.file.content === 'exact diagnostic' && !Object.hasOwn(answer.results[0].native.result.file, 'data'), info);
+    for (const args of [{ file_path: '/fixture/image.png' }, { file_path: '/fixture/report.pdf' }, { file_path: '/fixture/report.pdf', pages: '1' }, { file_path: 'D:\\fixture\\IMAGE.PNG' }, { file_path: '/fixture.txt', pages: '' }]) {
+      let preflights = 0; let dispatches = 0;
+      const blocked = fixture(undefined, { check: async () => { preflights++; return { decision: 'allow' }; }, call: async () => { dispatches++; return { result: {} }; } });
+      const response = await blocked.batch([{ tool: 'Read', args }, { tool: 'Write', args: { file_path: '/must-not-write.txt', content: 'x' } }]);
+      check('image, PDF, or page Read plans require native Read before preflight/effects', response.status === 'require-native-read' && response.attempted === 0 && preflights === 0 && dispatches === 0, info);
+    }
+    let laterCalls = 0;
+    const binary = fixture(undefined, { call: async e => { if (e.tool === 'Write') laterCalls++; return { result: { type: 'image', file: { base64: 'OPAQUE_BINARY_SENTINEL', dimensions: '1x1', originalSize: 68, type: 'image/png' } }, text: 'image description' }; } });
+    const binaryAnswer = await binary.batch([op, { tool: 'Write', args: { file_path: '/must-not-write.txt', content: 'x' } }]);
+    check('mixed image/text native Read halts and omits opaque bytes', binaryAnswer.status === 'require-native-read' && binaryAnswer.attempted === 1 && !JSON.stringify(binaryAnswer).includes('OPAQUE_BINARY_SENTINEL') && laterCalls === 0, info);
+    check('only Read plans are restricted', unsupportedReadPlan({ tool: 'Write', args: { file_path: '/fixture.png' } }) === null, info);
+    const exact = answer.results[0].native;
+    check('valid text envelopes are preserved exactly', textReadResult(exact) === exact, info);
+    const empty = { result: { type: 'text', file: { filePath: '', content: '', numLines: 0, startLine: 1, totalLines: 0 } }, text: '' };
+    check('an empty text file remains valid', textReadResult(empty) === empty, info);
+    for (const flag of [true, false]) {
+      const capped = { ...exact, result: { ...exact.result, file: { ...exact.result.file, truncatedByTokenCap: flag } } };
+      check('native text truncation metadata is preserved: ' + flag, textReadResult(capped) === capped, info);
+    }
+    for (const [key, value] of [['filePath', {}], ['content', null], ['numLines', '1'], ['numLines', -1], ['numLines', 1.5], ['startLine', 0], ['totalLines', NaN], ['totalLines', 0], ['truncatedByTokenCap', 'true']]) {
+      const malformed = { ...exact, result: { ...exact.result, file: { ...exact.result.file, [key]: value } } };
+      check('malformed native text metadata fails closed: ' + key + '/' + String(value), textReadResult(malformed) === null, info);
+    }
+    for (const value of [undefined, [], { text: 'unknown' }, { ...exact, content: [{ type: 'image', data: 'OPAQUE_BINARY_SENTINEL' }] }, { ...exact, result: { ...exact.result, file: { ...exact.result.file, base64: 'OPAQUE_BINARY_SENTINEL' } } }]) {
+      check('unknown or mixed envelopes require native Read', textReadResult(value) === null, info);
+    }
     check('invalid and oversized complete plans are refused before any dispatch', invalid([op, { tool: 'Write', args: [] }]) && invalid(Array(LIMIT + 1).fill(op)) && invalid([]), info);
     for (const key of ['tool', 'tool_use_id', 'consent', 'agentId', '__proto__', 'constructor', 'prototype']) {
       const reserved = { tool: 'Write', args: { file_path: '/forbidden.txt' } };
@@ -50,7 +78,10 @@ export default async function transactionSuites({ asyncSuite, check }) {
     let attempts = 0;
     const failed = fixture(undefined, { call: async () => { attempts++; return { result: { stderr: 'middle assertion failure' }, text: 'middle assertion failure', isError: true }; } });
     const failedAnswer = await failed.batch([op, op]);
-    check('tool errors retain diagnostics and stop dependent operations', attempts === 1 && failedAnswer.status === 'tool-error' && failedAnswer.results[0].native.text === 'middle assertion failure', info);
+    check('tool errors retain text diagnostics and stop dependent operations', attempts === 1 && failedAnswer.status === 'tool-error' && failedAnswer.results[0].native.text === 'middle assertion failure' && failedAnswer.results[0].native.isError === true, info);
+    const errorWithOpaque = fixture(undefined, { call: async () => ({ result: { base64: 'OPAQUE_BINARY_SENTINEL' }, text: 'Exact native error.\nSecond diagnostic line.', isError: true }) });
+    const errorAnswer = await errorWithOpaque.batch([op, op]);
+    check('native error text is lossless while opaque error payload stays out', errorAnswer.attempted === 1 && errorAnswer.results[0].native.text === 'Exact native error.\nSecond diagnostic line.' && !JSON.stringify(errorAnswer).includes('OPAQUE_BINARY_SENTINEL'), info);
     const aborted = fixture();
     aborted.signal.abort();
     check('cancellation before dispatch produces no effects', (await aborted.batch([op])).status === 'aborted' && aborted.calls.length === 0, info);
