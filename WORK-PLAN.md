@@ -1,3 +1,17 @@
+# Native Claude smoke finished; Codex running; modality fix under review
+
+Updated 2026-10-14T04:22Z. Root source b13c8f6; benchmark source937b427 remains frozen. AA4 actualallnative/allgradedtrue, TOTALvariation1.62584x/PEAK1.08776x isstockA/Anoise. Claude20 actualcontrollerexit0; rootverifiedall20receipt hashes and recomputedreport: base8/10 vsAtlias10/10,0lost2gained, TOTAL1245163/940198=1.3243625x, fullPEAK30363/14720=2.0627038x. Allspendcomplete, base9/10native(onecap), Atlias10/10native. Strictnativequalificationheld; neither20xnor4x achieved. Fullcounters/gap/researchin docs/research/NATIVE-RECOVERY-1014.md. CurrentCodex20 runs inexistingqueue session35655/journalnative-recovery-queue-r2.json; neverrelaunch. Itsincomplete reportisnotbenchmarkcompletion.
+
+L19actualinstalledClaude2.1.296 syntheticPNG wireprobe trial5: nativeRead image+textarray, batchRead475charstring; bothnativechildexits0/nottimed/two requests, noAPIinference. Realmodalitydefect. L20preparingnarrowtext-onlybatchRead boundary inisolated D:/harness-work/atlias-native-check-receipts-1014; rootreviewandfunctional/adversarialnativeverificationbeforemerge. Preservedefaultoffmod andstandaloneRead/ToolSearch. NewsourcefixneedsNEWcandidate; nevermutatefrozenr2. Isolatedbranch88dfff4 containsreviewdoconly beforepatch.
+
+UnknownsuccessfulBashcheckremainsunknown: currentCLIhooks lack numericexitcode. MainactorinnerPre/Posthookswerereproduced, bypassconcernfalsealarmforthatpath. PermissionReaddenyblockedWrite/lateroperations; actualexit7PostToolUseFailurestoppedlaterWrite. FreshnonceBashstdoutmarker canbespoofed byreading BASH_EXECUTION_STRING thenexitingbefore suffix; rootindependent3case receiptactualexit0. Donotimplementthisunsafeverification shortcut.
+
+Next: (1)review/commit or leaveunmergedL20modalitypatch withactualfocusedandnativeoutcomes; (2)inspectCodexterminalcodex32-run-r2 andqueue ending; run scratch/root/review-native-r2.py codex-hooks-32b-r2 codex32-run-r2 ONCEonlyafterterminal20rows, preservespriorrootreceipt; (3)recordfullTOTAL/PEAK/native/losses andholdstrictgates; (4)testsmallercompletepromptprofileusingdocumentedprompt.compose/prompt.section onlyaftercapability/authorityconformance; (5)freshmatchedregularNanobotpairsecondary. Donotrespawn20council; no paidAPI/PIDkill.9PIDomissions/cleanupwarning/graderisolation/nativeworker/cancel/PDFremainexplicit. Plain-subprocessL19trial4 session28550 hadbrokenHTTPfixtureandunknownoutcome; preserve/do notPIDkill.
+
+Atusageboundarysavecommitthisroot andupdateexisting atlias-council-recovery toFRESHmeasuredreset+7minutesAmerica/Chicago,verifyTOML>=5min. Currentmeasuredreset06:31:08ZOct14 maps to01:38:08CDTwithbuffer. PreserveGev'sdaily21:20/Clauderelay andstagedf4cherrypick. Ifqueueisstillrunning, itmaycontinueindependently; wakeinspectsitandneverrelaunches.
+
+---
+
 # Local native queue r2 running under frozen source937b427
 
 Updated 2026-10-14T03:21:44.670231+00:00
