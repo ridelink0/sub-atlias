@@ -1,3 +1,16 @@
+# Local native queue r2 running under frozen source937b427
+
+Updated 2026-10-14T03:21:44.670231+00:00
+All prior snapshots preserved. New frozen manifests: AA718cdd57, Claude00c61857, Codexc4c34cb6. Queue source scratch/root/native-recovery-queue-r2.py; selftest actual12/12exit0. Running wrapper session35655; read receipt native-queue-r2-run only aftertermination. Queue journal native-recovery-queue-r2.json advances duringwork. It preflights AA/Claude inparallel thenCodex, thenowned-GPUAA4attempts,Claude20,Codex20. No native inference has started yet; currentphase preflight-aa-and-claude.
+
+Research0f/9 and L20bounded measurement review: defaultstrict native/20x stagegates stay intact. If AA has four unique terminal zero-exit, completely metered/model-stable32k attempts but a known cap/native-incomplete outcome, queue permits bounded diagnostic smoke only. Unknown/partial/error/changed-model/missing receipts holds. This explicit diagnostic path never promotes native qualification, losses, TOTAL/PEAK or20x. Codex remains an independent measured host evenif Claude smokeholds. No attempts are retried or earlierfailedreceipts overwritten. Preflights keep9PID omissions explicit; cleanup and shared-user grader isolation remain unqualified.
+
+Latest realfix:32msWindowsmtime tolerance measured500writes/322negative/-13.926ms. Functional40/40exit0 and planted removal caught;91stWindowsplant added, skippedonlyonnon-Windows where that behavior doesnotexist. Currentroot commit937b427 clean beforethishandoffupdate. r1AApreflightfailed beforeinference; r1Claude preflightpassed8checks but unstarted. Native Codex actualrecordingcontrols show retainedrequestsandselectedskill aftercompact inAtlias; fakeusage/charactercounts are notbenchmarks. Live broker permission/actor/cancel/multimodal remain unqualified. Neither20x nor4x achieved.
+
+Next: inspectactual r2PREFLIGHT/attemptrows/reports/terminalreceipts. Do not relaunchqueue ifits journal/terminalreceipt exists. PreserveClaude stagedcherrypick,arm-cpartial12/60,archiveddeadlease,alloldtrialmanifests andGev21:20wake. Atquota boundary updateexisting atlias-council-recovery to freshmeasuredreset+7minChicago,readTOMLverify>=5min. Do notredeemusage/buycredits orkillWindowsPIDs.
+
+---
+
 # Windows clock discrepancy fixed; new native freeze required
 
 Updated 2026-10-14T03:13:09.078525+00:00
