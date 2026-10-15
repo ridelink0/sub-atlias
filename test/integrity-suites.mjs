@@ -48,6 +48,17 @@ export default async function integritySuites({ suite, check, core, gate, track,
     check('a check before the last edit does not', !integrity.verificationAfterLastEdit([ran, edit]), { happened: 'counted', why: 'An edit made after the last check is an edit nobody checked.', fix: 'Look only after the last edit.' });
     check('the atlias verify tool counts as a check', integrity.verificationAfterLastEdit([edit, { kind: 'tool', tool: 'mcp__plugin_atlias_atlias__harness_verify' }]), { happened: 'not counted', why: 'It is a real check, and ignoring it would punish using it.', fix: 'isVerifyEvent accepts harness_verify.' });
     const noRun = integrity.check({ cwd: PROJECT, turn: [edit], last: 'Done. All tests pass.', files: [], flags: {} });
+    for (const output of ['Tests completed successfully', 'ATLIAS_EXIT_fresh_nonce=0', '', undefined]) {
+      const unknown = { ...ran, ...integrity.verdict({ tool_response: { stdout: output } }) };
+      const held = integrity.check({ cwd: PROJECT, turn: [edit, unknown], last: 'All tests pass.', files: [], flags: {} });
+      check('a pass claim requires a known exit, including positive-looking output ' + String(output), held.some(f => f.flag === 'passclaim' && /result is unknown/.test(f.text)) && !integrity.verificationAfterLastEdit([edit, unknown]), { happened: JSON.stringify(held), why: 'Neither stdout, a nonce, nor command completion establishes a passing result.', fix: 'Unknown outcomes cannot satisfy verification or pass claims.' });
+    }
+    const latestUnknown = integrity.check({ cwd: PROJECT, turn: [ran, { ...ran, outcome: 'unknown' }], last: 'All tests pass.', files: [], flags: {} });
+    for (const history of [[ran, edit], [ran, edit, { kind: 'tool', tool: 'harness_verify' }], [ran, { kind: 'tool', tool: 'harness_verify' }]]) {
+      const stale = integrity.check({ cwd: PROJECT, turn: history, last: 'All tests pass.', files: [], flags: {} });
+      check('stale or unknown tool verification cannot lend an earlier pass', stale.some(f => f.flag === 'passclaim') && !integrity.passingVerification(history), { happened: JSON.stringify(stale), why: 'A check of older bytes or an unreported tool outcome cannot establish a fresh positive result.', fix: 'Use the latest verification after the latest edit.' });
+    }
+    check('a later unknown result cannot borrow an earlier pass', latestUnknown.some(f => f.flag === 'passclaim'), { happened: JSON.stringify(latestUnknown), why: 'The latest run did not establish the claimed result.', fix: 'Check the latest verification outcome.' });
     check('claiming tests pass with no run is caught', noRun.some((f) => f.flag === 'passclaim' && /no check ran/.test(f.text)), { happened: JSON.stringify(noRun).slice(0, 200), why: 'A result that was never produced is a claim, not evidence.', fix: 'Check the anyRun branch in check().' });
     const failed = integrity.check({ cwd: PROJECT, turn: [edit, { kind: 'shell', verify: true, command: 'npm test', outcome: 'fail', excerpt: 'Tests: 2 failed' }], last: 'All tests pass now.', files: [], flags: {} });
     check('claiming tests pass after a failing run is caught, with the failure quoted', failed.some((f) => f.flag === 'passclaim' && /2 failed/.test(f.text)), { happened: JSON.stringify(failed).slice(0, 200), why: 'This is the most expensive wrong answer, because the user stops looking.', fix: 'Compare the claim with lastVerification().outcome.' });

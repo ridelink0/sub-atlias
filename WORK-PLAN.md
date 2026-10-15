@@ -1,3 +1,47 @@
+# Gev checkpoint 2026-10-15T04:45Z
+
+Subharness first; Gev also requires shared same-model quality/hallucination/token-efficiency contracts in normal Atlias. Research basis RESEARCH-FIRST 0f/3/9 and H5/H7: retain full authority, qualify capability, count all token spend. No20x or qualified4x claim.
+
+R10 preflight TERMINAL0 and root-hash-verified:1687Node,121/121privateplants (restored functional0/sourceIntact),controller69functional/25plants/69restored,finaltransport9/9. Manifest26d17a3dd053f65f01ba514279047a9a6db3085448ced0123a302626296d7ad2 binds68e1140+the frozen patch, not HEAD alone. Nine no-PID omissions and disposable-temp cleanup unqualified. Native300r9 synthetic31/31 actual0; no model-quality claim. Root independently reread every current source/test diff, checked stale/unknown/check-only branches, Windows CRLF counter, missing-tool startup, malformed control envelopes and native CLI absence. Earlier test-oracle defects and failedr6-r9 preserved.
+
+Real Read counter r1 TERMINAL1, stopped after off-1 (3requests,TOTAL36720/fullPEAK16246). Native transcript proves TWO batch calls: first malformed Read args.path, second corrected file_path. Final marker correct but extra prose violated exact-only format; classic observer missed nativeMod outer callbacks; external CONNECT was blocked. This is failed evidence, not a valid ablation. ROOT-REVIEW.json adds correction without changing receipt/QUEUE.
+
+Fresh read-view-counter-r2 DECLARED before launch: off-1,on-1,on-2,off-2, R10 same model/window/CLI; native transcript observer, nonessential traffic disabled, exact Read arg/answer-format guidance identical in both arms. Session29671 running; inspect terminal/root receipt before success. No old trial rerun. Private11435 owns its portable server through an exclusive lease/JobObject and releases only its own handles.
+
+Local pipeline scratch contractr2 root functional18/18 exit0, separate copy-only reporter-authority-omission plant exit1 caught. Both helper requests carry full exact original/orderedfollowups/selectedskill names,versions,bodies. SHA IDs are integrity checks, not source authentication; trusted host collector/scope advancement/native adapters remain pending. Narrow existing Luna agent is building r3 bounded injected-transport runner and recording per-role failure/cap/timeout; no GPU/model use by agent. Do not call scratch a deployed pipeline.
+
+Caveman4.0.1 actual USER install and isolated Windows hooks verified; added5102startup/491prompt characters are not token savings. Codex computer-use PowerShell launch was PRODUCT-POLICY REFUSED; no visible terminal or relay yet. Gev requested real visible interactive bypass Claude terminal handoff near10% FIVE-HOUR remaining, asks Claude to enable Usage Limits relay for THAT visible session and send a Haiku implementation council. Handoff/launch script prepared; never claim visible launch or relay without evidence. Preserve other relay owners, separate21:20wake, all Claude worktrees, frozen trials, evolve STOP. No paid benchmark APIs/PID killing/reset redemption.
+
+Next: inspect r2 terminal; root-review r3 runner and actual private model fixture if quota fits; update handoff with actual outcomes, reserve visible transfer and measured reset+7min automation before clean cutoff.
+
+---
+
+# Live checkpoint 2026-10-15T04:27Z
+
+Gev added shared same-model quality/hallucination/token-efficiency work for normal Atlias too; subharness still first. At about10% Codex FIVE-HOUR remaining, Gev explicitly wants CODEX computer use to open a REAL VISIBLE interactive Claude Code terminal in bypass mode; send the concrete CLAUDE-SUBHARNESS-HANDOFF-1015.md, ask it to enable Usage Limits relay for that session and send a Haiku implementation council. Do not substitute a hidden/headless process or use customcomputeruse. Current live binding is5hour, roughlyhalfremaining; terminalhandoff prepared, NOTlaunched. OtherClaude relayowners and separate21:20wake preserved.
+
+Caveman4.0.1 installed actualClaudeUSERcache gitd262ab, enabled true, caveman-install-r1 exit0. Its Windows command hooks pass isolatedruntime r2 exit0:5102startupcontextcharacters+491promptcontextcharacters; these are NOTtokens or savings. r1 oracle incorrectlyrequiredJSON for SessionStart, which legitimatelyemitsplaintext; preserved and corrected without vendorcodechanges. No modelcalls in hookproof.
+
+R9 preflight failed120/121 privateplants despite1686Node pass: gateclaim-only test was masked by doublePass. R10 adds an isolated no-edit/no-doublePass assertion; native runtime unchanged. R10 manifest26d17a3dd053f65f01ba514279047a9a6db3085448ced0123a302626296d7ad2, preflight session57787 RUNNING, full1687Node passed,9PID omissions. Native300r9 actual31/31 fixtureexit0; not inference. Inspect native-r10-preflight terminalJSON and fresharchives before calling preflight passed or startingmodel. Source parent68e+uncommittedchanges bound by frozen sourceFiles, patch saved outside snapshot. Do not mutate frozenr10 or rerun anyoldtrial.
+
+Counterread-view-counter-r1 targetsr10, prepared but NOTSTARTED; requirespassedpreflight, exclusive GPUlease and counts allrequests/windowreadings, includingfailedparsewireusage. Localpipelinecontractprototype is beingimplemented separately in council scratch/root/local-pipeline-contract-r1, no root/frozen changes; parentreview/integration pending. Research local-pipeline.md notes UIhiding cannot save generatedtokens; full exact authority on EVERY helper call is required, not onlye.text. All20originalLunareportsremaincomplete. Neither20x norqualified4x achieved. Current receipts/root/recovery-quality-root-review-r1.json anchors actual evidence.
+
+---
+
+# Gev subharness recovery: quality and update guards, 2026-10-15T04:00Z
+
+Priority: subharness cost AND same-model quality, including hallucinated pass claims. Regular Nanobot work remains parked; neither20x nor qualified4x achieved. Source HEAD68e1140 plus reviewed uncommitted candidate changes; the manifest sourceFiles hashes, not HEAD alone, bind those bytes. No live install/push or modernisation auto-commit.
+
+Claude updated externally to2.1.300 (SHA25656810a111c01dcd218b42727c23fd8763be42320038b1adcac93cf599fac2de2). On the prior source, deterministic native300 fixture passed31/31 with actual terminal0, not model inference. Current source fixes UNKNOWN check outcomes suppressing pass-claim enforcement, and malformed native statuses allowing later batch effects; it leaves native tools reachable when discovery is unavailable. The existing gate can run one recognized check without an extra model request. Claims require explicit pass evidence; stdout/nonces are never exit evidence.
+
+Actual focused checks: integrity23/23, gate67/67, native76/76 and current-Codex Responses13/13, all terminal0. Gate trial1/2 failed an assertion in the newly added Windows newline counter oracle; trial3 normalizes native CRLF and proves one actual invocation. No test threshold was relaxed. Separate adversarial review/plants remain pending for this candidate.
+
+r6 source68e preflight stopped with controller exit0x40010004 and empty log: cause unknown; completed1650Node/115plants retained. r7 terminal1 caught113/115plants because its deleted hardcoded Codex executable silently skipped the native skill assertions. Scratch current-CLI baseline13/13; both mutations fail with and without -B, disproving bytecode-cache hypothesis. Test now resolves explicit ATLIAS_CODEX_CLI or PATH and fails on absence. Preserve failed r5/r6/r7 and originalr2 queue. Prepare fresh r8 source snapshot and receipts; never rewrite old manifests. Retain nine no-PID omissions and unqualified disposable-temp cleanup.
+
+Next: full functional+121privateplants+controller preflight under r8, root-check terminal receipts/hashes; qualify the changed native300 source, then bounded private11435 qwen3.5:9b-32k Read off/on ablation with full TOTAL/fullPEAK and answer accuracy. Counter is prepared but not started; r7 cannot run inference. Count failed/capped requests. No corpus improvement inferred from bytes. Followups/skills/actor isolation/permissions/multimodal standalone capability preserved. New Claude release research: research_notes/Atlias native cost replacement/claude300.md; hallucination finding quality.md; stale executable proof plants-r7.md. Basis RESEARCH-FIRST0f/3/9 and H5/H7.
+
+---
+
 # Gev's updated scope, 2026-10-14T10:40:37.679135+00:00
 
 Gev accepts the regular Nanobot progress as close enough and now directs work to the SUBHARNESS: use Claude Mods to disable selected expensive Claude Code components, replace their needed behavior in Atlias, and use token-efficient pipelines. This acceptance changes priority; it does not establish a qualified4x Nanobot result. Stop regular-harness adapter work unless it is required for subharness measurement. Do not restart the council or the completed benchmark queue.

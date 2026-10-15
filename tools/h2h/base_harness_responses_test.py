@@ -9,6 +9,7 @@ import http.server
 import json
 import os
 import pathlib
+import shutil
 import sys
 import tempfile
 import threading
@@ -17,7 +18,7 @@ import urllib.request
 
 import base_harness_runner as B
 
-CODEX = "C:/Users/OWNER/AppData/Local/OpenAI/Codex/bin/2e5e00daee91c61d/codex.exe"
+CODEX = os.environ.get("ATLIAS_CODEX_CLI") or shutil.which("codex") or ""
 
 
 class Upstream(http.server.BaseHTTPRequestHandler):
@@ -57,6 +58,9 @@ class Upstream(http.server.BaseHTTPRequestHandler):
 
 
 def main():
+    if not pathlib.Path(CODEX).is_file():
+        print("UNQUALIFIED native Codex conformance: set ATLIAS_CODEX_CLI to an installed executable", file=sys.stderr)
+        return 2
     results = []
 
     def check(name, ok, got=None):
@@ -147,6 +151,8 @@ def main():
                   and "skills_instructions" in json.dumps(got) and "openai-docs" in json.dumps(got) and ".agents/skills" not in json.dumps(got),
                   (rc, why, door2.calls, door2.usage, door2.errors, door2.refused[:4], said[-300:]))
         door2.shutdown()
+    else:
+        check("native Codex conformance requires an installed executable; set ATLIAS_CODEX_CLI", False, CODEX)
     up.shutdown()
 
     bad = [r for r in results if not r[1]]

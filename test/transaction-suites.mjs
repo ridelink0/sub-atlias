@@ -7,11 +7,11 @@ function fixture(options = { enabled: true }, overrides = {}) {
   const on = (event, matcher, hook) => {
     if (typeof matcher === 'function') hook = matcher;
     hooks.push({ event, hook });
-    return { catch() { return this; } };
+    return { catch(handler) { hook.onError = handler; return this; } };
   };
   register(on, options);
   const api = { tool: {
-    list: async () => DEFERRED.filter(n => n !== 'PowerShell').map(name => ({ name })),
+    list: async () => ['ToolSearch', ...DEFERRED.filter(n => n !== 'PowerShell')].map(name => ({ name })),
     register: async s => { calls.push(['register', s]); },
     check: overrides.check || (async e => {
       if (!e.input || Object.keys(e).some(k => !['tool', 'input'].includes(k))) throw Error('wrong native permission envelope');
@@ -105,12 +105,33 @@ export default async function transactionSuites({ asyncSuite, check }) {
     const partial = await inFlight.batch([op, op]);
     check('in-flight cancellation reports possible partial effects and never replays', partial.status === 'aborted' && partial.attempted === 1 && partial.results[0].effects === 'unknown', info);
     check('only explicit native result shapes establish execution', state({ deny: 'no' }) === 'refused' && state({ result: {}, isError: true }) === 'tool-error' && state({ result: {} }) === 'executed' && state({ text: 'ok' }) === 'unknown', info);
+    for (const malformed of [null, [], 'ok', { result: undefined }, { result: null }, { result: {}, deny: null }, { result: {}, isError: 'true' }, { result: {}, isError: 1 }, { result: {}, text: null }, { result: {}, futureError: true }, Object.assign(Object.create({ isError: true }), { result: {} }), Object.defineProperty({ result: {} }, 'futureError', { value: true }), { result: {}, context: 'invalid' }]) {
+      const test = fixture(undefined, { call: async e => { test.calls.push(['call', e]); return malformed; } });
+      const answer = await test.batch([{ tool: 'Bash', args: { command: 'check' } }, { tool: 'Write', args: { file_path: '/later.txt', content: 'later' } }]);
+      check('malformed native status cannot execute a later operation: ' + JSON.stringify(malformed), state(malformed) === 'unknown' && answer.status === 'unknown' && answer.attempted === 1 && test.calls.length === 1, info);
+    }
     const placement = fixture({ enabled: true, deferBuiltins: true });
     await placement.hooks.find(h => h.event === 'session.start').hook(placement.api, {}, placement.next);
     const describe = placement.hooks.find(h => h.event === 'tool.describe').hook;
     const original = { description: 'Full native contract and policy.', isDeferred: false };
     const describeNext = async () => original;
+    for (const setup of [api => { api.tool.list = async () => [{ name: 'Read' }]; }, api => { api.tool.list = async () => [null]; }, api => { api.tool.list = async () => [{ name: 'Read' }, { name: 'Read' }]; }, api => { api.tool.list = async () => ({}); }]) {
+      const degraded = fixture({ enabled: true, deferBuiltins: true });
+      setup(degraded.api);
+      await degraded.hooks.find(h => h.event === 'session.start').hook(degraded.api, {}, degraded.next);
+      check('unavailable or malformed discovery leaves native Read reachable', !degraded.calls.some(([kind]) => kind === 'register') && await degraded.hooks.find(h => h.event === 'tool.describe').hook(degraded.api, { tool: 'Read', provider: { plugin: 'engine' } }, describeNext) === original, info);
+    }
     const search = await describe(placement.api, { tool: 'ToolSearch', provider: { plugin: 'engine' } }, describeNext);
+    for (const fail of ['list', 'register', 'missing-search', 'missing-list', 'missing-register']) {
+      const restarted = fixture({ enabled: true, deferBuiltins: true });
+      const start = restarted.hooks.find(h => h.event === 'session.start').hook;
+      await start(restarted.api, {}, restarted.next);
+      if (fail === 'missing-search') restarted.api.tool.list = async () => [{ name: 'Read' }];
+      else if (fail.startsWith('missing-')) delete restarted.api.tool[fail.slice(8)];
+      else restarted.api.tool[fail] = async () => { throw Error('native API unavailable'); };
+      try { await start(restarted.api, {}, restarted.next); } catch { await start.onError(restarted.api, {}, restarted.next); }
+      check('startup failure clears previously deferred tools: ' + fail, await restarted.hooks.find(h => h.event === 'tool.describe').hook(restarted.api, { tool: 'Read', provider: { plugin: 'engine' } }, describeNext) === original, info);
+    }
     check('every available deferred name is discoverable without inventing unavailable tools', search.description.startsWith(original.description) && DEFERRED.filter(n => n !== 'PowerShell').every(n => search.description.includes(n)) && !search.description.includes('PowerShell'), info);
     check('the registered schema only advertises tools available in this profile', !placement.calls.find(([kind]) => kind === 'register')[1].inputSchema.properties.operations.items.properties.tool.enum.includes('PowerShell'), info);
     check('an unknown native tool or external provider passes through unchanged', await describe(placement.api, { tool: 'FutureTool', provider: { plugin: 'engine' } }, describeNext) === original && await describe(placement.api, { tool: 'Read', provider: { plugin: 'external' } }, describeNext) === original, info);

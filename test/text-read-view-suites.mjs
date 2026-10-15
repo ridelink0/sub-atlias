@@ -16,7 +16,7 @@ async function batch(options, value) {
   };
   register(on, options);
   const api = { tool: {
-    list: async () => [{ name: 'Read' }],
+    list: async () => [{ name: 'Read' }, { name: 'ToolSearch' }],
     register: async spec => { offered = spec; },
     check: async e => { calls.push(['check', e]); return { decision: 'allow' }; },
     call: async e => { calls.push(['call', e]); return value; },

@@ -56,9 +56,17 @@ export function textReadResult(result) {
 }
 
 export function state(result) {
-  if (result && typeof result.deny === 'string') return 'refused';
-  if (result && result.isError === true) return 'tool-error';
-  if (result && Object.hasOwn(result, 'result')) return 'executed';
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return 'unknown';
+  if (Object.getPrototypeOf(result) !== Object.prototype && Object.getPrototypeOf(result) !== null) return 'unknown';
+  if (Object.hasOwn(result, 'deny') && result.deny !== undefined) return typeof result.deny === 'string' ? 'refused' : 'unknown';
+  if (Object.hasOwn(result, 'isError') && result.isError !== undefined) {
+    if (result.isError === true) return 'tool-error';
+    if (result.isError !== false) return 'unknown';
+  }
+  if (Reflect.ownKeys(result).some(k => !['result', 'text', 'isError', 'deny', 'ref', 'context'].includes(k))) return 'unknown';
+  if (result.context !== undefined && (!Array.isArray(result.context) || result.context.some(x => typeof x !== 'string'))) return 'unknown';
+  if (Object.hasOwn(result, 'text') && typeof result.text !== 'string') return 'unknown';
+  if (Object.hasOwn(result, 'result') && result.result !== undefined && result.result !== null) return 'executed';
   return 'unknown';
 }
 
@@ -69,8 +77,13 @@ export function register(on, options = {}) {
   const spec = compactReads ? { ...SPEC, description: SPEC.description + ' Exact numbered Read text is retained; duplicated file.content may be represented by {from:"native.text",format:"line-number-tab-v1"} (remove each numbered prefix) or format:"text-v1" (identical text). All file metadata is retained.' } : SPEC;
   let available = null;
   on('session.start', async ($, e, next) => {
+    available = null;
     if (enabled) {
-      const names = (await $.tool.list()).map(t => t.name);
+      const listed = await $.tool.list();
+      if (!Array.isArray(listed) || listed.some(t => !t || typeof t.name !== 'string' || !t.name.length)) return next(e);
+      const names = listed.map(t => t.name);
+      if (new Set(names).size !== names.length) return next(e);
+      if (!names.includes('ToolSearch')) return next(e);
       const operations = TOOLS.filter(n => names.includes(n));
       if (operations.length) {
         await $.tool.register({ ...spec, inputSchema: { ...SPEC.inputSchema, properties: {
@@ -78,7 +91,7 @@ export function register(on, options = {}) {
             ...SPEC.inputSchema.properties.operations.items.properties, tool: { type: 'string', enum: operations },
           } } },
         } } });
-        available = DEFERRED.filter(n => names.includes(n));
+        if (names.includes('ToolSearch')) available = DEFERRED.filter(n => names.includes(n));
       }
     }
     return next(e);

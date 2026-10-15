@@ -20,4 +20,6 @@ envelope. The custom tool describes the representation when enabled. Its added
 description costs tokens and must be counted in paired measurement. Model quality
 and whole-task savings remain unqualified; byte savings alone establish neither.
 
-Native dispatch, ordinary permission denial, transcript storage, cancellation and token cost must be qualified on the installed Claude version before a public release. Current experimental target: Claude Code 2.1.296. This is not a proven 20x improvement.
+Native tool deferral requires a valid tool list, successful batch registration and ToolSearch in that list. Missing discovery or registration leaves standalone native tools unchanged. Dispatch and permission API semantics require native conformance checks for the current build; the hook uses documented literal API calls and catches failures. Malformed, empty or unfamiliar result/control envelopes stop the batch as unknown before later operations; this is execution evidence only, never proof that a check passed.
+
+Native dispatch, ordinary permission denial, transcript storage, cancellation and token cost must be qualified on the installed Claude version before a public release. Historical model benchmarks used Claude Code 2.1.296. Focused deterministic fixtures have also exercised 2.1.300; new source and new CLI versions need fresh qualification. These guards cannot guarantee compatibility with every future update. This is not a proven 20x improvement.

@@ -94,12 +94,13 @@ export default async function subharnessSuites({ suite, check, core, gate, track
     fs.writeFileSync(file, 'def f(x):\n    return x + 1\n');
     const start = (name) => { const s = sid(name); router.prompt({ session_id: s, cwd: PROJECT, prompt: 'Fix the bug in f in solution.py please' }); return s; };
     const edit = (s) => track.postTool({ session_id: s, cwd: PROJECT, tool_name: 'Edit', tool_input: { file_path: file } });
-    const checkRun = (s, stdout, stderr = '') => track.postTool({ session_id: s, cwd: PROJECT, tool_name: 'PowerShell', tool_input: { command: 'python check.py' }, tool_response: { stdout, stderr } });
+    const checkRun = (s, stdout, stderr = '') => track.postTool({ session_id: s, cwd: PROJECT, tool_name: 'PowerShell', tool_input: { command: 'python check.py' }, tool_response: { stdout, stderr, exit_code: 0 } });
 
     const ed = { kind: 'edit', files: ['solution.py'] };
-    const ok = { kind: 'shell', verify: true, command: 'python check.py', outcome: 'unknown' };
+    const ok = { kind: 'shell', verify: true, command: 'python check.py', outcome: 'pass' };
     const ls = { kind: 'shell', verify: false, command: 'ls' };
     check('lastVerificationAfterEdit finds the last check after the last edit and nothing before it', gate.lastVerificationAfterEdit([ed, ok, ls]) === ok && gate.lastVerificationAfterEdit([ok, ed]) === null && gate.lastVerificationAfterEdit([ok]) === ok && gate.lastVerificationAfterEdit([]) === null, { happened: JSON.stringify([gate.lastVerificationAfterEdit([ed, ok, ls]), gate.lastVerificationAfterEdit([ok, ed])]), why: 'The second-pass request tells the model no tool call is needed only when this is right.', fix: 'Check lastVerificationAfterEdit in lib/gate.mjs.' });
+    check('an unknown latest check cannot promise that no verification call is needed', gate.lastVerificationAfterEdit([ed, ok, { ...ok, outcome: 'unknown' }]) === null, { happened: 'unknown treated as completed evidence', why: 'A later unknown outcome must remain unknown even after an earlier pass.', fix: 'Stop at the latest check and require a known outcome.' });
 
     const a = start('after');
     edit(a); checkRun(a, 'all tests passed');
@@ -137,9 +138,9 @@ export default async function subharnessSuites({ suite, check, core, gate, track
     const call = (name, input) => { const id = 'toolu_' + (++n); return [id, { type: 'assistant', message: { role: 'assistant', content: [{ type: 'tool_use', id, name, input }] } }]; };
     const answer = (id, content, isError, toolUseResult) => ({ type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: id, content, is_error: isError }] }, toolUseResult });
     const editRows = () => { const [id, row] = call('Edit', { file_path: file, old_string: 'x + 1', new_string: 'x + 2' }); return [row, answer(id, 'The file has been updated.', false, { filePath: file })]; };
-    const shellRows = (command, stdout, fail = '') => {
+    const shellRows = (command, stdout, fail = '', code = 0) => {
       const [id, row] = call('Bash', { command });
-      return [row, fail ? answer(id, 'Exit code 1\n' + fail, true, 'Error: Exit code 1\n' + fail) : answer(id, stdout, false, { stdout, stderr: '', interrupted: false, isImage: false })];
+      return [row, fail ? answer(id, 'Exit code 1\n' + fail, true, 'Error: Exit code 1\n' + fail) : answer(id, stdout, false, { stdout, stderr: '', interrupted: false, isImage: false, exit_code: code })];
     };
     const PASSED = 'all tests passed';
     const FAILED = 'Traceback (most recent call last):\n  File "check.py", line 3\nAssertionError';
@@ -155,6 +156,10 @@ export default async function subharnessSuites({ suite, check, core, gate, track
     const ONE = 'Fixed the off-by-one. All tests pass.';
 
     const passing = write('passing', turn(editRows(), shellRows('python check.py', PASSED)));
+    const unknownSid = start('unknown');
+    const unknownTranscript = write('unknown', turn(editRows(), shellRows('python check.py', PASSED, '', null)));
+    const unknownHeld = stop(unknownSid, ONE, unknownTranscript);
+    check('successful-looking transcript output without numeric exit remains unverified', unknownHeld?.decision === 'block' && /result is unknown/.test(unknownHeld.reason) && fromTranscript(unknownSid)[0]?.outcome === 'unknown', { happened: reasonOf(unknownHeld), why: 'Cancelled hooks do not turn positive stdout into passing evidence.', fix: 'Preserve UNKNOWN through transcript recovery and positive-claim enforcement.' });
     const calls = track.transcriptTurn(passing);
     check('the transcript turn starts at the last prompt and pairs each call with its result', Array.isArray(calls) && calls.length === 2 && calls[0].name === 'Edit' && calls[1].name === 'Bash' && calls[1].result && calls[1].result.block.is_error === false, { happened: JSON.stringify(calls && calls.map((c) => [c.name, Boolean(c.result)])), why: 'A call from the turn before, or one with no result, would be taken for a check of this turn.', fix: 'transcriptTurn in lib/track.mjs.' });
     const bad = track.transcriptVerdict({ block: { is_error: true, content: 'Exit code 1\n' + FAILED }, row: {} });
@@ -202,9 +207,9 @@ export default async function subharnessSuites({ suite, check, core, gate, track
     check('a check the transcript cannot place after the log\'s last edit is not counted', Boolean(b7) && /nothing was run to check it after the last edit/.test(b7.reason) && fromTranscript(h).length === 0 && reasonOf(b8) === reasonOf(held) && fromTranscript(k).length === 0, { happened: `subagent edit after the check: ${reasonOf(b7).slice(0, 160)} | no timestamps: ${reasonOf(b8).slice(0, 160)}`, why: 'An edit a subagent made after the check is in the log and not in the main transcript; counting the check would pass an edit nobody checked.', fix: 'checksFromTranscript counts only a result stamped after the last edit the log recorded.' });
 
     const e = start('recorded');
-    track.postTool({ session_id: e, cwd: PROJECT, tool_name: 'Bash', tool_input: { command: 'python check.py' }, tool_response: { stdout: PASSED, stderr: '' } });
+    track.postTool({ session_id: e, cwd: PROJECT, tool_name: 'Bash', tool_input: { command: 'python check.py' }, tool_response: { stdout: PASSED, stderr: '', exit_code: 0 } });
     const e0 = start('recorded-base');
-    track.postTool({ session_id: e0, cwd: PROJECT, tool_name: 'Bash', tool_input: { command: 'python check.py' }, tool_response: { stdout: PASSED, stderr: '' } });
+    track.postTool({ session_id: e0, cwd: PROJECT, tool_name: 'Bash', tool_input: { command: 'python check.py' }, tool_response: { stdout: PASSED, stderr: '', exit_code: 0 } });
     const b5 = stop(e, ONE, failing);
     const b5base = stop(e0, ONE);
     check('a check the hook recorded is left as it was', reasonOf(b5) === reasonOf(b5base) && fromTranscript(e).length === 0 && track.checksFromTranscript(failing, { cwd: PROJECT, sid: e, turn: [{ kind: 'edit', files: [file] }] }).length === 1, { happened: `${reasonOf(b5).slice(0, 200)} | ${reasonOf(b5base).slice(0, 200)}`, why: 'The transcript is a fallback for a missing record, not a second opinion on one.', fix: 'gate.stop reads the transcript only when lastVerificationAfterEdit finds nothing.' });

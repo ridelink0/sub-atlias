@@ -161,6 +161,14 @@ cases += [
     ('Read decoder drops CR characters', 'mods/atlias-transaction/hooks/text-read.mjs', 'content = restored.join', "content = restored.map(line => line.replace(/\\r/g, '')).join", READ_VIEW),
     ('Read decoder accepts unknown source', 'mods/atlias-transaction/hooks/text-read.mjs', "recipe.from !== 'native.text'", 'false', READ_VIEW),
 ]
+cases += [
+    ('unknown check accepted as pass evidence', 'lib/integrity.mjs', "} else if (!passingVerification(turn)) {", '} else if (false) {', ['node', 'test/run.mjs', 'claims against evidence']),
+    ('unknown check suppresses gate verification', 'lib/gate.mjs', '!integrity.passingVerification(turn)', '!turn.some(integrity.isVerifyEvent)', ['node', 'test/run.mjs', 'when the gate wants']),
+    ('unknown check satisfies edit verification', 'lib/integrity.mjs', "isVerifyEvent(e) && (e.kind === 'tool' || e.outcome === 'pass' || e.outcome === 'fail')", 'isVerifyEvent(e)', ['node', 'test/run.mjs', 'claims against evidence']),
+    ('malformed native error means executed', 'mods/atlias-transaction/hooks/register.mjs', "if (result.isError !== false) return 'unknown';", 'if (false) return \'unknown\';', ['node', 'test/run.mjs', 'native batches']),
+    ('missing native result means executed', 'mods/atlias-transaction/hooks/register.mjs', " && result.result !== undefined && result.result !== null", '', ['node', 'test/run.mjs', 'native batches']),
+    ('native tools hidden without ToolSearch', 'mods/atlias-transaction/hooks/register.mjs', "if (!names.includes('ToolSearch')) return next(e);", 'if (false) return next(e);', ['node', 'test/run.mjs', 'native batches']),
+]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
 # Validate all anchors before spending time on the first planted execution.
