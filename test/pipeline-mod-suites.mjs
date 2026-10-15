@@ -270,27 +270,26 @@ export default async function addSuites({ suite, asyncSuite, check, ROOT, fs, pa
       { happened: JSON.stringify(c.out.blocks), why: 'The evidence style is independent of the store.', fix: 'Keep the prompt.context handler free of store calls.' });
   });
 
-  await asyncSuite('pipeline mod expert', 'pipeline mod: a restarted session resumes its authority, and an unverifiable record records nothing more', async () => {
-    const store = new Map();
-    const transcript = [];
+  await asyncSuite('pipeline mod expert', 'pipeline mod: a restarted session never extends an earlier record, and every prompt still passes through', async () => {
     const opts = { enabled: true, collectAuthority: true, collectReceipts: true };
-    const first = harness(opts, { store, transcript });
-    await first.run('prompt.submit', prompt('A: the original'), promptReply(prompt('A: the original')));
-    await first.run('prompt.submit', prompt('B: follow-up'), promptReply(prompt('B: follow-up')));
-    const second = harness(opts, { store, transcript });
-    await second.run('prompt.submit', prompt('C: after restart'), promptReply(prompt('C: after restart')));
-    const stored = store.get(STORE_KEY).packet.authority;
-    check('after a restart the original is still the first prompt and the new prompt follows the old ones', stored.original.text === 'A: the original' && JSON.stringify(stored.followups.map(i => i.text)) === JSON.stringify(['B: follow-up', 'C: after restart']),
-      { happened: JSON.stringify({ original: stored.original.text, followups: stored.followups.map(i => i.text) }), why: 'A restart that made C the original would give the planner the wrong instruction.', fix: 'Restore from the stored record only when its packet id matches a rebuild of it.' });
-    const record = store.get(STORE_KEY);
-    record.packet.packetId = 'tampered';
-    store.set(STORE_KEY, record);
-    const third = harness(opts, { store, transcript });
-    const late = prompt('D: after tampering');
-    const r = await third.run('prompt.submit', late, promptReply(late));
-    await third.run('tool.call', shell('Bash', {}), shellReply({ stdout: 'ok', stderr: '', interrupted: false, exitCode: 0 }));
-    check('a record that fails verification is not extended: it is replaced by the broken marker, the later prompt is recorded nowhere, and no receipt is added', r.out.text === late.text && JSON.stringify(store.get(STORE_KEY)) === JSON.stringify({ sessionId: SID, broken: true }),
-      { happened: JSON.stringify(store.get(STORE_KEY)).slice(0, 160), why: 'An unverifiable authority record must stay unverifiable; extending it would hide the break, and leaving it would let another reader take it as current.', fix: 'Mark the session broken on a failed restore and record nothing more for it.' });
+    for (const tamper of [false, true]) {
+      const store = new Map();
+      const transcript = [];
+      const first = harness(opts, { store, transcript });
+      await first.run('prompt.submit', prompt('A: the original'), promptReply(prompt('A: the original')));
+      await first.run('prompt.submit', prompt('B: follow-up'), promptReply(prompt('B: follow-up')));
+      if (tamper) {
+        const record = store.get(STORE_KEY);
+        record.packet.packetId = 'tampered';
+        store.set(STORE_KEY, record);
+      }
+      const second = harness(opts, { store, transcript });
+      const late = prompt('C: after restart');
+      const r = await second.run('prompt.submit', late, promptReply(late));
+      await second.run('tool.call', shell('Bash', {}), shellReply({ stdout: 'ok', stderr: '', interrupted: false, exitCode: 0 }));
+      check(`a ${tamper ? 'tampered' : 'valid, transcript-confirmed'} earlier record is replaced by the broken marker, the later prompt and check are recorded nowhere, and the prompt reaches next`, r.seen === late && r.out.text === late.text && JSON.stringify(store.get(STORE_KEY)) === JSON.stringify({ sessionId: SID, broken: true }),
+        { happened: JSON.stringify(store.get(STORE_KEY)).slice(0, 160), why: 'A restart cannot show that no skill, edit or check fell between the last save and the restart; extending the record dropped a skill and kept a pre-edit pass (Codex review of 91d3e55).', fix: 'restore breaks the session for any earlier record of it.' });
+    }
   });
 
   await asyncSuite('pipeline mod expert', 'pipeline mod: a missing session id records nothing, never under an invented name', async () => {
@@ -370,11 +369,38 @@ export default async function addSuites({ suite, asyncSuite, check, ROOT, fs, pa
       await a.run('prompt.submit', prompt('P1'), promptReply(prompt('P1')));
       t.push({ role: 'assistant', text: 'working', toolUses: [{ name: 'Bash' }] }, { role: 'user', text: '', toolUses: [], toolResults: [{ id: 'x' }] });
       await a.run('prompt.submit', prompt('P2'), promptReply(prompt('P2')));
+      const got = s.get(STORE_KEY);
+      check(`within one process, tool rows are not prompts (host adds the prompt ${appendFirst ? 'before' : 'after'} the hook)`, got && got.packet && got.packet.authority.original.text === 'P1' && JSON.stringify(got.packet.authority.followups.map(x => x.text)) === JSON.stringify(['P2']),
+        { happened: JSON.stringify(got).slice(0, 200), why: 'The in-process ledger is the authority; a tool row taken as a prompt would add an instruction the person never gave.', fix: 'Skip user rows that carry toolResults.' });
       const b = harness(opts, { store: s, transcript: t, appendFirst });
       await b.run('prompt.submit', prompt('P3'), promptReply(prompt('P3')));
-      const got = s.get(STORE_KEY);
-      check(`a confirmed restart continues the record (host adds the prompt ${appendFirst ? 'before' : 'after'} the hook)`, got && got.packet && got.packet.authority.original.text === 'P1' && JSON.stringify(got.packet.authority.followups.map(x => x.text)) === JSON.stringify(['P2', 'P3']),
-        { happened: JSON.stringify(got).slice(0, 200), why: 'When the host transcript matches, the restored authority is complete and collection should go on.', fix: 'Accept the stored prompts, or the stored prompts plus the one being submitted.' });
+      check(`a transcript-confirmed restart still records nothing more (host adds the prompt ${appendFirst ? 'before' : 'after'} the hook)`, JSON.stringify(s.get(STORE_KEY)) === JSON.stringify({ sessionId: SID, broken: true }),
+        { happened: JSON.stringify(s.get(STORE_KEY)).slice(0, 200), why: 'Prompt equality does not show that no skill or edit was lost before the restart (Codex review of 91d3e55, cases 2 and 3).', fix: 'restore breaks the session for any earlier record of it.' });
+    }
+
+    // Codex review of 91d3e55, cases 2 and 3: a skill or an edit observed while both writes fail, then a restart.
+    for (const kind of ['skill', 'edit']) {
+      for (const failWrites of [false, true]) {
+        const s = new Map();
+        const t = [];
+        // bytes 0 refuses every write, the full record and the marker alike; reads still work.
+        const limit = { bytes: Infinity };
+        const full = { enabled: true, collectAuthority: true, collectReceipts: true };
+        const a = harness(full, { store: s, transcript: t, limit });
+        await a.run('prompt.submit', prompt('ORIGINAL'), promptReply(prompt('ORIGINAL')));
+        if (kind === 'edit') await a.run('tool.call', shell('Bash', {}), shellReply({ stdout: 'ok', stderr: '', interrupted: false, exitCode: 0 }));
+        if (failWrites) limit.bytes = 0;
+        if (kind === 'skill') await a.run('skill.prompt', skillEvent('required-skill', 'Full required skill body.'), skillEvent('required-skill', 'Full required skill body.'));
+        else await a.run('tool.call', edit('Edit'), editReply());
+        limit.bytes = Infinity;
+        const b = harness(full, { store: s, transcript: t });
+        if (kind === 'skill') await b.run('prompt.submit', prompt('FOLLOWUP'), promptReply(prompt('FOLLOWUP')));
+        else await b.run('tool.call', shell('Bash', {}), shellReply({ stdout: 'no numeric exit', stderr: '', interrupted: false }));
+        const after = s.get(STORE_KEY);
+        const statuses = await receiptStatuses(s);
+        check(`restart after a ${kind} with ${failWrites ? 'both writes failing' : 'writes working'}: the session is broken, so no record lacks the skill or keeps a pre-edit pass`, JSON.stringify(after) === JSON.stringify({ sessionId: SID, broken: true }) && statuses === null,
+          { happened: JSON.stringify(after).slice(0, 200), why: 'A packet without the selected skill, or a pass from before an unrecorded edit, would look complete and be wrong.', fix: 'restore breaks the session for any earlier record of it.' });
+      }
     }
 
     // A transcript that cannot be read whole fails closed.

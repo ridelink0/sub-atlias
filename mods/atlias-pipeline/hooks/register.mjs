@@ -85,10 +85,10 @@ async function hostPrompts($) {
   return prompts;
 }
 
-// A record from the store (or no record) carries this session's authority only when the host's
-// transcript shows exactly its prompts in order; the prompt being submitted now may or may not
-// be in the transcript yet. A valid digest proves the record was not altered, not that every
-// prompt reached it: a save and its marker can both fail, leaving an older complete-looking copy.
+// A ledger holding these prompts carries this session's authority only when the host's transcript
+// shows exactly those prompts in order; the prompt being submitted now may or may not be in the
+// transcript yet. restore asks this with no prompts, to start a ledger only for a session that has
+// none earlier.
 async function continuous($, prompts, pending) {
   const host = await hostPrompts($);
   if (!host) return false;
@@ -111,25 +111,13 @@ async function restore($, sid, pending) {
   }
   // A marker left when the full record could not be saved: an older copy would be missing later prompts.
   if (saved.broken === true) return { sessionId: sid, broken: true };
-  // A record for this session that cannot be verified means the authority is unknown:
-  // record nothing more, rather than let a later prompt become the original.
-  const shape = Number.isSafeInteger(saved.scope) && Number.isSafeInteger(saved.seq)
-    && (saved.original === undefined || typeof saved.original === 'string')
-    && Array.isArray(saved.followups) && saved.followups.every(text => typeof text === 'string')
-    && Array.isArray(saved.skills) && Array.isArray(saved.receipts);
-  if (!shape) return breakSession($, sid);
-  const restored = { sessionId: sid, broken: false, scope: saved.scope, seq: saved.seq, original: saved.original,
-    followups: saved.followups.slice(), skills: saved.skills.slice(), receipts: saved.receipts.slice(), packet: null };
-  try {
-    if (restored.original !== undefined) restored.packet = await build(restored);
-    const expected = restored.packet ? restored.packet.packetId : null;
-    const actual = saved.packet && typeof saved.packet === 'object' ? saved.packet.packetId : null;
-    if (expected !== actual) return breakSession($, sid);
-  } catch {
-    return breakSession($, sid);
-  }
-  const prompts = restored.original === undefined ? [] : [restored.original, ...restored.followups];
-  return (await continuous($, prompts, pending)) ? restored : breakSession($, sid);
+  // A record an earlier process wrote for this session is never extended. Its digest can show the record
+  // was not altered, and the host transcript can confirm its prompts, but nothing shows that no skill, edit
+  // or check fell between its last save and the restart: a save and its marker can both fail, and a process
+  // can stop between an event and its save. Extending it dropped a selected skill, and kept a check from
+  // before an unrecorded edit as a pass (Codex review of 91d3e55, cases 2 and 3). So the session records
+  // nothing more, and every prompt still passes through.
+  return breakSession($, sid);
 }
 
 // Returns false when this session's authority cannot be trusted; nothing is recorded then.

@@ -188,6 +188,27 @@ export default async function localHelpersSuites({ asyncSuite, check, agentMod, 
       happened: JSON.stringify(r.out), why: 'Model text is never a verified result.', fix: 'Return the contract\'s uiLine.' });
   });
 
+  await asyncSuite('local helpers expert', 'local helpers: reportTurn keeps each check at the scope it ran at, so a check before a later edit is not a pass', async () => {
+    const core = await import('../lib/core.mjs');
+    // Codex review of 91d3e55, case 1: prompt, check exit 0, edit, and no later check.
+    const statusesFor = async (sid, afterCheck) => withSetup({ flag: true, pipeline: ON }, async () => {
+      authority.record(sid, ORIGINAL, 'r1');
+      core.recordEvent(sid, { kind: 'edit', file: 'before-the-prompt.mjs' });
+      core.recordEvent(sid, { kind: 'prompt', prompt_id: 'r1', text: 'x' });
+      core.recordEvent(sid, { kind: 'shell', command: 'node check.js', verify: true, exitCode: 0 });
+      for (const e of afterCheck) core.recordEvent(sid, e);
+      const door = fakeDoor({ reporter: () => reply('{"text":"Changed the fixture.","receiptIds":[]}') });
+      const out = await helpers.reportTurn({ cfg: core.config(), sid, answer: 'Changed the fixture.', fetchImpl: door.fetchImpl });
+      return { out, statuses: door.calls[0] ? JSON.parse(door.calls[0].body.messages[1].content).evidence.map((e) => e.status) : null };
+    });
+    const stale = await statusesFor('report-scope-stale', [{ kind: 'edit', file: 'fixture.mjs' }]);
+    check('a check followed by an edit with no later check is sent as stale, never as pass', stale.out.outcome === 'ok' && JSON.stringify(stale.statuses) === JSON.stringify(['unknown:stale_scope']), {
+      happened: JSON.stringify(stale.statuses), why: 'The check ran on the files before the edit; giving it the current scope called the edited files checked.', fix: 'Bind each receipt to the edits recorded before its own event.' });
+    const current = await statusesFor('report-scope-current', [{ kind: 'edit', file: 'fixture.mjs' }, { kind: 'shell', command: 'node check.js', verify: true, exitCode: 0 }]);
+    check('control: a check after the last edit (with an edit before the prompt) is still a pass, and the older one stays stale', JSON.stringify(current.statuses) === JSON.stringify(['unknown:stale_scope', 'pass']), {
+      happened: JSON.stringify(current.statuses), why: 'Edits before the newest prompt count toward the scope as well, or every check after an earlier turn\'s edit would read as stale.', fix: 'Start the count with the edits before the newest prompt.' });
+  });
+
   await asyncSuite('local helpers expert', 'local helpers: the hooks add the advice and the line on Claude Code only, and off returns the same object', async () => {
     const r = await withSetup({ flag: true, pipeline: ON }, async () => {
       const sid = 'hook-session-1';
