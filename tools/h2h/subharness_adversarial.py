@@ -56,7 +56,7 @@ cases = [
     ("instructions dropped on the way", RUNNER, 'body["max_output_tokens"] = s.num_predict', 'body["max_output_tokens"] = s.num_predict; body.pop("instructions", None)', RESP),
     ("native skill capability removed", RUNNER, 'argv += ["-"]', 'argv += ["-c", "skills.include_instructions=false", "-"]', RESP),
     ("real skills root leaks into Codex", RUNNER, 'if skill_file:', 'if False:', RESP),
-    ("capped call leaves no receipt", RUNNER, 's.receipts.append({"api": "messages", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})', "pass", LEDGER),
+    ("capped call leaves no receipt", RUNNER, 's.receipts.append({"api": "messages", "stream": stream, "slot": None, "role": self._role, "outcome": "capped: answered by the door, no model call"})', "pass", LEDGER),
     ("partial spend marked measured", RUNNER, 'or door.partial or not door.usage:', 'or not door.usage:', [sys.executable, "tools/h2h/base_harness_measurement_test.py"]),
     ("invalid token count marked measured", RUNNER, 'or any(_count(v) is None for v in u) for u in door.usage)', 'for u in door.usage)', [sys.executable, "tools/h2h/base_harness_measurement_test.py"]),
     ("duplicate provider slot marked measured", RUNNER, 'or sorted(slots) != list(range(len(door.usage)))', '', [sys.executable, "tools/h2h/base_harness_measurement_test.py"]),
