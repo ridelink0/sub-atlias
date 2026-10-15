@@ -201,6 +201,31 @@ export default async function transactionSuites({ asyncSuite, check }) {
     const response = JSON.parse((await worker.hooks.find(h => h.event === 'tool.call').hook(worker.api, { operations: [{ tool: 'Read', args: { file_path: '/fixture.txt' } }], agentId: 'host-worker-id' }, worker.next)).result);
     check('worker batches still stop before effects under hot core', response.status === 'require-native-tools' && response.attempted === 0 && !worker.calls.some(([kind]) => kind === 'call') && response.reason.includes('load deferred ones through ToolSearch'), info);
   });
+  await asyncSuite('native discovery shapes', 'an unfamiliar native descriptor passes through untouched in every deferral mode', async () => {
+    const info = { happened: 'future descriptor fixture (Codex review of 7310f5f)', why: 'A future client may change the descriptor; the mod must not stringify, invent or throw on it.', fix: 'Edit only a plain descriptor object, and ToolSearch only when its description is a string.' };
+    class Descriptor { constructor() { this.description = 'native class text'; } }
+    for (const options of [{ enabled: true, deferBuiltins: true }, { enabled: true, deferBuiltins: true, hotCoreTools: true }]) {
+      const f = fixture(options);
+      await f.hooks.find(h => h.event === 'session.start').hook(f.api, {}, f.next);
+      const describe = f.hooks.find(h => h.event === 'tool.describe').hook;
+      const label = JSON.stringify(options);
+      for (const [name, value] of [['object description', { description: { text: 'future native format' }, inputSchema: { future: true } }], ['missing description', { inputSchema: { future: true } }], ['null descriptor', null], ['undefined descriptor', undefined], ['string descriptor', 'future'], ['array descriptor', ['future']], ['class descriptor', new Descriptor()]]) {
+        let out, threw = false;
+        try { out = await describe(f.api, { tool: 'ToolSearch', provider: { plugin: 'engine' } }, async () => value); } catch { threw = true; }
+        check('ToolSearch ' + name + ' passes through: ' + label, !threw && out === value, info);
+      }
+      for (const [name, value] of [['null descriptor', null], ['string descriptor', 'future'], ['class descriptor', new Descriptor()]]) {
+        let out, threw = false;
+        try { out = await describe(f.api, { tool: 'Grep', provider: { plugin: 'engine' } }, async () => value); } catch { threw = true; }
+        check('deferred tool ' + name + ' passes through: ' + label, !threw && out === value, info);
+      }
+      const r = { description: 'native text', inputSchema: { opaque: 1 } };
+      const searched = await describe(f.api, { tool: 'ToolSearch', provider: { plugin: 'engine' } }, async () => r);
+      check('a string ToolSearch description is still extended: ' + label, searched.description.startsWith('native text\n') && searched.inputSchema === r.inputSchema, info);
+      const grep = await describe(f.api, { tool: 'Grep', provider: { plugin: 'engine' } }, async () => ({ inputSchema: { future: true } }));
+      check('a plain deferred descriptor without text keeps its fields and is deferred: ' + label, grep.isDeferred === true && grep.inputSchema.future === true && !Object.hasOwn(grep, 'description'), info);
+    }
+  });
   await asyncSuite('native unchanged Read notices', 'an exact unchanged-file Read notice passes only under its own switch', async () => {
     const info = { happened: 'unchanged Read fixture', why: 'Claude Code 2.1.301 answers a re-read of an unchanged file with a native notice; refusing it stops the whole batch.', fix: 'Pass only the exact notice through, behind unchangedReads, and keep every other shape refused.' };
     const notice = () => ({ result: { type: 'file_unchanged', file: { filePath: '/fixture.txt' } }, text: 'Wasted call — file unchanged since your last Read. Refer to that earlier tool_result instead.' });

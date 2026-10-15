@@ -182,6 +182,12 @@ cases += [
     ('visible Read still routed through ToolSearch', TX, ".replace('Use standalone Read through ToolSearch for those inputs.'", ".replace('Use standalone Read via ToolSearch for those inputs.'", HOT),
     ('hot core text lost without Read dedup', TX, "All file metadata is retained.' } : base;", "All file metadata is retained.' } : SPEC;", HOT),
 ]
+SHAPES = ['node', 'test/run.mjs', 'unfamiliar native descriptor']
+cases += [
+    ('unfamiliar descriptor is edited', TX, "    if (!result || typeof result !== 'object' || Array.isArray(result) || ![Object.prototype, null].includes(Object.getPrototypeOf(result))) return result;\n", '', SHAPES),
+    ('class descriptor is edited', TX, " || ![Object.prototype, null].includes(Object.getPrototypeOf(result))) return result;", ') return result;', SHAPES),
+    ('non-string ToolSearch text is edited', TX, "    if (e.tool === 'ToolSearch' && typeof result.description !== 'string') return result;\n", '', SHAPES),
+]
 UNCHANGED = ['node', 'test/run.mjs', 'unchanged-file Read notice']
 NOTICE_HEAD = "typeof result.text !== 'string' || Object.keys(result).some(k => !['result', 'text'].includes(k))) return null;\n  const body = result.result;\n  if (!body || Array.isArray(body) || body.type !== 'file_unchanged'"
 cases += [

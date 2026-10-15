@@ -124,6 +124,9 @@ export function register(on, options = {}) {
   on('tool.describe', async ($, e, next) => {
     const result = await next(e);
     if (!defer || available === null || e?.provider?.plugin !== 'engine' || (await $.env.get('ENABLE_TOOL_SEARCH')) !== 'true') return result;
+    // An unfamiliar descriptor (a future client's shape) passes through untouched.
+    if (!result || typeof result !== 'object' || Array.isArray(result) || ![Object.prototype, null].includes(Object.getPrototypeOf(result))) return result;
+    if (e.tool === 'ToolSearch' && typeof result.description !== 'string') return result;
     // Hot core: name only what is actually deferred; nothing deferred, nothing added.
     if (e.tool === 'ToolSearch' && hotCore) return available.length ? { ...result, description: result.description + '\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE.replace('only this batch', 'only the batch') } : result;
     if (e.tool === 'ToolSearch') return { ...result, description: result.description + '\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly. Batch operations: ' + available.filter(n => TOOLS.includes(n)).join(', ') + '.' };
