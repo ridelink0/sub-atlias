@@ -13,6 +13,16 @@ export const SPEC = {
     type: 'object', properties: { tool: { type: 'string', enum: TOOLS }, args: { type: 'object' } }, required: ['tool', 'args'], additionalProperties: false,
   } } }, required: ['operations'], additionalProperties: false },
 };
+// Optional hot-core placement (off by default): with deferBuiltins these stay
+// natively visible and only the other available built-ins are deferred.
+export const HOT_CORE = ['Read', 'Edit', 'Write', 'Bash', 'PowerShell'];
+// Measured class: small models wrap a direct native call in the batch envelope.
+// Say it plainly; never rewrite a guessed input.
+export const ENVELOPE_NOTE = 'A standalone native call takes that tool\'s own top-level parameters, for example Read {"file_path": "..."}; only this batch uses the {tool, args} envelope.';
+export const HOT_CORE_DESCRIPTION = SPEC.description
+  .replace('Use standalone Read through ToolSearch for those inputs.', 'Use standalone native Read for those inputs.')
+  .replace('native tools through ToolSearch.', 'native tools; load deferred ones through ToolSearch.')
+  + ' ' + ENVELOPE_NOTE;
 
 const NON_TEXT_READ_PATH = /\.(?:apng|avif|bmp|gif|heic|heif|jpe?g|pdf|png|svg|tiff?|webp)$/i;
 
@@ -74,7 +84,9 @@ export function register(on, options = {}) {
   const enabled = options.enabled === true;
   const defer = enabled && options.deferBuiltins === true;
   const compactReads = enabled && options.deduplicateTextReads === true;
-  const spec = compactReads ? { ...SPEC, description: SPEC.description + ' Exact numbered Read text is retained; duplicated file.content may be represented by {from:"native.text",format:"line-number-tab-v1"} (remove each numbered prefix) or format:"text-v1" (identical text). All file metadata is retained.' } : SPEC;
+  const hotCore = defer && options.hotCoreTools === true;
+  const base = hotCore ? { ...SPEC, description: HOT_CORE_DESCRIPTION } : SPEC;
+  const spec = compactReads ? { ...base, description: base.description + ' Exact numbered Read text is retained; duplicated file.content may be represented by {from:"native.text",format:"line-number-tab-v1"} (remove each numbered prefix) or format:"text-v1" (identical text). All file metadata is retained.' } : base;
   let available = null;
   on('session.start', async ($, e, next) => {
     available = null;
@@ -91,7 +103,7 @@ export function register(on, options = {}) {
             ...SPEC.inputSchema.properties.operations.items.properties, tool: { type: 'string', enum: operations },
           } } },
         } } });
-        if (names.includes('ToolSearch')) available = DEFERRED.filter(n => names.includes(n));
+        if (names.includes('ToolSearch')) available = DEFERRED.filter(n => names.includes(n) && !(hotCore && HOT_CORE.includes(n)));
       }
     }
     return next(e);
@@ -99,6 +111,8 @@ export function register(on, options = {}) {
   on('tool.describe', async ($, e, next) => {
     const result = await next(e);
     if (!defer || available === null || e?.provider?.plugin !== 'engine' || (await $.env.get('ENABLE_TOOL_SEARCH')) !== 'true') return result;
+    // Hot core: name only what is actually deferred; nothing deferred, nothing added.
+    if (e.tool === 'ToolSearch' && hotCore) return available.length ? { ...result, description: result.description + '\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE.replace('only this batch', 'only the batch') } : result;
     if (e.tool === 'ToolSearch') return { ...result, description: result.description + '\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly. Batch operations: ' + available.filter(n => TOOLS.includes(n)).join(', ') + '.' };
     return available.includes(e.tool) ? { ...result, isDeferred: true } : result;
   }).catch(async ($, e, next) => next(e));
@@ -110,7 +124,7 @@ export function register(on, options = {}) {
     // Current native $.tool.call loses the child's agentId for inner operations.
     // Do not attribute a worker's effects/checks to the parent. The host owns
     // this event field; model arguments cannot supply identity.
-    if (e.agentId !== undefined && e.agentId !== null) return { result: JSON.stringify({ status: 'require-native-tools', attempted: 0, total: e.operations.length, reason: 'Worker batch actor propagation is unqualified; use standalone native tools through ToolSearch.', results }) };
+    if (e.agentId !== undefined && e.agentId !== null) return { result: JSON.stringify({ status: 'require-native-tools', attempted: 0, total: e.operations.length, reason: hotCore ? 'Worker batch actor propagation is unqualified; use standalone native tools and load deferred ones through ToolSearch.' : 'Worker batch actor propagation is unqualified; use standalone native tools through ToolSearch.', results }) };
     let halted = null;
     const unsupported = e.operations.find(unsupportedReadPlan);
     if (unsupported) return { result: JSON.stringify({ status: 'require-native-read', attempted: 0, total: e.operations.length, reason: unsupportedReadPlan(unsupported), results }) };

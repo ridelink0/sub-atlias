@@ -169,6 +169,19 @@ cases += [
     ('missing native result means executed', 'mods/atlias-transaction/hooks/register.mjs', " && result.result !== undefined && result.result !== null", '', ['node', 'test/run.mjs', 'native batches']),
     ('native tools hidden without ToolSearch', 'mods/atlias-transaction/hooks/register.mjs', "if (!names.includes('ToolSearch')) return next(e);", 'if (false) return next(e);', ['node', 'test/run.mjs', 'native batches']),
 ]
+HOT = ['node', 'test/run.mjs', 'hot core keeps']
+TX = 'mods/atlias-transaction/hooks/register.mjs'
+cases += [
+    ('hot core ignores its own switch', TX, 'const hotCore = defer && options.hotCoreTools === true;', 'const hotCore = defer;', HOT),
+    ('hot core acts without deferral', TX, 'const hotCore = defer && options.hotCoreTools === true;', 'const hotCore = enabled && options.hotCoreTools === true;', HOT),
+    ('hot core tools still deferred', TX, ' && !(hotCore && HOT_CORE.includes(n))', '', HOT),
+    ('hot core advertises names not deferred', TX, "'\\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE", "'\\nNative tools deferred by this mod: ' + DEFERRED.join(', ') + '. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE", HOT),
+    ('hot core adds text when nothing is deferred', TX, 'return available.length ? {', 'return true ? {', HOT),
+    ('batch envelope boundary omitted', TX, "  + ' ' + ENVELOPE_NOTE;", '  ;', HOT),
+    ('ToolSearch envelope boundary omitted', TX, " + ENVELOPE_NOTE.replace('only this batch', 'only the batch') }", " }", HOT),
+    ('visible Read still routed through ToolSearch', TX, ".replace('Use standalone Read through ToolSearch for those inputs.'", ".replace('Use standalone Read via ToolSearch for those inputs.'", HOT),
+    ('hot core text lost without Read dedup', TX, "All file metadata is retained.' } : base;", "All file metadata is retained.' } : SPEC;", HOT),
+]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
 # Validate all anchors before spending time on the first planted execution.

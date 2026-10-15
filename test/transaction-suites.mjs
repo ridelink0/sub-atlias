@@ -1,4 +1,4 @@
-import { register, invalid, state, SPEC, LIMIT, NAME, DEFERRED, unsupportedReadPlan, textReadResult } from '../mods/atlias-transaction/hooks/register.mjs';
+import { register, invalid, state, SPEC, LIMIT, NAME, DEFERRED, HOT_CORE, ENVELOPE_NOTE, HOT_CORE_DESCRIPTION, unsupportedReadPlan, textReadResult } from '../mods/atlias-transaction/hooks/register.mjs';
 
 function fixture(options = { enabled: true }, overrides = {}) {
   const hooks = [];
@@ -141,5 +141,64 @@ export default async function transactionSuites({ asyncSuite, check }) {
       check('unsupported tool-search capability passes through: ' + value, await describe(placement.api, { tool: 'Read', provider: { plugin: 'engine' } }, describeNext) === original, info);
     }
     check('default-off description passes through unchanged', await off.hooks.find(h => h.event === 'tool.describe').hook(off.api, { tool: 'Read', provider: { plugin: 'engine' } }, describeNext) === original, info);
+  });
+  await asyncSuite('native hot core placement', 'hot core keeps the common native tools visible and leaves old placements reproducible', async () => {
+    const info = { happened: 'hot core fixture', why: 'Local models wrapped direct native calls in the batch envelope; old placements must stay reproducible for stored runs.', fix: 'Keep hotCoreTools off by default, defer only the other available names, and state the envelope boundary.' };
+    const original = { description: 'Full native contract and policy.', isDeferred: false };
+    const describeNext = async () => original;
+    const profile = ['ToolSearch', ...DEFERRED.filter(n => n !== 'PowerShell')];
+    const started = async (options, names = profile) => {
+      const f = fixture(options);
+      f.api.tool.list = async () => names.map(name => ({ name }));
+      await f.hooks.find(h => h.event === 'session.start').hook(f.api, {}, f.next);
+      const describe = f.hooks.find(h => h.event === 'tool.describe').hook;
+      f.describe = (tool, plugin = 'engine') => describe(f.api, { tool, provider: { plugin } }, describeNext);
+      f.registered = f.calls.find(([kind]) => kind === 'register')?.[1];
+      return f;
+    };
+    const oldSearch = original.description + '\nNative tools deferred by this mod: ' + profile.slice(1).join(', ') + '. Load one with select:<name> before calling it directly. Batch operations: Bash, Edit, Read, Write.';
+    for (const hotCoreTools of [undefined, false, 'true', 1]) {
+      const old = await started({ enabled: true, deferBuiltins: true, hotCoreTools });
+      check('deferBuiltins=true without hotCoreTools=true keeps the old ToolSearch text: ' + hotCoreTools, (await old.describe('ToolSearch')).description === oldSearch, info);
+      check('deferBuiltins=true without hotCoreTools=true keeps the old batch description: ' + hotCoreTools, old.registered.description === SPEC.description, info);
+      for (const tool of ['Read', 'Edit', 'Write', 'Bash', 'Grep', 'Skill']) check('old deferral still defers ' + tool + ': ' + hotCoreTools, (await old.describe(tool)).isDeferred === true, info);
+    }
+    for (const options of [{ enabled: true, deferBuiltins: false, hotCoreTools: true }, { enabled: true, hotCoreTools: true }, { enabled: false, deferBuiltins: true, hotCoreTools: true }]) {
+      const native = await started(options);
+      const label = JSON.stringify(options);
+      check('hotCoreTools without active deferral changes no placement: ' + label, (await Promise.all(['ToolSearch', 'Read', 'Grep', 'Agent'].map(t => native.describe(t)))).every(r => r === original), info);
+      check('hotCoreTools without active deferral keeps the old batch description: ' + label, options.enabled ? native.registered.description === SPEC.description : native.registered === undefined, info);
+    }
+    const hot = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true });
+    for (const tool of HOT_CORE) check('hot core tool keeps its exact native placement and text: ' + tool, await hot.describe(tool) === original, info);
+    const deferred = profile.slice(1).filter(n => !HOT_CORE.includes(n));
+    for (const tool of deferred) {
+      const r = await hot.describe(tool);
+      check('other available built-ins stay deferred with full text: ' + tool, r.isDeferred === true && r.description === original.description, info);
+    }
+    const search = (await hot.describe('ToolSearch')).description;
+    const advertised = search.slice(original.description.length).match(/deferred by this mod: ([^.]*)\./)?.[1].split(', ');
+    check('ToolSearch keeps its native text first', search.startsWith(original.description + '\n'), info);
+    check('ToolSearch names exactly the deferred available tools, in order', JSON.stringify(advertised) === JSON.stringify(deferred), info);
+    check('ToolSearch states the standalone parameter boundary', search.includes("own top-level parameters") && search.includes('only the batch uses the {tool, args} envelope') && !search.includes('Batch operations:'), info);
+    check('the batch states the standalone parameter boundary', hot.registered.description === HOT_CORE_DESCRIPTION && HOT_CORE_DESCRIPTION.endsWith(ENVELOPE_NOTE) && ENVELOPE_NOTE.includes('Read {"file_path": "..."}'), info);
+    check('the batch no longer routes visible Read through ToolSearch', HOT_CORE_DESCRIPTION.includes('Use standalone native Read for those inputs.') && !HOT_CORE_DESCRIPTION.includes('standalone Read through ToolSearch') && HOT_CORE_DESCRIPTION.includes('Workers use standalone native tools; load deferred ones through ToolSearch.'), info);
+    check('the batch keeps every other contract sentence', ['text only', 'require-native-read', 'completion does not establish that a test passed', 'Each operation uses its native argument names and permissions.'].every(s => HOT_CORE_DESCRIPTION.includes(s)), info);
+    const plain = await started({ enabled: true });
+    check('hot core changes no schema or bound', JSON.stringify(hot.registered.inputSchema) === JSON.stringify(plain.registered.inputSchema) && hot.registered.isDeferred === false && hot.registered.name === SPEC.name, info);
+    check('external providers and unknown tools pass through', await hot.describe('Grep', 'external') === original && await hot.describe('FutureTool') === original, info);
+    const both = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true, deduplicateTextReads: true });
+    check('Read deduplication text is kept after the hot-core text', both.registered.description.startsWith(HOT_CORE_DESCRIPTION + ' Exact numbered Read text is retained;'), info);
+    const sparse = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true }, ['ToolSearch', 'Read', 'Bash', 'Glob']);
+    check('only tools present in this profile are advertised', (await sparse.describe('ToolSearch')).description.endsWith('deferred by this mod: Glob. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE.replace('only this batch', 'only the batch')) && (await sparse.describe('Glob')).isDeferred === true, info);
+    const coreOnly = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true }, ['ToolSearch', 'Read', 'Edit']);
+    check('nothing deferred adds nothing to ToolSearch', await coreOnly.describe('ToolSearch') === original && await coreOnly.describe('Read') === original, info);
+    const noSearch = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true }, ['Read', 'Grep']);
+    check('missing ToolSearch defers nothing', noSearch.registered === undefined && await noSearch.describe('Grep') === original, info);
+    hot.api.env.get = async () => 'false';
+    check('unsupported tool-search capability passes through under hot core', await hot.describe('Grep') === original && await hot.describe('ToolSearch') === original, info);
+    const worker = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true });
+    const response = JSON.parse((await worker.hooks.find(h => h.event === 'tool.call').hook(worker.api, { operations: [{ tool: 'Read', args: { file_path: '/fixture.txt' } }], agentId: 'host-worker-id' }, worker.next)).result);
+    check('worker batches still stop before effects under hot core', response.status === 'require-native-tools' && response.attempted === 0 && !worker.calls.some(([kind]) => kind === 'call') && response.reason.includes('load deferred ones through ToolSearch'), info);
   });
 }
