@@ -1041,6 +1041,7 @@ await (await import('./local-pipeline-contract-suites.mjs')).default({ suite, as
 await (await import('./local-transport-suites.mjs')).default({ suite, asyncSuite, check, TMP, ROOT, fs, path });
 await (await import('./agent-codex-authority-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./pipeline-mod-suites.mjs')).default({ suite, asyncSuite, check, TMP, ROOT, fs, path, spawnSync });
+await (await import('./local-helpers-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
 
 let failed = 0;

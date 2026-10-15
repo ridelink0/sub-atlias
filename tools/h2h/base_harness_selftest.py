@@ -106,6 +106,17 @@ def _post(base, path, body, headers=None):
         return e.code, e.read().decode()
 
 
+def _post_h(base, path, body, headers=None):
+    """One POST with no proxy: (status, text, response headers as a dict)."""
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    req = urllib.request.Request(base + path, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", **(headers or {})}, method="POST")
+    try:
+        with opener.open(req, timeout=20) as r:
+            return r.status, r.read().decode(), dict(r.headers.items())
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode(), dict(e.headers.items())
+
+
 def _get(base, path, headers=None):
     """One GET to a door or to the stand-in, with no proxy: (status, text)."""
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
@@ -509,6 +520,48 @@ def main():
     bsum = B.role_summary(bdoor.receipts, bdoor.usage)
     check("an upstream failure counts against its role, and leaves that role's figures unknown rather than smaller",
           bsum == {"reporter": {"calls": 1, "failures": 1, "capped": 0, "input": None, "output": None, "total": None, "peak": None}} and bdoor.errors == ["HTTP 500"], bsum)
+    # Helper budget cap and output cap (Codex review 1015, finding 3). A helper call past the budget is a 429 the door
+    # answers itself, with its outcome in a header and the body; a primary call past the budget keeps the 200 stop reply.
+    cdoor = B.Door(up, "qwen3.5:9b", 2048, 1)
+    threading.Thread(target=cdoor.serve_forever, daemon=True).start()
+    h0, s0 = len(hits), len(seen)
+    first = _post_h(cdoor.base, "/v1/chat/completions", {"model": "m", "max_tokens": 64, "messages": [{"role": "user", "content": "u:30:4"}]}, {"X-Atlias-Role": "planner"})
+    sent_first = seen[-1] if len(seen) > s0 else {}
+    capped_chat = _post_h(cdoor.base, "/v1/chat/completions", {"model": "m", "messages": [{"role": "user", "content": "u:30:4"}]}, {"X-Atlias-Role": "planner"})
+    capped_msg = _post_h(cdoor.base, "/v1/messages", {"model": "claude-x", "max_tokens": 5, "messages": [{"role": "user", "content": "x"}]}, {"X-Atlias-Role": "reporter", "anthropic-version": "2023-06-01"})
+    capped_resp = _post_h(cdoor.base, "/v1/responses", {"model": "m", "input": "x"}, {"X-Atlias-Role": "reporter"})
+    capped_primary = _post_h(cdoor.base, "/v1/chat/completions", {"model": "m", "messages": [{"role": "user", "content": "x"}]})
+    bodies = [json.loads(c[1]) for c in (capped_chat, capped_msg, capped_resp)]
+    check("a helper call past the budget is a 429 the door answers itself, its outcome budget-capped in a header and in the body, in every format",
+          [c[0] for c in (capped_chat, capped_msg, capped_resp)] == [429] * 3
+          and all(c[2].get("X-Atlias-Door-Outcome") == "budget-capped" for c in (capped_chat, capped_msg, capped_resp))
+          and all(b["atlias_door"] == {"outcome": "budget-capped", "modelCalled": False} for b in bodies) and bodies[1]["type"] == "error",
+          [(c[0], c[2].get("X-Atlias-Door-Outcome"), c[1][:120]) for c in (capped_chat, capped_msg, capped_resp)])
+    check("a primary call past the same budget keeps the 200 stop reply and carries no outcome header",
+          capped_primary[0] == 200 and json.loads(capped_primary[1])["choices"][0]["message"]["content"] == B.STOP_TEXT and capped_primary[2].get("X-Atlias-Door-Outcome") is None,
+          capped_primary[:2])
+    check("the helper caps reach no model, and each is a capped call of its role in the door's own figures",
+          len(hits) - h0 == 1 and cdoor.calls == 5 and cdoor.capped == 4 and cdoor.usage == [(30, 4)]
+          and B.role_summary(cdoor.receipts, cdoor.usage) == {"planner": {"calls": 2, "failures": 0, "capped": 1, "input": 30, "output": 4, "total": 34, "peak": 34},
+                                                             "primary": {"calls": 1, "failures": 0, "capped": 1, "input": 0, "output": 0, "total": 0, "peak": 0},
+                                                             "reporter": {"calls": 2, "failures": 0, "capped": 2, "input": 0, "output": 0, "total": 0, "peak": 0}},
+          (len(hits) - h0, cdoor.calls, cdoor.capped, B.role_summary(cdoor.receipts, cdoor.usage)))
+    check("a helper's own smaller max_tokens is what the model server gets, echoed in a header and kept on the receipt",
+          first[0] == 200 and sent_first.get("max_tokens") == 64 and first[2].get("X-Atlias-Door-Max-Tokens") == "64"
+          and cdoor.receipts[0].get("maxTokens") == {"asked": 64, "sent": 64}, (first[0], sent_first.get("max_tokens"), first[2].get("X-Atlias-Door-Max-Tokens"), cdoor.receipts[0].get("maxTokens")))
+    tdoor = B.Door(up, "qwen3.5:9b", 2048, 9)
+    threading.Thread(target=tdoor.serve_forever, daemon=True).start()
+    caps = []
+    for asked, role in ((5000, "reporter"), (True, "planner"), (None, "planner"), (64, None)):
+        body = {"model": "m", "messages": [{"role": "user", "content": "u:10:1"}]}
+        if asked is not None:
+            body["max_tokens"] = asked
+        got = _post_h(tdoor.base, "/v1/chat/completions", body, {"X-Atlias-Role": role} if role else None)
+        caps.append((seen[-1].get("max_tokens"), got[2].get("X-Atlias-Door-Max-Tokens"), tdoor.receipts[-1].get("maxTokens")))
+    check("a helper cap above the run's is held to num_predict, an invalid one is ignored, and a primary call is held to num_predict as before, with no header or receipt field",
+          caps == [(2048, "2048", {"asked": 5000, "sent": 2048}), (2048, "2048", {"asked": None, "sent": 2048}), (2048, "2048", {"asked": None, "sent": 2048}), (2048, None, None)], caps)
+    for d in (cdoor, tdoor):
+        d.shutdown()
     ns = argparse.Namespace(harness="claude", model="qwen3.5:9b", num_ctx=16384, num_predict=2048, tasks=["T"], ids_from="")
     summed = B.report([prow, mrow], ns, time.time())["byRole"]
     legacy = B.report([{k: v for k, v in prow.items() if k != "byRole"}, mrow], ns, time.time())["byRole"]

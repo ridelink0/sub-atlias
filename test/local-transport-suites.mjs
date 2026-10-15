@@ -178,12 +178,61 @@ export default async function addSuites({ asyncSuite, check }) {
     const rows = [row('planner', 'ok', known), row('reporter', 'capped', known), row('planner', 'http-error', null)];
     const summary = localTransport.summarizeLedger(rows);
     check('failures count every non-ok non-capped row and calls count every row', summary.calls === 3 && summary.failures === 1 && summary.capped === 1 && summary.unknownUsage === 1, info(JSON.stringify(summary), 'Failed rows count as calls.'));
-    check('per-role figures keep input, output, TOTAL and PEAK for known rows', same(summary.byRole.planner, { calls: 2, failures: 1, capped: 0, input: null, output: null, TOTAL: null, PEAK: null })
-      && same(summary.byRole.reporter, { calls: 1, failures: 0, capped: 1, input: 120, output: 9, TOTAL: 129, PEAK: 129 }), info(JSON.stringify(summary.byRole), 'A role with an unknown row is unknown in full.'));
-    check('an empty ledger is zero calls and zero peak', same(localTransport.summarizeLedger([]), { calls: 0, failures: 0, capped: 0, unknownUsage: 0, byRole: {}, TOTAL: 0, fullPEAK: 0 }), info('empty ledger summary differs', 'No rows means no tokens.'));
+    check('per-role figures keep input, output, TOTAL and PEAK for known rows', same(summary.byRole.planner, { calls: 2, failures: 1, capped: 0, budgetCapped: 0, input: null, output: null, TOTAL: null, PEAK: null })
+      && same(summary.byRole.reporter, { calls: 1, failures: 0, capped: 1, budgetCapped: 0, input: 120, output: 9, TOTAL: 129, PEAK: 129 }), info(JSON.stringify(summary.byRole), 'A role with an unknown row is unknown in full.'));
+    check('an empty ledger is zero calls and zero peak', same(localTransport.summarizeLedger([]), { calls: 0, failures: 0, capped: 0, budgetCapped: 0, unknownUsage: 0, outputCapUnconfirmed: 0, byRole: {}, TOTAL: 0, fullPEAK: 0 }), info('empty ledger summary differs', 'No rows means no tokens.'));
     let threw = false;
     try { localTransport.summarizeLedger({}); } catch { threw = true; }
     check('a non-array ledger is refused', threw, info('no throw', 'summarizeLedger takes an array of rows.'));
+  });
+
+  await asyncSuite('local transport expert', 'local transport: a Door budget cap is budget-capped, a failure with no model spend, never ok or zero-cost success', async () => {
+    // Codex review 1015, finding 3: the real Door's budget stop read as outcome ok, capped false, TOTAL 0.
+    const capBody = { error: { message: 'budget spent', type: 'atlias_door_budget_capped' }, atlias_door: { outcome: 'budget-capped', modelCalled: false } };
+    const legacy = { id: 'chatcmpl-step-limit', object: 'chat.completion', choices: [{ index: 0, message: { role: 'assistant', content: 'The step limit for this task has been reached. Stop now.' }, finish_reason: 'stop' }], usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 } };
+    let n = 0;
+    const srv = await door((req, res) => {
+      n++;
+      if (n === 1) return json(res, 200, chat('first answer'), { 'X-Atlias-Door-Max-Tokens': '32' });
+      if (n === 2) return json(res, 429, capBody, { 'X-Atlias-Door-Outcome': 'budget-capped' });
+      if (n === 3) return json(res, 200, legacy);
+      if (n === 4) return json(res, 200, chat('looks fine'), { 'X-Atlias-Door-Outcome': 'something-new' });
+      if (n === 5) return json(res, 429, capBody);
+      return json(res, 200, chat('no cap header'));
+    });
+    try {
+      const ledger = [];
+      const transport = localTransport.createMeteredTransport({ profile: profile(srv.base), ledger, maxTokens: 64 });
+      const ok = await transport({ role: 'planner', request: ask, signal: signal(), timeoutMs: 5000 });
+      const capped = await expectFailure(() => transport({ role: 'planner', request: ask, signal: signal(), timeoutMs: 5000 }));
+      const old = await expectFailure(() => transport({ role: 'reporter', request: ask, signal: signal(), timeoutMs: 5000 }));
+      const unknown = await expectFailure(() => transport({ role: 'reporter', request: ask, signal: signal(), timeoutMs: 5000 }));
+      const plain429 = await expectFailure(() => transport({ role: 'reporter', request: ask, signal: signal(), timeoutMs: 5000 }));
+      await transport({ role: 'reporter', request: ask, signal: signal(), timeoutMs: 5000 });
+      check('the budget-capped header of the Door rejects the call as budget-capped, model not called', capped?.outcome === 'budget-capped' && ledger[1].outcome === 'budget-capped' && ledger[1].httpStatus === 429 && ledger[1].doorOutcome === 'budget-capped' && ledger[1].modelCalled === false,
+        info(JSON.stringify(ledger[1]), 'Read X-Atlias-Door-Outcome before the status and reject budget-capped.'));
+      check('the 200 stop reply of an older Door is budget-capped too, never ok text', old?.outcome === 'budget-capped' && ledger[2].doorOutcome === 'legacy-stop-reply' && ledger[2].modelCalled === false,
+        info(JSON.stringify(ledger[2]), 'Recognise the legacy chatcmpl-step-limit id.'));
+      check('an outcome the transport does not know fails closed with unknown usage', unknown?.outcome === 'door-outcome-unknown' && ledger[3].usage === null && ledger[3].modelCalled === null,
+        info(JSON.stringify(ledger[3]), 'Unknown Door outcomes are failures; never read the body as an answer.'));
+      check('a 429 without the Door header is an ordinary http-error with unknown usage', plain429?.outcome === 'http-error' && ledger[4].usage === null,
+        info(JSON.stringify(ledger[4]), 'Only the header makes a cap; anything else is an error.'));
+      check('the sent output cap the Door confirms is kept, and a reply without the header leaves it null (unconfirmed)', ok.text === 'first answer' && same(ledger[0].maxTokens, { asked: 64, sent: 32 }) && same(ledger[5].maxTokens, { asked: 64, sent: null }),
+        info(JSON.stringify([ledger[0].maxTokens, ledger[5].maxTokens]), 'Record asked and the X-Atlias-Door-Max-Tokens value.'));
+      const summary = localTransport.summarizeLedger(ledger);
+      check('the summary counts both caps as budgetCapped failures that spent nothing, and the unknown outcome keeps TOTAL unknown', summary.calls === 6 && summary.budgetCapped === 2 && summary.failures === 4 && summary.capped === 0
+        && summary.unknownUsage === 2 && summary.TOTAL === null && summary.outputCapUnconfirmed === 1
+        && summary.byRole.planner.budgetCapped === 1 && summary.byRole.planner.TOTAL === 129 && summary.byRole.reporter.budgetCapped === 1 && summary.byRole.reporter.TOTAL === null,
+        info(JSON.stringify(summary), 'budget-capped with modelCalled false is a known zero, a call and a failure.'));
+      const capsOnly = localTransport.summarizeLedger([ledger[0], ledger[1], ledger[2]]);
+      check('with only caps besides a known call, TOTAL is the known call alone and not unknown', capsOnly.TOTAL === 129 && capsOnly.fullPEAK === 129 && capsOnly.unknownUsage === 0 && capsOnly.budgetCapped === 2,
+        info(JSON.stringify(capsOnly), 'A Door-answered cap spends no tokens.'));
+      const forged = localTransport.summarizeLedger([{ ...ledger[1], modelCalled: null }]);
+      check('a budget-capped row without modelCalled false is unknown, not zero', forged.unknownUsage === 1 && forged.TOTAL === null,
+        info(JSON.stringify(forged), 'Zero spend needs the word of the Door itself.'));
+    } finally {
+      await srv.close();
+    }
   });
 
   await asyncSuite('local transport expert', 'local transport: port 11435 and forbidPorts are refused with zero network and a refused row', async () => {

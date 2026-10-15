@@ -24,6 +24,7 @@ const SHELL_TOOLS = new Set(['Bash', 'PowerShell']);
 // scheduled trigger is not the person's instruction, so it is not authority.
 const USER_ORIGINS = new Set(['composer', 'bridge', 'sdk']);
 const MAX_RECEIPTS = 200;
+const MAX_MESSAGES = 4096;
 const MAIN = 'main';
 
 // Strict reading of a tool.call result. Only an own, defined, non-null result
@@ -56,43 +57,95 @@ async function digest(text) {
   return 'sha256:' + [...new Uint8Array(hash)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
+// The host's id for this session, or null. There is no fallback name: two sessions that both
+// lost their id would otherwise share one record and merge their authority.
 async function sessionId($) {
   try {
     const id = await $.session.id();
     if (typeof id === 'string' && id.length > 0) return id;
-  } catch { /* no id: a session of its own under a fixed name */ }
-  return 'unknown-session';
+  } catch { /* no id */ }
+  return null;
 }
 
-async function restore($, sid) {
+// The person's prompts as the host's own transcript holds them, oldest first, or null when the
+// transcript cannot be read whole. Tool-result rows are not prompts. A long transcript answers
+// only its newest MAX_MESSAGES, so a full page cannot show the first prompt.
+async function hostPrompts($) {
+  let messages;
+  try { messages = await $.session.messages(); } catch { return null; }
+  if (!Array.isArray(messages) || messages.length >= MAX_MESSAGES) return null;
+  const prompts = [];
+  for (const message of messages) {
+    if (!message || typeof message !== 'object') return null;
+    if (message.role !== 'user') continue;
+    if (Array.isArray(message.toolResults) && message.toolResults.length > 0) continue;
+    if (typeof message.text !== 'string') return null;
+    prompts.push(message.text);
+  }
+  return prompts;
+}
+
+// A record from the store (or no record) carries this session's authority only when the host's
+// transcript shows exactly its prompts in order; the prompt being submitted now may or may not
+// be in the transcript yet. A valid digest proves the record was not altered, not that every
+// prompt reached it: a save and its marker can both fail, leaving an older complete-looking copy.
+async function continuous($, prompts, pending) {
+  const host = await hostPrompts($);
+  if (!host) return false;
+  const same = list => list.length === host.length && list.every((text, i) => text === host[i]);
+  return same(prompts) || (pending !== undefined && same([...prompts, pending]));
+}
+
+// Record nothing more for this session, in this process or after a restart.
+async function breakSession($, sid) {
+  try { await $.store.set(STORE_KEY, { sessionId: sid, broken: true }); } catch { /* the in-process state is broken either way */ }
+  return { sessionId: sid, broken: true };
+}
+
+async function restore($, sid, pending) {
   let saved;
   try { saved = await $.store.get(STORE_KEY); } catch { return { sessionId: sid, broken: true }; }
-  if (!saved || typeof saved !== 'object' || saved.sessionId !== sid) return fresh(sid);
+  if (!saved || typeof saved !== 'object' || saved.sessionId !== sid) {
+    // No record: this process may still be joining a session whose earlier prompts were never saved.
+    return (await continuous($, [], pending)) ? fresh(sid) : breakSession($, sid);
+  }
   // A marker left when the full record could not be saved: an older copy would be missing later prompts.
   if (saved.broken === true) return { sessionId: sid, broken: true };
   // A record for this session that cannot be verified means the authority is unknown:
   // record nothing more, rather than let a later prompt become the original.
   const shape = Number.isSafeInteger(saved.scope) && Number.isSafeInteger(saved.seq)
     && (saved.original === undefined || typeof saved.original === 'string')
-    && Array.isArray(saved.followups) && Array.isArray(saved.skills) && Array.isArray(saved.receipts);
-  if (!shape) return { sessionId: sid, broken: true };
+    && Array.isArray(saved.followups) && saved.followups.every(text => typeof text === 'string')
+    && Array.isArray(saved.skills) && Array.isArray(saved.receipts);
+  if (!shape) return breakSession($, sid);
   const restored = { sessionId: sid, broken: false, scope: saved.scope, seq: saved.seq, original: saved.original,
     followups: saved.followups.slice(), skills: saved.skills.slice(), receipts: saved.receipts.slice(), packet: null };
   try {
     if (restored.original !== undefined) restored.packet = await build(restored);
     const expected = restored.packet ? restored.packet.packetId : null;
     const actual = saved.packet && typeof saved.packet === 'object' ? saved.packet.packetId : null;
-    if (expected !== actual) return { sessionId: sid, broken: true };
+    if (expected !== actual) return breakSession($, sid);
   } catch {
-    return { sessionId: sid, broken: true };
+    return breakSession($, sid);
   }
-  return restored;
+  const prompts = restored.original === undefined ? [] : [restored.original, ...restored.followups];
+  return (await continuous($, prompts, pending)) ? restored : breakSession($, sid);
 }
 
 // Returns false when this session's authority cannot be trusted; nothing is recorded then.
-async function ready($, ledger) {
+// pending is the text of the person's prompt being submitted, when the event is one.
+async function ready($, ledger, pending) {
   const sid = await sessionId($);
-  if (!ledger.state || ledger.state.sessionId !== sid) ledger.state = await restore($, sid);
+  if (sid === null) {
+    // An event this process cannot place: whichever session it belonged to now misses it.
+    ledger.identityLost = true;
+    return false;
+  }
+  if (ledger.identityLost) {
+    if (!ledger.state || ledger.state.sessionId !== sid || !ledger.state.broken) ledger.state = await breakSession($, sid);
+    return false;
+  }
+  if (!ledger.state || ledger.state.sessionId !== sid) ledger.state = await restore($, sid, pending);
   return !ledger.state.broken;
 }
 
@@ -122,7 +175,7 @@ async function update($, ledger, mutate) {
 
 async function recordPrompt($, e, ledger) {
   if (!e || typeof e.text !== 'string' || !e.origin || !USER_ORIGINS.has(e.origin.kind)) return;
-  if (!(await ready($, ledger))) return;
+  if (!(await ready($, ledger, e.text))) return;
   await update($, ledger, d => {
     if (d.original === undefined) d.original = e.text;
     else d.followups.push(e.text);
@@ -170,7 +223,7 @@ export function register(on, options) {
   if (!collectAuthority && !evidenceStyle) return;
 
   // The in-process ledger. Its copy in $.store is for a restart; the in-process one wins.
-  const ledger = { state: null, chain: Promise.resolve() };
+  const ledger = { state: null, identityLost: false, chain: Promise.resolve() };
   // State changes happen one at a time, so events from parallel subagents cannot interleave.
   const serial = work => {
     const run = ledger.chain.then(work).catch(() => {});

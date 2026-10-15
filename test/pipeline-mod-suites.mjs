@@ -13,7 +13,11 @@ const SID = 'test-session-pipeline-mod';
 
 // The fake host. Each registered hook is found by its event and optional matcher;
 // run() gives it the event and a next that answers with reply (or throws it).
-function harness(options, { store = new Map(), failStore = false, limit = { bytes: Infinity } } = {}) {
+// transcript is the host's own record of the session, shared across a restart like the store;
+// the host adds each submitted prompt to it after prompt.submit (or before, with appendFirst).
+// id answers $.session.id; messages answers $.session.messages.
+function harness(options, { store = new Map(), failStore = false, limit = { bytes: Infinity }, transcript = [], appendFirst = false,
+  id = async () => SID, messages = async () => transcript.map(m => ({ ...m })) } = {}) {
   const registrations = [];
   const on = (event, matcher, handler) => {
     if (typeof matcher === 'function') { handler = matcher; matcher = null; }
@@ -22,7 +26,7 @@ function harness(options, { store = new Map(), failStore = false, limit = { byte
   };
   register(on, options);
   const api = {
-    session: { id: async () => SID },
+    session: { id, messages },
     store: {
       get: async key => {
         if (failStore) throw new Error('store is offline');
@@ -37,13 +41,19 @@ function harness(options, { store = new Map(), failStore = false, limit = { byte
   };
   async function run(event, e, reply) {
     const hook = registrations.find(r => r.event === event && (!r.matcher || r.matcher.tool === (e && e.tool)));
-    if (!hook) return { hooked: false, out: reply, seen: undefined };
+    const submitted = event === 'prompt.submit' && e && typeof e.text === 'string';
+    if (submitted && appendFirst) transcript.push({ role: 'user', text: e.text, toolUses: [] });
+    if (!hook) {
+      if (submitted && !appendFirst) transcript.push({ role: 'user', text: e.text, toolUses: [] });
+      return { hooked: false, out: reply, seen: undefined };
+    }
     const seen = [];
     const next = async x => { seen.push(x); if (reply instanceof Error) throw reply; return reply; };
     const out = await hook.handler(api, e, next);
+    if (submitted && !appendFirst) transcript.push({ role: 'user', text: e.text, toolUses: [] });
     return { hooked: true, out, seen: seen[0] };
   }
-  return { registrations, store, run };
+  return { registrations, store, transcript, run };
 }
 
 const ALL = { enabled: true, collectAuthority: true, collectReceipts: true, evidenceRecordStyle: true };
@@ -262,11 +272,12 @@ export default async function addSuites({ suite, asyncSuite, check, ROOT, fs, pa
 
   await asyncSuite('pipeline mod expert', 'pipeline mod: a restarted session resumes its authority, and an unverifiable record records nothing more', async () => {
     const store = new Map();
+    const transcript = [];
     const opts = { enabled: true, collectAuthority: true, collectReceipts: true };
-    const first = harness(opts, { store });
+    const first = harness(opts, { store, transcript });
     await first.run('prompt.submit', prompt('A: the original'), promptReply(prompt('A: the original')));
     await first.run('prompt.submit', prompt('B: follow-up'), promptReply(prompt('B: follow-up')));
-    const second = harness(opts, { store });
+    const second = harness(opts, { store, transcript });
     await second.run('prompt.submit', prompt('C: after restart'), promptReply(prompt('C: after restart')));
     const stored = store.get(STORE_KEY).packet.authority;
     check('after a restart the original is still the first prompt and the new prompt follows the old ones', stored.original.text === 'A: the original' && JSON.stringify(stored.followups.map(i => i.text)) === JSON.stringify(['B: follow-up', 'C: after restart']),
@@ -274,13 +285,111 @@ export default async function addSuites({ suite, asyncSuite, check, ROOT, fs, pa
     const record = store.get(STORE_KEY);
     record.packet.packetId = 'tampered';
     store.set(STORE_KEY, record);
-    const before = JSON.stringify(store.get(STORE_KEY));
-    const third = harness(opts, { store });
+    const third = harness(opts, { store, transcript });
     const late = prompt('D: after tampering');
     const r = await third.run('prompt.submit', late, promptReply(late));
     await third.run('tool.call', shell('Bash', {}), shellReply({ stdout: 'ok', stderr: '', interrupted: false, exitCode: 0 }));
-    check('a record that fails verification is not extended: the later prompt is neither original nor follow-up, and no receipt is added', r.out.text === late.text && JSON.stringify(store.get(STORE_KEY)) === before,
-      { happened: `store changed: ${JSON.stringify(store.get(STORE_KEY)) !== before}`, why: 'An unverifiable authority record must stay unverifiable; extending it would hide the break.', fix: 'Mark the session broken on a failed restore and record nothing more for it.' });
+    check('a record that fails verification is not extended: it is replaced by the broken marker, the later prompt is recorded nowhere, and no receipt is added', r.out.text === late.text && JSON.stringify(store.get(STORE_KEY)) === JSON.stringify({ sessionId: SID, broken: true }),
+      { happened: JSON.stringify(store.get(STORE_KEY)).slice(0, 160), why: 'An unverifiable authority record must stay unverifiable; extending it would hide the break, and leaving it would let another reader take it as current.', fix: 'Mark the session broken on a failed restore and record nothing more for it.' });
+  });
+
+  await asyncSuite('pipeline mod expert', 'pipeline mod: a missing session id records nothing, never under an invented name', async () => {
+    const store = new Map();
+    const opts = { enabled: true, collectAuthority: true, collectReceipts: true };
+    const lost = async () => { throw new Error('session ID unavailable'); };
+    const one = harness(opts, { store, id: lost });
+    const two = harness(opts, { store, id: lost });
+    const e1 = prompt('FIRST SESSION REQUEST');
+    const e2 = prompt('SECOND SESSION REQUEST');
+    const r1 = await one.run('prompt.submit', e1, promptReply(e1));
+    const r2 = await two.run('prompt.submit', e2, promptReply(e2));
+    check('both prompts still reach next as the same events', r1.seen === e1 && r2.seen === e2 && r1.out.text === e1.text && r2.out.text === e2.text,
+      { happened: `seen ${r1.seen === e1}/${r2.seen === e2}`, why: 'A missing id must never cost the person a prompt.', fix: 'Call next(e) whatever the ledger does.' });
+    check('nothing is stored for two instances that both lost their id, so their authority cannot merge', store.size === 0,
+      { happened: JSON.stringify([...store.values()]).slice(0, 200), why: 'A fixed fallback name made two sessions one record: the second request became the first one\'s follow-up (Codex review 1015, finding 1).', fix: 'Return null from sessionId and record nothing when it is null.' });
+    for (const bad of [async () => '', async () => 42, async () => null]) {
+      const s = new Map();
+      await harness(opts, { store: s, id: bad }).run('prompt.submit', prompt('X'), promptReply(prompt('X')));
+      check(`an id that is not a nonempty string (${String(bad)}) records nothing`, s.size === 0,
+        { happened: JSON.stringify([...s.values()]), why: 'Only the host\'s own id names a session.', fix: 'Treat any other value as missing.' });
+    }
+    let available = false;
+    const flaky = harness(opts, { store, id: async () => { if (!available) throw new Error('not yet'); return SID; } });
+    await flaky.run('prompt.submit', prompt('lost while the id was missing'), promptReply(prompt('lost while the id was missing')));
+    available = true;
+    const later = prompt('arrives once the id is back');
+    const r3 = await flaky.run('prompt.submit', later, promptReply(later));
+    check('a prompt that arrives after the id comes back is not made the original of a session that missed one', r3.seen === later && JSON.stringify(store.get(STORE_KEY)) === JSON.stringify({ sessionId: SID, broken: true }),
+      { happened: JSON.stringify(store.get(STORE_KEY)).slice(0, 200), why: 'The process saw a prompt it could not place; whichever session it was, that session now misses it.', fix: 'Once an event loses its id, break every session the process later sees.' });
+    const known = harness(opts, { store: new Map() });
+    await known.run('prompt.submit', prompt('A'), promptReply(prompt('A')));
+    let gone = false;
+    const switching = harness(opts, { store: known.store, transcript: known.transcript, id: async () => { if (gone) throw new Error('lost'); return SID; } });
+    await switching.run('prompt.submit', prompt('B'), promptReply(prompt('B')));
+    gone = true;
+    await switching.run('tool.call', edit('Edit'), editReply());
+    gone = false;
+    await switching.run('tool.call', shell('Bash', {}), shellReply({ stdout: 'ok', stderr: '', interrupted: false, exitCode: 0 }));
+    check('an edit seen while the id was missing breaks the session, so a later check cannot look current', JSON.stringify(known.store.get(STORE_KEY)) === JSON.stringify({ sessionId: SID, broken: true }),
+      { happened: JSON.stringify(known.store.get(STORE_KEY)).slice(0, 200), why: 'A missed edit leaves the scope behind, and a check before it would read as a pass after it.', fix: 'Break the session on the first event that cannot be placed.' });
+  });
+
+  await asyncSuite('pipeline mod expert', 'pipeline mod: a restart restores only what the host transcript confirms', async () => {
+    const opts = { enabled: true, collectAuthority: true };
+    // Codex review 1015, finding 2: the full save and its marker both fail, then the process restarts.
+    const store = new Map();
+    const transcript = [];
+    const first = harness(opts, { store, transcript });
+    await first.run('prompt.submit', prompt('ORIGINAL'), promptReply(prompt('ORIGINAL')));
+    const frozen = JSON.stringify(store.get(STORE_KEY));
+    // The store now refuses the full save and the marker: the prompt reaches the transcript, the store keeps ORIGINAL only.
+    const offline = harness(opts, { store, transcript, failStore: true });
+    await offline.run('prompt.submit', prompt('FOLLOWUP THAT MUST SURVIVE'), promptReply(prompt('FOLLOWUP THAT MUST SURVIVE')));
+    check('setup: the store still holds the older complete-looking record', JSON.stringify(store.get(STORE_KEY)) === frozen && await verifyPacket(store.get(STORE_KEY).packet) === true,
+      { happened: JSON.stringify(store.get(STORE_KEY)).slice(0, 160), why: 'This is the state the review reproduced.', fix: 'n/a: setup' });
+    const restarted = harness(opts, { store, transcript });
+    const after = prompt('AFTER RESTART');
+    const r = await restarted.run('prompt.submit', after, promptReply(after));
+    check('the prompt after the restart still reaches next unchanged', r.seen === after && r.out.text === after.text,
+      { happened: `seen ${r.seen === after}`, why: 'Recovery must never cost the person a prompt.', fix: 'Call next(e) whatever restore decides.' });
+    check('the older record is not extended: the session is marked broken, so no packet without the middle follow-up exists', JSON.stringify(store.get(STORE_KEY)) === JSON.stringify({ sessionId: SID, broken: true }),
+      { happened: JSON.stringify(store.get(STORE_KEY)).slice(0, 200), why: 'A valid digest proves integrity, not completeness; extending the old record silently dropped FOLLOWUP THAT MUST SURVIVE.', fix: 'Restore only when $.session.messages shows exactly the stored prompts.' });
+
+    // No record at all, but the transcript already has prompts: the first save never landed.
+    const empty = new Map();
+    const t2 = [{ role: 'user', text: 'EARLIER PROMPT', toolUses: [] }, { role: 'assistant', text: 'ok', toolUses: [] }];
+    await harness(opts, { store: empty, transcript: t2 }).run('prompt.submit', prompt('NEXT'), promptReply(prompt('NEXT')));
+    check('with no record and earlier prompts in the transcript, the new prompt is not made the original', JSON.stringify(empty.get(STORE_KEY)) === JSON.stringify({ sessionId: SID, broken: true }),
+      { happened: JSON.stringify(empty.get(STORE_KEY)).slice(0, 200), why: 'The real original is in the transcript and missing from the store.', fix: 'A fresh ledger needs a transcript with no earlier prompt.' });
+
+    // Tool results and assistant turns are not prompts; the prompt being submitted may already be in the transcript.
+    for (const appendFirst of [false, true]) {
+      const s = new Map();
+      const t = [];
+      const a = harness(opts, { store: s, transcript: t, appendFirst });
+      await a.run('prompt.submit', prompt('P1'), promptReply(prompt('P1')));
+      t.push({ role: 'assistant', text: 'working', toolUses: [{ name: 'Bash' }] }, { role: 'user', text: '', toolUses: [], toolResults: [{ id: 'x' }] });
+      await a.run('prompt.submit', prompt('P2'), promptReply(prompt('P2')));
+      const b = harness(opts, { store: s, transcript: t, appendFirst });
+      await b.run('prompt.submit', prompt('P3'), promptReply(prompt('P3')));
+      const got = s.get(STORE_KEY);
+      check(`a confirmed restart continues the record (host adds the prompt ${appendFirst ? 'before' : 'after'} the hook)`, got && got.packet && got.packet.authority.original.text === 'P1' && JSON.stringify(got.packet.authority.followups.map(x => x.text)) === JSON.stringify(['P2', 'P3']),
+        { happened: JSON.stringify(got).slice(0, 200), why: 'When the host transcript matches, the restored authority is complete and collection should go on.', fix: 'Accept the stored prompts, or the stored prompts plus the one being submitted.' });
+    }
+
+    // A transcript that cannot be read whole fails closed.
+    const unreadable = [
+      ['messages throws', async () => { throw new Error('no transcript'); }],
+      ['messages is not an array', async () => ({})],
+      ['a user row without text', async () => [{ role: 'user', toolUses: [] }]],
+      ['a page of 4096 entries', async () => Array.from({ length: 4096 }, () => ({ role: 'assistant', text: '', toolUses: [] }))],
+    ];
+    for (const [name, messages] of unreadable) {
+      const s = new Map();
+      await harness(opts, { store: s, messages }).run('prompt.submit', prompt('Q'), promptReply(prompt('Q')));
+      check(`${name}: nothing is recorded as authority`, JSON.stringify(s.get(STORE_KEY)) === JSON.stringify({ sessionId: SID, broken: true }),
+        { happened: JSON.stringify(s.get(STORE_KEY)).slice(0, 160), why: 'Without the host\'s whole list of prompts, completeness cannot be established.', fix: 'Return null from hostPrompts and break the session.' });
+    }
   });
 
   await asyncSuite('pipeline mod expert', 'pipeline mod: a record too large to save is replaced by a marker, so a restart never restores half of it', async () => {
@@ -313,7 +422,7 @@ export default async function addSuites({ suite, asyncSuite, check, ROOT, fs, pa
     await h.run('tool.call', shell('Bash', {}), shellReply({ stdout: 'ok', stderr: '', interrupted: false, exitCode: 0 }));
     const stored = store.get(STORE_KEY);
     check('with no recorded prompt, a shell result leaves no receipt', !stored || (stored.receipts || []).length === 0,
-      { happened: stored ? `receipts ${stored.receipts.length}` : 'no record', why: 'A receipt without a bound packet cannot be checked against the authority, so it must not exist.', fix: 'observeCompletion returns when there is no packet.' });
+      { happened: stored ? `receipts ${(stored.receipts || []).length}, broken ${stored.broken === true}` : 'no record', why: 'A receipt without a bound packet cannot be checked against the authority, so it must not exist.', fix: 'observeCompletion returns when there is no packet.' });
   });
 
   suite('pipeline mod expert', 'pipeline mod: a result is executed only when every control field is clean', () => {
@@ -337,8 +446,8 @@ export default async function addSuites({ suite, asyncSuite, check, ROOT, fs, pa
     check('no dynamic $ lookup such as $[x] or $.tool[name] in the code', !source.includes('$[') && !/\$\.[A-Za-z]+\[/.test(source),
       { happened: 'a dynamic lookup was found', why: 'The native compiler accepts only literal $.noun.method(...) calls; a dynamic lookup fails it (handoff, R8).', fix: 'Write the call out literally.' });
     const calls = [...new Set([...source.matchAll(/\$\.[A-Za-z]+\.[A-Za-z]+\(/g)].map(m => m[0]))].sort();
-    check('the only $ calls are $.session.id, $.store.get and $.store.set', JSON.stringify(calls) === JSON.stringify(['$.session.id(', '$.store.get(', '$.store.set(']),
-      { happened: JSON.stringify(calls), why: 'The mod may read the session id and its own store. Any other call (a model, a fork, HTTP, a file) is outside what this mod may do.', fix: 'Remove the call; this mod never calls a model, the network or the file system.' });
+    check('the only $ calls are $.session.id, $.session.messages, $.store.get and $.store.set', JSON.stringify(calls) === JSON.stringify(['$.session.id(', '$.session.messages(', '$.store.get(', '$.store.set(']),
+      { happened: JSON.stringify(calls), why: 'The mod may read the session id, the host transcript (to confirm a restore) and its own store. Any other call (a model, a fork, HTTP, a file) is outside what this mod may do.', fix: 'Remove the call; this mod never calls a model, the network or the file system.' });
     const imports = source.split('\n').filter(line => line.startsWith('import '));
     check('one import, and it is a plain file of this plugin', imports.length === 1 && imports[0].includes("from './contract.mjs'"),
       { happened: JSON.stringify(imports), why: 'A hooks module has no Node and may import only files of its own plugin.', fix: 'Import only ./contract.mjs.' });

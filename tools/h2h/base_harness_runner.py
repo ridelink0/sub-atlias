@@ -171,6 +171,22 @@ def measured_complete(rc, stopped, door):
 
 ROLE_HEADER = "X-Atlias-Role"  # set by a helper of the harness (the planner and the reporter); it is never copied upstream
 ROLE_VALUES = ("planner", "reporter")
+# Helper roles only. A primary call past the budget keeps its frozen 200 stop reply; a helper call past the budget is told
+# so in a form no reply text can imitate (Codex review 1015, finding 3: a 200 stop with zero usage read as a helper success).
+OUTCOME_HEADER = "X-Atlias-Door-Outcome"
+OUTCOME_BUDGET_CAPPED = "budget-capped"
+# The output cap the door actually sent upstream for a helper call: the smaller of the helper's own cap and the door's
+# num_predict, so a helper's cap is honoured but never raised past the run's.
+MAX_TOKENS_HEADER = "X-Atlias-Door-Max-Tokens"
+
+
+def helper_output_cap(body, key, num_predict):
+    """(asked, sent) for a helper call: asked is the helper's own positive whole-number cap under key, or None; sent is
+    the smaller of asked and num_predict, or num_predict when nothing valid was asked."""
+    asked = body.get(key)
+    if not (isinstance(asked, int) and not isinstance(asked, bool) and asked > 0):
+        asked = None
+    return asked, num_predict if asked is None else min(asked, num_predict)
 
 
 def request_role(headers):
@@ -274,13 +290,15 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
 
-    def _send(self, code, body, ctype="application/json"):
+    def _send(self, code, body, ctype="application/json", extra=None):
         data = body if isinstance(body, bytes) else json.dumps(body).encode("utf-8")
         try:
             self.send_response(code)
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(data)))
             self.send_header("Connection", "close")
+            for name, value in (extra or {}).items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(data)
         except OSError:
@@ -348,11 +366,15 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             return self._refuse()
         self._role = request_role(self.headers)
         route = self.path.split("?")[0].rstrip("/")
-        if self._role == "invalid":
-            return self._role_refused(_api_of(route), route)
         try:
             raw = self._body()
         except Exception:
+            raw = None
+        # The body is read before any refusal: closing a socket with an unread body makes Windows reset the connection,
+        # and the client then sees an abort instead of the 400 (a flaky selftest abort, 2026-10-15).
+        if self._role == "invalid":
+            return self._role_refused(_api_of(route), route)
+        if raw is None:
             return self._send(400, {"error": {"message": "the request body could not be read"}})
         if route.endswith("/chat/completions"):
             return self._chat(raw)
@@ -400,6 +422,18 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             self._send(e.code, body, e.headers.get("Content-Type") or "application/json")
         except Exception:
             pass
+
+    def _helper(self):
+        return self._role in ROLE_VALUES
+
+    def _helper_capped(self, api):
+        """A helper call past the budget: answered by the door with no model call, as 429 with a machine-readable outcome
+        in a header and in the body. Its receipt and the door's capped count are the same as a primary call's cap."""
+        msg = "the run's call budget is spent; the door answered this helper call itself and no model was called"
+        body = {"error": {"message": msg, "type": "atlias_door_budget_capped"}, "atlias_door": {"outcome": OUTCOME_BUDGET_CAPPED, "modelCalled": False}}
+        if api == "messages":
+            body = {"type": "error", **body}
+        self._send(429, body, extra={OUTCOME_HEADER: OUTCOME_BUDGET_CAPPED})
 
     def _stop_reply(self, stream):
         s = self.server
@@ -479,10 +513,15 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                 rec = {"api": "responses", "path": path, "stream": stream, "slot": slot, "role": self._role, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": []}
                 s.receipts.append(rec)
         if over:
-            return self._stop_response(stream)
+            return self._helper_capped("responses") if self._helper() else self._stop_response(stream)
         body["model"] = s.model
         body["temperature"] = 0.2
-        body["max_output_tokens"] = s.num_predict
+        if self._helper():
+            asked, sent_cap = helper_output_cap(body, "max_output_tokens", s.num_predict)
+            rec["maxTokens"] = {"asked": asked, "sent": sent_cap}
+            body["max_output_tokens"] = sent_cap
+        else:
+            body["max_output_tokens"] = s.num_predict
         sent = json.dumps(body).encode("utf-8")
         rec["sent"] = {"bytes": len(sent), "sha256": hashlib.sha256(sent).hexdigest()}
         terminal = {"response.completed": "complete", "response.incomplete": "incomplete", "response.failed": "failed"}
@@ -570,10 +609,15 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                 rec = {"api": "messages", "stream": stream, "slot": slot, "role": self._role, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": [], "counts": got}
                 s.receipts.append(rec)
         if over:
-            return self._stop_message(stream)
+            return self._helper_capped("messages") if self._helper() else self._stop_message(stream)
         body["model"] = s.model
         body["temperature"] = 0.2
-        body["max_tokens"] = s.num_predict
+        if self._helper():
+            asked, sent_cap = helper_output_cap(body, "max_tokens", s.num_predict)
+            rec["maxTokens"] = {"asked": asked, "sent": sent_cap}
+            body["max_tokens"] = sent_cap
+        else:
+            body["max_tokens"] = s.num_predict
 
         def note(u):
             # Every usage block is kept as it came; the slot holds a count only while every part is known.
@@ -669,10 +713,17 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                     rec["title"] = True
                 s.receipts.append(rec)
         if over:
-            return self._stop_reply(stream)
+            return self._helper_capped("chat") if self._helper() else self._stop_reply(stream)
         body["model"] = s.model
         body["temperature"] = 0.2
-        body["max_tokens"] = s.num_predict
+        extra = None
+        if self._helper():
+            asked, sent_cap = helper_output_cap(body, "max_tokens", s.num_predict)
+            rec["maxTokens"] = {"asked": asked, "sent": sent_cap}
+            extra = {MAX_TOKENS_HEADER: str(sent_cap)}
+            body["max_tokens"] = sent_cap
+        else:
+            body["max_tokens"] = s.num_predict
         body.pop("max_completion_tokens", None)
         if stream:
             body["stream_options"] = {"include_usage": True}
@@ -694,12 +745,14 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                             _note_stop(s, rec, (choice or {}).get("finish_reason"))
                     except Exception:
                         rec["outcome"] = "answer not readable"
-                    self._send(r.status, data, r.headers.get("Content-Type") or "application/json")
+                    self._send(r.status, data, r.headers.get("Content-Type") or "application/json", extra)
                 else:
                     self.send_response(r.status)
                     self.send_header("Content-Type", r.headers.get("Content-Type") or "text/event-stream")
                     self.send_header("Cache-Control", "no-cache")
                     self.send_header("Connection", "close")
+                    for name, value in (extra or {}).items():
+                        self.send_header(name, value)
                     self.end_headers()
                     ended, left = False, False
                     for line in r:
