@@ -1,3 +1,11 @@
+# Gev checkpoint 2026-10-15T06:10Z (Claude visible session bbb3db9f)
+
+Haiku implementation council 1015 done and root-reviewed; commit a3c5830 (local, not pushed). Five default-off lanes: mods/atlias-pipeline (reviewed contract/runner/wire + collect-only native Mod), lib/local-pipeline.mjs facade, lib/local-transport.mjs metered no-redirect chat transport (provider chat scoped to helper; host launch protocols unchanged), codexTurn exact ledger authority under flags.authorityLedger, Door X-Atlias-Role byRole (invalid role = Door error). Root fixed 5 defects (host chat acceptance, codex authorityMissing on resume, invalid role not an error, Node18 isWellFormed, config() dropping localPipeline). Actual: node suite exit0 1937/1937 (9 no-PID omissions), Door selftest exit0 52/52, claude plugin validate --strict exit0. Review: D:/harness-work/atlias-luna-council-1013/scratch/haiku-impl-1015/ROOT-REVIEW.md, manifest MANIFEST-a3c5830.json there.
+NOT measured: no model/GPU/live native session; no token, quality or 20x claim. 2.1.277 types show no exitCode on native shell results, so native receipts stay UNKNOWN until a live 2.1.300 check. Not wired yet: Mod-to-reporter call, normal-turn pipeline call. Relay armed for bbb3db9f (wake 03:48 local); global relay config, Codex automation and native autoContinueAtUsageLimit untouched.
+Next: with an ownership-safe GPU lease, paired planner/reporter through the Door with roles; live 2.1.300 shell-result shape check; then wire reporter behind the switch.
+
+---
+
 # Gev clean checkpoint 2026-10-15T05:02Z
 
 Reviewed implementation saved in ee0e031. R10 frozen preflight0/rootverified1687Node121plants/controller69/25/69;9PID omissions/cleanup unqualified. Neither20x norqualified4x. No push/live install.
