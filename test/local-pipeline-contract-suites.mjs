@@ -13,7 +13,7 @@ import * as localPipeline from '../lib/local-pipeline.mjs';
 // boundary in-process, because cli.mjs is not part of this worktree.
 const overJson = (value) => JSON.parse(JSON.stringify(value));
 const sha256Hex = (text) => createHash('sha256').update(text, 'utf8').digest('hex');
-const ALL_OFF = { enabled: false, compactAuthority: false, aliasReceipts: false, conciseGuidance: false, planner: false, reporter: false, timeoutMs: 120000, maxOutputChars: 8000, maxTokens: 512, baseUrl: null, model: null };
+const ALL_OFF = { enabled: false, compactAuthority: false, aliasReceipts: false, conciseGuidance: false, planner: false, reporter: false, timeoutMs: 120000, maxOutputChars: 8000, maxTokens: 512, baseUrl: null, baseUrlEnv: null, model: null, reasoningEffort: null };
 const onConfig = (extra = {}) => ({ localPipeline: { enabled: true, ...extra } });
 
 export default async function addSuites({ asyncSuite, check }) {
@@ -567,9 +567,9 @@ export default async function addSuites({ asyncSuite, check }) {
       assert.equal(localPipeline.settings({ localPipeline: { timeoutMs: 5000 } }).maxOutputChars, 8000);
     });
 
-    await probe('a configured object is normalised to exactly the eleven documented fields', info, () => {
+    await probe('a configured object is normalised to exactly the thirteen documented fields', info, () => {
       assert.deepEqual(localPipeline.settings(onConfig({ compactAuthority: true, timeoutMs: 5000 })), {
-        enabled: true, compactAuthority: true, aliasReceipts: false, conciseGuidance: false, planner: false, reporter: false, timeoutMs: 5000, maxOutputChars: 8000, maxTokens: 512, baseUrl: null, model: null,
+        enabled: true, compactAuthority: true, aliasReceipts: false, conciseGuidance: false, planner: false, reporter: false, timeoutMs: 5000, maxOutputChars: 8000, maxTokens: 512, baseUrl: null, baseUrlEnv: null, model: null, reasoningEffort: null,
       });
     });
 

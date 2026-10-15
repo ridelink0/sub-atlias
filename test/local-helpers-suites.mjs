@@ -119,6 +119,30 @@ export default async function localHelpersSuites({ asyncSuite, check, agentMod, 
       happened: JSON.stringify(logged.map((x) => [x.role, x.outcome, x.summary?.TOTAL])), why: 'Every role\'s tokens count in the total, and the log is how a run is audited.', fix: 'Append one row per helper turn with the ledger and its summary.' });
   });
 
+  await asyncSuite('local helpers expert', 'local helpers: baseUrlEnv reaches the Door of the arm itself, and reasoningEffort is sent', async () => {
+    const core = await import('../lib/core.mjs');
+    const VAR = 'ATLIAS_TEST_DOOR_ROOT';
+    const before = process.env[VAR];
+    process.env[VAR] = 'http://127.0.0.1:4567/';
+    try {
+      const r = await withSetup({ flag: true, pipeline: { enabled: true, planner: true, baseUrlEnv: VAR, model: 'fixture-model', reasoningEffort: 'none' } }, async () => {
+        const sid = 'env-door-1';
+        authority.record(sid, ORIGINAL, 'e1');
+        const door = fakeDoor({ planner: () => reply('{"advisory":"ok"}') });
+        const out = await helpers.planTurn({ cfg: core.config(), sid, fetchImpl: door.fetchImpl });
+        delete process.env[VAR];
+        const unset = await helpers.planTurn({ cfg: core.config(), sid, fetchImpl: door.fetchImpl });
+        return { out, unset, calls: door.calls };
+      });
+      check('the URL comes from the named variable with /v1 added, and reasoning_effort is sent', r.out.ran && r.calls.length === 1 && r.calls[0].url === 'http://127.0.0.1:4567/v1/chat/completions' && r.calls[0].body.reasoning_effort === 'none', {
+        happened: JSON.stringify(r.calls.map((c) => [c.url, c.body.reasoning_effort])), why: 'The Door port of a benchmark arm is chosen per task; the helpers must reach that Door and no other.', fix: 'Read process.env[baseUrlEnv] and add /v1.' });
+      check('with the variable unset the planner does not run, and nothing is sent', r.unset.ran === false && /baseUrl/.test(r.unset.reason) && r.calls.length === 1, {
+        happened: JSON.stringify(r.unset), why: 'No guessed endpoint.', fix: 'Skip when neither baseUrl nor the variable is set.' });
+    } finally {
+      if (before === undefined) delete process.env[VAR]; else process.env[VAR] = before;
+    }
+  });
+
   await asyncSuite('local helpers expert', 'local helpers: a Door cap, a failure or bad output adds nothing and is counted', async () => {
     const cases = [
       ['a Door budget cap', capped, 'budgetCapped'],
