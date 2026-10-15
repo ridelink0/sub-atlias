@@ -38,7 +38,6 @@ const calledBare = (name, mod) => new RegExp('import [{][^}]*(^|[^A-Za-z0-9_$])'
 export const EXEMPT = {
   'lib/agent.mjs repl': 'the interactive terminal loop; its parts (turn, pickEngine, the tool loop) are tested directly',
   'lib/agent.mjs chooser': 'reads a keypress from a real terminal; the settings menu it opens is tested through settings.menu',
-  'lib/agent.mjs codexTurn': 'spawns the codex CLI, which CI does not have; its fallback shape mirrors claudeTurn, which is tested with a fake runner',
   'lib/agent.mjs ollamaAlive': 'probes a live Ollama server; detectEngines is tested and reports it',
   'lib/agent.mjs ollamaTurn': 'a one-line wrapper around loop.runLoop and loop.ollamaChat, both tested',
   'lib/agent.mjs openaiTurn': 'a one-line wrapper around loop.runLoop and loop.openaiChat, both tested against a local server',

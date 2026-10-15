@@ -169,6 +169,79 @@ def measured_complete(rc, stopped, door):
             and door.calls == len(door.usage) + door.capped)
 
 
+ROLE_HEADER = "X-Atlias-Role"  # set by a helper of the harness (the planner and the reporter); it is never copied upstream
+ROLE_VALUES = ("planner", "reporter")
+
+
+def request_role(headers):
+    """The role of one request through the door: planner or reporter when its X-Atlias-Role header says exactly that,
+    primary when the header is absent (Claude Code and Codex never send it), and invalid for any other value, an empty
+    one, or the header given twice. Each forward upstream builds its own header list, so the header is not copied."""
+    values = headers.get_all(ROLE_HEADER) or []
+    if not values:
+        return "primary"
+    if len(values) == 1 and values[0] in ROLE_VALUES:
+        return values[0]
+    return "invalid"
+
+
+def _api_of(route):
+    """The API a request is for, from its route: chat, messages, responses, or other."""
+    if route.endswith("/chat/completions"):
+        return "chat"
+    if route.endswith("/v1/messages"):
+        return "messages"
+    if "/v1/responses" in route:
+        return "responses"
+    return "other"
+
+
+def role_summary(receipts, usage):
+    """The door's figures for each role, from the same receipts and usage slots as the aggregate.
+    calls: the calls the door counted for the role, sent to the model or answered by the door past the budget. Over all
+    roles these add up to the door's calls. failures: receipts that did not end complete and were not answered by the
+    door (an upstream failure, a partial answer, a refused or unmetered request, an invalid role); they are not calls.
+    capped: calls answered by the door past the budget. input, output, total and peak: the prompt and output tokens of
+    the role's sent calls, total their sum, and peak is the largest prompt plus output of one call. A sent call whose
+    count is unknown makes that role's input, output, total and peak None, never a smaller number."""
+    rows = {}
+    for r in receipts:
+        row = rows.setdefault(r["role"], {"calls": 0, "failures": 0, "capped": 0, "slots": []})
+        capped = str(r.get("outcome", "")).startswith("capped:")
+        if capped:
+            row["capped"] += 1
+        if capped or r.get("slot") is not None:
+            row["calls"] += 1
+        if r.get("slot") is not None:
+            row["slots"].append(r["slot"])
+        if not capped and r.get("outcome") != "complete":
+            row["failures"] += 1
+    out = {}
+    for role in sorted(rows):
+        row = rows[role]
+        pairs = [usage[i] for i in row["slots"]]
+        known = all(p is not None for p in pairs)
+        inp = sum(p for p, _ in pairs) if known else None
+        outp = sum(c for _, c in pairs) if known else None
+        out[role] = {"calls": row["calls"], "failures": row["failures"], "capped": row["capped"], "input": inp, "output": outp,
+                     "total": inp + outp if known else None, "peak": max((p + c for p, c in pairs), default=0) if known else None}
+    return out
+
+
+def sum_role_summaries(summaries):
+    """Several tasks' role figures added up. A role is None for input, output, total and peak once any task's figure for it is None."""
+    out = {}
+    for s in summaries:
+        for role, c in s.items():
+            t = out.setdefault(role, {"calls": 0, "failures": 0, "capped": 0, "input": 0, "output": 0, "total": 0, "peak": 0})
+            for k in ("calls", "failures", "capped"):
+                t[k] += c[k]
+            for k in ("input", "output", "total"):
+                t[k] = None if t[k] is None or c[k] is None else t[k] + c[k]
+            t["peak"] = None if t["peak"] is None or c["peak"] is None else max(t["peak"], c["peak"])
+    return dict(sorted(out.items()))
+
+
 TITLE_MARKER = "You are a title generator. You output ONLY a thread title."  # OpenCode's title agent (packages/core/src/plugin/agent.ts PROMPT_TITLE, d2905b8 and 026b106)
 
 
@@ -196,6 +269,7 @@ def _message_usage(u):
 
 class DoorHandler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.0"  # one request per connection; the body ends when the door closes it
+    _role = "primary"  # set for each request by do_GET or do_POST, before anything is recorded
 
     def log_message(self, *_):
         pass
@@ -238,12 +312,25 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
         s = self.server
         with s.lock:
             if len(s.passed) < 200:
-                s.passed.append([round(time.time() - s.t0, 1), self.command, self.path[:120], status])
+                s.passed.append([round(time.time() - s.t0, 1), self.command, self.path[:120], status, self._role])
 
     def _refuse(self):
         with self.server.lock:
             self.server.refused.append(f"{self.command} {self.path}"[:200])
         self._send(403, {"error": {"message": "this run cannot leave the PC", "type": "refused"}})
+
+    def _role_refused(self, api, route):
+        """A request whose X-Atlias-Role is neither absent, planner nor reporter: answered 400 and never sent upstream, and the
+        attempt is recorded under role invalid. It is not a call and spends no budget or usage, but like every other refusal
+        it is an error, so the run's measurement is not complete: a helper the arm needed did not run."""
+        with self.server.lock:
+            self.server.receipts.append({"api": api, "path": route[:120], "slot": None, "role": "invalid",
+                                         "outcome": "failed: X-Atlias-Role is not planner, reporter or absent"})
+            self.server.errors.append(f"refused invalid X-Atlias-Role on {route}"[:200])
+        msg = "the X-Atlias-Role header must be planner or reporter, or left out"
+        if api == "messages":
+            return self._send(400, {"type": "error", "error": {"type": "invalid_request_error", "message": msg}})
+        self._send(400, {"error": {"message": msg, "type": "invalid_request_error"}})
 
     def do_CONNECT(self):
         self._refuse()
@@ -251,16 +338,22 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         if not self._local():
             return self._refuse()
+        self._role = request_role(self.headers)
+        if self._role == "invalid":
+            return self._role_refused("other", self.path.split("?")[0].rstrip("/"))
         self._pass(None)
 
     def do_POST(self):
         if not self._local():
             return self._refuse()
+        self._role = request_role(self.headers)
+        route = self.path.split("?")[0].rstrip("/")
+        if self._role == "invalid":
+            return self._role_refused(_api_of(route), route)
         try:
             raw = self._body()
         except Exception:
             return self._send(400, {"error": {"message": "the request body could not be read"}})
-        route = self.path.split("?")[0].rstrip("/")
         if route.endswith("/chat/completions"):
             return self._chat(raw)
         if route.endswith("/v1/messages"):
@@ -274,7 +367,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             return self._pass(raw)
         else:
             with self.server.lock:
-                self.server.receipts.append({"api": "responses" if "/responses" in route else "unmetered", "path": route[:120], "slot": None, "outcome": "refused: not a metered path"})
+                self.server.receipts.append({"api": "responses" if "/responses" in route else "unmetered", "path": route[:120], "slot": None, "role": self._role, "outcome": "refused: not a metered path"})
                 self.server.errors.append(f"refused unmetered POST {route}"[:200])
             return self._send(501, {"error": {"message": "this path is not metered by the door", "type": "invalid_request_error"}})
 
@@ -369,7 +462,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
         stream = body.get("stream") is True
         if body.get("previous_response_id"):
             with s.lock:
-                s.receipts.append({"api": "responses", "path": path, "stream": stream, "slot": None, "outcome": "refused: previous_response_id needs response state the door does not keep"})
+                s.receipts.append({"api": "responses", "path": path, "stream": stream, "slot": None, "role": self._role, "outcome": "refused: previous_response_id needs response state the door does not keep"})
                 s.errors.append("refused previous_response_id")
             return self._send(400, {"error": {"message": "this door keeps no response state; send the whole conversation", "type": "invalid_request_error"}})
         with s.lock:
@@ -379,11 +472,11 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             over = s.calls > s.budget
             if over:
                 s.capped += 1
-                s.receipts.append({"api": "responses", "path": path, "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})
+                s.receipts.append({"api": "responses", "path": path, "stream": stream, "slot": None, "role": self._role, "outcome": "capped: answered by the door, no model call"})
             else:
                 slot = len(s.usage)
                 s.usage.append(None)
-                rec = {"api": "responses", "path": path, "stream": stream, "slot": slot, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": []}
+                rec = {"api": "responses", "path": path, "stream": stream, "slot": slot, "role": self._role, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": []}
                 s.receipts.append(rec)
         if over:
             return self._stop_response(stream)
@@ -469,12 +562,12 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             over = s.calls > s.budget
             if over:
                 s.capped += 1
-                s.receipts.append({"api": "messages", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})
+                s.receipts.append({"api": "messages", "stream": stream, "slot": None, "role": self._role, "outcome": "capped: answered by the door, no model call"})
             else:
                 slot = len(s.usage)
                 s.usage.append(None)
                 got = {}  # the parts read and written, as the answer gives them
-                rec = {"api": "messages", "stream": stream, "slot": slot, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": [], "counts": got}
+                rec = {"api": "messages", "stream": stream, "slot": slot, "role": self._role, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": [], "counts": got}
                 s.receipts.append(rec)
         if over:
             return self._stop_message(stream)
@@ -565,13 +658,13 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             over = not title and s.calls - s.titles > s.budget
             if over:
                 s.capped += 1
-                s.receipts.append({"api": "chat", "stream": stream, "slot": None, "outcome": "capped: answered by the door, no model call"})
+                s.receipts.append({"api": "chat", "stream": stream, "slot": None, "role": self._role, "outcome": "capped: answered by the door, no model call"})
             else:
                 # The call's place is kept before it is sent, and filled the moment Ollama's count is
                 # seen, so a harness that hangs up straight after its answer cannot lose the count.
                 slot = len(s.usage)
                 s.usage.append(None)
-                rec = {"api": "chat", "stream": stream, "slot": slot, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": []}
+                rec = {"api": "chat", "stream": stream, "slot": slot, "role": self._role, "at": round(time.time() - s.t0, 3), "status": None, "outcome": "sent", "usage": []}
                 if title:
                     rec["title"] = True
                 s.receipts.append(rec)
@@ -1040,7 +1133,7 @@ def run_one(task, a, shims):
             "nativeCompleted": rc == 0 and not door.capped and not door.errors and not door.partial and bool(usage) and not cut_last,
             "cutCalls": door.cut, "endedCut": cut_last, **({"titleCalls": door.titles} if door.skip_titles else {}),
             "numCtx": a.num_ctx, "loadedWindow": window, "loadedWindows": windows, "taskDigests": task_digests(task), "provenance": getattr(a, "provenance", None),
-            "receipts": door.receipts,
+            "receipts": door.receipts, "byRole": role_summary(door.receipts, usage),
             "refused": door.refused[:20], "modelErrors": door.errors[:20], "addedFiles": None if (passed and not a.keep) else added,
             "ms": int((time.time() - t0) * 1000), "agentMs": agent_ms,
             "workspace": None if (passed and not a.keep) else str(ws), "state": None if (passed and not a.keep) else str(state), "output": tail}
@@ -1069,6 +1162,8 @@ def report(results, a, t_all):
             "peakPrompt": max(r["peakPrompt"] for r in results) if complete and all(_count(r.get("peakPrompt")) is not None for r in results) else None,
             "peakContext": max(peaks) if complete and all(_count(x) is not None for x in peaks) else None,
             "nativeCompleted": sum(1 for r in results if r.get("nativeCompleted") is True),
+            # Every row's role figures added up; a row written before roles existed leaves the whole table unknown.
+            "byRole": sum_role_summaries([r["byRole"] for r in results]) if results and all("byRole" in r for r in results) else None,
             "provenance": getattr(a, "provenance", None), "provenanceUniform": len({_digest(r.get("provenance")) for r in results}) <= 1,
             "corpus": {"tasks": a.tasks, "ids": a.ids_from or None}}
 

@@ -1,11 +1,14 @@
 """No-model self-test of the metering door in base_harness_runner.py: a fake Ollama stands in
 upstream, so this runs anywhere and never touches a GPU.  python tools/h2h/base_harness_selftest.py"""
+import argparse
 import http.client
 import http.server
 import json
 import pathlib
 import sys
+import tempfile
 import threading
+import time
 import urllib.error
 import urllib.request
 
@@ -13,6 +16,15 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import base_harness_runner as B  # noqa: E402
 
 seen = []
+hits = []  # every request the stand-in got: method, path and header names, whether or not it was a model call
+
+
+def usage_for(mode):
+    """The prompt and output counts the stand-in gives a chat call: 111 and 22, or what a 'u:<prompt>:<output>' message asks for."""
+    if mode.startswith("u:"):
+        _, p, c = mode.split(":")
+        return int(p), int(c)
+    return 111, 22
 
 
 class Fake(http.server.BaseHTTPRequestHandler):
@@ -48,9 +60,11 @@ class Fake(http.server.BaseHTTPRequestHandler):
         self._out(200, json.dumps(d).encode())
 
     def do_GET(self):
+        hits.append(("GET", self.path, [k.lower() for k in self.headers.keys()]))
         self._out(200, json.dumps({"object": "list", "data": [{"id": "m"}]}).encode())
 
     def do_POST(self):
+        hits.append(("POST", self.path, [k.lower() for k in self.headers.keys()]))
         req = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
         route = self.path.split("?")[0].rstrip("/")
         if route.endswith("/count_tokens"):
@@ -61,7 +75,8 @@ class Fake(http.server.BaseHTTPRequestHandler):
         mode = req["messages"][-1]["content"]
         if mode == "boom":
             return self._out(500, b'{"error":"no"}')
-        usage = None if mode == "nousage" else {"prompt_tokens": 111, "completion_tokens": 22, "total_tokens": 133}
+        p, c = usage_for(mode)
+        usage = None if mode == "nousage" else {"prompt_tokens": p, "completion_tokens": c, "total_tokens": p + c}
         if req.get("stream"):
             parts = [{"choices": [{"index": 0, "delta": {"role": "assistant", "content": "hi"}, "finish_reason": None}]},
                      {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}]
@@ -72,6 +87,112 @@ class Fake(http.server.BaseHTTPRequestHandler):
         if usage:
             d["usage"] = usage
         self._out(200, json.dumps(d).encode())
+
+
+def _serve_fake():
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Fake)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    return srv
+
+
+def _post(base, path, body, headers=None):
+    """One request to a door or to the stand-in, with no proxy: (status, text)."""
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    req = urllib.request.Request(base + path, data=json.dumps(body).encode(), headers={"Content-Type": "application/json", **(headers or {})}, method="POST")
+    try:
+        with opener.open(req, timeout=20) as r:
+            return r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+
+
+def _get(base, path, headers=None):
+    """One GET to a door or to the stand-in, with no proxy: (status, text)."""
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    req = urllib.request.Request(base + path, headers=headers or {}, method="GET")
+    try:
+        with opener.open(req, timeout=20) as r:
+            return r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+
+
+# A stand-in harness: it sends each [content, role] pair to the door as one chat call (role None sends no header).
+CALLS_SRC = r'''
+import json, sys, urllib.error, urllib.request
+base = sys.argv[1]
+op = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+for content, role in json.loads(sys.argv[2]):
+    headers = {"Content-Type": "application/json"}
+    if role is not None:
+        headers["X-Atlias-Role"] = role
+    req = urllib.request.Request(base + "/v1/chat/completions", data=json.dumps({"model": "m", "messages": [{"role": "user", "content": content}]}).encode(), headers=headers, method="POST")
+    try:
+        op.open(req, timeout=20).read()
+    except urllib.error.HTTPError:
+        pass
+'''
+
+
+def _run_row(B, api_base, calls, rounds):
+    """One task through run_one, its harness a stand-in that sends `calls` through the door. No model."""
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as work:
+        script = pathlib.Path(work) / "calls.py"
+        script.write_text(CALLS_SRC, encoding="utf-8")
+        a = argparse.Namespace(harness="claude", model="qwen3.5:9b", num_ctx=16384, num_predict=2048, api_base=api_base, work=work, budget=0, keep=True,
+                               start_timeout=60, task_timeout=60, ripgrep="", tiktoken_cache=work, provenance=None, tasks=["T"], ids_from="")
+
+        def stand_in(a, task, ws, state, door, budget, env):
+            return [sys.executable, str(script), door.base, json.dumps(calls)], str(ws), None
+
+        saved = B.HARNESS["claude"]
+        try:
+            B.HARNESS["claude"] = stand_in
+            row = B.run_one({"id": "t", "files": {}, "check": [sys.executable, "-c", "pass"], "rounds": rounds, "prompt": "fix"}, a, work)
+        finally:
+            B.HARNESS["claude"] = saved
+        return row, B.report([row], a, time.time())
+
+
+ROW_FIGURES = ("pass", "checkExit", "rounds", "budget", "stop", "harnessExit", "starts", "promptTokens", "outputTokens", "promptTotal", "outputTotal",
+               "peakPrompt", "peakContext", "usageComplete", "inputParts", "partialCalls", "measurementComplete", "budgetCapped", "nativeCompleted",
+               "cutCalls", "endedCut", "modelErrors", "refused", "numCtx")
+REPORT_FIGURES = ("passed", "total", "usageComplete", "promptTotal", "outputTotal", "peakPrompt", "peakContext", "nativeCompleted", "engine",
+                  "harness", "model", "numCtx", "numPredict", "pluginDirs", "corpus", "provenanceUniform")
+
+
+def _door_view(door):
+    """The door's own figures. Timing is left out, and so is the role, the one field a receipt gains."""
+    return {"calls": door.calls, "usage": [list(u) if u else None for u in door.usage], "capped": door.capped, "errors": door.errors,
+            "partial": door.partial, "cut": door.cut, "refused": door.refused,
+            "receipts": [{k: v for k, v in r.items() if k not in ("at", "role")} for r in door.receipts]}
+
+
+def primary_only(B):
+    """A primary-only sequence, through the door (a chat call, a Claude-format call, a streamed call, and one past the budget
+    of three) and through one task of run_one (two calls and one past its budget of two). Returns the figures the runner
+    gives as canonical JSON, and the objects behind them for the role checks."""
+    srv = _serve_fake()
+    up = f"http://127.0.0.1:{srv.server_address[1]}"
+    door = B.Door(up, "qwen3.5:9b", 2048, 3)
+    threading.Thread(target=door.serve_forever, daemon=True).start()
+    msgs = [{"role": "user", "content": "fix"}]
+    _post(door.base, "/v1/chat/completions", {"model": "m", "messages": msgs})
+    _post(door.base, "/v1/messages", {"model": "claude-x", "max_tokens": 5, "messages": msgs}, {"anthropic-version": "2023-06-01"})
+    _post(door.base, "/v1/chat/completions", {"model": "m", "messages": msgs, "stream": True})
+    _post(door.base, "/v1/chat/completions", {"model": "m", "messages": msgs})
+    door.shutdown()
+    door.server_close()
+    row, rep = _run_row(B, up, [["fix", None]] * 3, rounds=2)
+    srv.shutdown()
+    srv.server_close()
+    view = {"door": _door_view(door), "rowKeys": sorted(k for k in row if k != "byRole"),
+            "row": {k: row[k] for k in ROW_FIGURES}, "report": {k: rep[k] for k in REPORT_FIGURES}}
+    return json.dumps(view, sort_keys=True), door, row, rep
+
+
+# The figures primary_only() gave under the runner before roles were added (captured from that runner, byte for byte).
+PRIMARY_GOLDEN = '{"door": {"calls": 4, "capped": 1, "cut": 0, "errors": [], "partial": 0, "receipts": [{"api": "chat", "outcome": "complete", "sent": {"bytes": 113, "sha256": "bb5acc1f44a51f219d63118f818d4f8ec24c490277a09abe3a9f894d0b862716"}, "slot": 0, "status": 200, "stop": "stop", "stream": false, "usage": [{"completion_tokens": 22, "prompt_tokens": 111, "total_tokens": 133}]}, {"api": "messages", "counts": {"cacheRead": 11, "output": 22, "uncached": 100}, "outcome": "complete", "sent": {"bytes": 113, "sha256": "0f5c7fa84f64b71f740ff9ae89ea27776382badf117cbd830d16ccd9aea84bae"}, "slot": 1, "status": 200, "stop": "end_turn", "stream": false, "usage": [{"cache_read_input_tokens": 11, "input_tokens": 100, "output_tokens": 22}]}, {"api": "chat", "outcome": "complete", "sent": {"bytes": 172, "sha256": "1947e04706a1fad34b48670ff3870e1ac0e94aea20a9075879bca7e5c6a5833f"}, "slot": 2, "status": 200, "stop": "stop", "stream": true, "usage": [{"completion_tokens": 22, "prompt_tokens": 111, "total_tokens": 133}]}, {"api": "chat", "outcome": "capped: answered by the door, no model call", "slot": null, "stream": false}], "refused": [], "usage": [[111, 22], [111, 22], [111, 22]]}, "report": {"corpus": {"ids": null, "tasks": ["T"]}, "engine": "claude (stock, metered door, offline)", "harness": "claude", "model": "qwen3.5:9b", "nativeCompleted": 0, "numCtx": 16384, "numPredict": 2048, "outputTotal": 44, "passed": 1, "peakContext": 133, "peakPrompt": 111, "pluginDirs": [], "promptTotal": 222, "provenanceUniform": true, "total": 1, "usageComplete": true}, "row": {"budget": 2, "budgetCapped": 1, "checkExit": true, "cutCalls": 0, "endedCut": false, "harnessExit": 0, "inputParts": null, "measurementComplete": true, "modelErrors": [], "nativeCompleted": false, "numCtx": 16384, "outputTokens": [22, 22], "outputTotal": 44, "partialCalls": 0, "pass": true, "peakContext": 133, "peakPrompt": 111, "promptTokens": [111, 111], "promptTotal": 222, "refused": [], "rounds": 2, "starts": 1, "stop": "exit 0; step limit reached (1 further call(s) answered with a stop)", "usageComplete": true}, "rowKeys": ["addedFiles", "agentMs", "budget", "budgetCapped", "cases", "checkExit", "cutCalls", "endedCut", "harnessExit", "id", "inputParts", "loadedWindow", "loadedWindows", "measurementComplete", "modelErrors", "ms", "name", "nativeCompleted", "numCtx", "output", "outputTokens", "outputTotal", "partialCalls", "pass", "peakContext", "peakPrompt", "promptTokens", "promptTotal", "provenance", "receipts", "refused", "rounds", "startMs", "starts", "state", "stop", "tampered", "taskDigests", "usageComplete", "workspace"]}'
 
 
 def main():
@@ -324,6 +445,81 @@ def main():
             check("what it sent is base Claude Code's own opening: its tools and its system prompt, held to the local model and the output cap",
                   first is not None and len(first["tools"]) >= 10 and first["max_tokens"] == 2048 and first["temperature"] == 0.2, None if first is None else (len(first["tools"]), first["max_tokens"]))
         door3.shutdown()
+    # Roles (council 1015, lane P5). Absent means primary, which is all Claude Code and Codex send; planner and reporter are the
+    # helpers' own; any other value is answered 400 before anything is sent upstream.
+    golden, pdoor, prow, _ = primary_only(B)
+    check("a primary-only run's figures are byte-for-byte what the runner gave before roles were added", golden == PRIMARY_GOLDEN, golden[:300])
+    prole = B.role_summary(pdoor.receipts, pdoor.usage)
+    check("a primary-only door attributes every call to primary, and that figure is the door's own aggregate",
+          list(prole) == ["primary"] and prole.get("primary") == {"calls": pdoor.calls, "failures": 0, "capped": pdoor.capped,
+                                                              "input": sum(u[0] for u in pdoor.usage), "output": sum(u[1] for u in pdoor.usage),
+                                                              "total": sum(u[0] + u[1] for u in pdoor.usage), "peak": max(u[0] + u[1] for u in pdoor.usage)}, prole)
+    pbr = prow["byRole"]
+    check("a primary-only run's row attributes every call to primary, and that figure is the row's own aggregate",
+          list(pbr) == ["primary"] and pbr.get("primary") == {"calls": prow["rounds"] + prow["budgetCapped"], "failures": 0, "capped": prow["budgetCapped"],
+                                                          "input": prow["promptTotal"], "output": prow["outputTotal"],
+                                                          "total": prow["promptTotal"] + prow["outputTotal"], "peak": prow["peakContext"]}, pbr)
+    srv = _serve_fake()
+    up = f"http://127.0.0.1:{srv.server_address[1]}"
+    h0 = len(hits)
+    mrow, mrep = _run_row(B, up, [["u:300:7", None], ["u:40:5", "planner"], ["u:20:3", "reporter"], ["u:999:999", "reporter"]], rounds=3)
+    forwarded = [h for h in hits[h0:] if h[0] == "POST"]
+    srv.shutdown()
+    srv.server_close()
+    mbr = mrow["byRole"]
+    check("a primary, a planner and a reporter call are attributed to their own roles, and the reporter's call past the budget is its capped call",
+          mbr == {"primary": {"calls": 1, "failures": 0, "capped": 0, "input": 300, "output": 7, "total": 307, "peak": 307},
+                  "planner": {"calls": 1, "failures": 0, "capped": 0, "input": 40, "output": 5, "total": 45, "peak": 45},
+                  "reporter": {"calls": 2, "failures": 0, "capped": 1, "input": 20, "output": 3, "total": 23, "peak": 23}}, mbr)
+    roles = list(mbr.values())
+    check("the roles' usage adds up to the run's aggregate, and their calls and capped calls add up to the aggregate's calls and cap",
+          sum(r["input"] for r in roles) == mrow["promptTotal"] == 360 and sum(r["output"] for r in roles) == mrow["outputTotal"] == 15
+          and sum(r["calls"] for r in roles) == mrow["rounds"] + mrow["budgetCapped"] == 4 and sum(r["capped"] for r in roles) == mrow["budgetCapped"] == 1
+          and max(r["peak"] for r in roles) == mrow["peakContext"] == 307, (mrow["promptTotal"], mrow["outputTotal"], mrow["rounds"], mrow["budgetCapped"], mrow["peakContext"]))
+    check("the report's role figures for that one task are the task's own", mrep["byRole"] == mbr, mrep["byRole"])
+    check("the stand-in upstream got the three calls that were sent, and none of them carried X-Atlias-Role",
+          len(forwarded) == 3 and not any("x-atlias-role" in h[2] for h in forwarded), forwarded)
+    srv = _serve_fake()
+    up = f"http://127.0.0.1:{srv.server_address[1]}"
+    idoor = B.Door(up, "qwen3.5:9b", 2048, 2)
+    threading.Thread(target=idoor.serve_forever, daemon=True).start()
+    body = {"model": "m", "messages": [{"role": "user", "content": "u:50:5"}]}
+    h0, s0 = len(hits), len(seen)
+    bad_role = [_post(idoor.base, "/v1/chat/completions", body, {"X-Atlias-Role": v}) for v in ("admin", "Planner", "")]
+    bad_role.append(_post(idoor.base, "/v1/messages", {"model": "claude-x", "max_tokens": 5, "messages": body["messages"]}, {"X-Atlias-Role": "admin", "anthropic-version": "2023-06-01"}))
+    bad_role.append(_get(idoor.base, "/v1/models", {"X-Atlias-Role": "admin"}))
+    check("a request whose role is neither planner, reporter nor absent is answered 400, and the stand-in upstream gets no hit for it",
+          [s for s, _ in bad_role] == [400] * 5 and len(hits) == h0 and len(seen) == s0, (bad_role, len(hits) - h0))
+    check("each refused attempt is recorded under role invalid with a failure, is not a call, and is an error that holds measurement",
+          [r["role"] for r in idoor.receipts] == ["invalid"] * 5 and all(r["slot"] is None and r["outcome"].startswith("failed") for r in idoor.receipts)
+          and idoor.calls == 0 and idoor.capped == 0 and idoor.usage == [] and len(idoor.errors) == 5
+          and all(e.startswith("refused invalid X-Atlias-Role") for e in idoor.errors)
+          and B.role_summary(idoor.receipts, idoor.usage) == {"invalid": {"calls": 0, "failures": 5, "capped": 0, "input": 0, "output": 0, "total": 0, "peak": 0}}, idoor.receipts)
+    p_status, _ = _post(idoor.base, "/v1/chat/completions", body, {"X-Atlias-Role": "planner"})
+    m_status, _ = _post(idoor.base, "/v1/messages", {"model": "claude-x", "max_tokens": 5, "messages": body["messages"]}, {"X-Atlias-Role": "reporter", "anthropic-version": "2023-06-01"})
+    check("after the refusals the budget is untouched: a planner call and a reporter call in Claude's format are sent, counted, and forwarded without the header",
+          (p_status, m_status) == (200, 200) and idoor.calls == 2 and idoor.usage == [(50, 5), (111, 22)] and [r["role"] for r in idoor.receipts[-2:]] == ["planner", "reporter"]
+          and [h[1] for h in hits[-2:]] == ["/v1/chat/completions", "/v1/messages"] and all("x-atlias-role" not in h[2] for h in hits[-2:]),
+          (p_status, m_status, idoor.calls, idoor.usage, hits[-2:]))
+    _get(idoor.base, "/v1/models", {"X-Atlias-Role": "reporter"})
+    check("a pass-through request is listed with its role as a fifth field", len(idoor.passed[-1]) == 5 and idoor.passed[-1][4] == "reporter", idoor.passed[-1:])
+    bdoor = B.Door(up, "qwen3.5:9b", 2048, 5)
+    threading.Thread(target=bdoor.serve_forever, daemon=True).start()
+    _post(bdoor.base, "/v1/chat/completions", {"model": "m", "messages": [{"role": "user", "content": "boom"}]}, {"X-Atlias-Role": "reporter"})
+    bsum = B.role_summary(bdoor.receipts, bdoor.usage)
+    check("an upstream failure counts against its role, and leaves that role's figures unknown rather than smaller",
+          bsum == {"reporter": {"calls": 1, "failures": 1, "capped": 0, "input": None, "output": None, "total": None, "peak": None}} and bdoor.errors == ["HTTP 500"], bsum)
+    ns = argparse.Namespace(harness="claude", model="qwen3.5:9b", num_ctx=16384, num_predict=2048, tasks=["T"], ids_from="")
+    summed = B.report([prow, mrow], ns, time.time())["byRole"]
+    legacy = B.report([{k: v for k, v in prow.items() if k != "byRole"}, mrow], ns, time.time())["byRole"]
+    check("the report adds up the tasks' role figures, and one task row without them makes the whole table unknown",
+          summed.get("primary", {}).get("input") == 522 and summed.get("primary", {}).get("calls") == 4 and summed.get("planner", {}).get("calls") == 1
+          and summed.get("reporter", {}).get("capped") == 1 and legacy is None,
+          (summed, legacy))
+    for d in (idoor, bdoor):
+        d.shutdown()
+    srv.shutdown()
+    srv.server_close()
     door2.shutdown()
     door.shutdown()
     fake.shutdown()
