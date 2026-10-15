@@ -132,7 +132,7 @@ cases += [
 ]
 cases += [
     ('binary plan guard removed', 'mods/atlias-transaction/hooks/register.mjs', 'const unsupported = e.operations.find(unsupportedReadPlan);', 'const unsupported = null;', ['node', 'test/run.mjs', 'native batches']),
-    ('opaque Read result accepted', 'mods/atlias-transaction/hooks/register.mjs', 'const nativeText = textReadResult(result);', 'const nativeText = result;', ['node', 'test/run.mjs', 'native batches']),
+    ('opaque Read result accepted', 'mods/atlias-transaction/hooks/register.mjs', 'const nativeText = textReadResult(result) || (unchangedReads ? unchangedReadResult(result) : null);', 'const nativeText = result;', ['node', 'test/run.mjs', 'native batches']),
     ('later effects after opaque Read', 'mods/atlias-transaction/hooks/register.mjs', "halted = 'require-native-read';\n            break;", "halted = 'require-native-read';\n            continue;", ['node', 'test/run.mjs', 'native batches']),
     ('Read errors lose diagnostics', 'mods/atlias-transaction/hooks/register.mjs', 'native.text = result.text;', 'void result.text;', ['node', 'test/run.mjs', 'native batches']),
     ('text-only tool contract hidden', 'mods/atlias-transaction/hooks/register.mjs', 'Batch Read supports text only;', '', ['node', 'test/run.mjs', 'native batches']),
@@ -181,6 +181,15 @@ cases += [
     ('ToolSearch envelope boundary omitted', TX, " + ENVELOPE_NOTE.replace('only this batch', 'only the batch') }", " }", HOT),
     ('visible Read still routed through ToolSearch', TX, ".replace('Use standalone Read through ToolSearch for those inputs.'", ".replace('Use standalone Read via ToolSearch for those inputs.'", HOT),
     ('hot core text lost without Read dedup', TX, "All file metadata is retained.' } : base;", "All file metadata is retained.' } : SPEC;", HOT),
+]
+UNCHANGED = ['node', 'test/run.mjs', 'unchanged-file Read notice']
+NOTICE_HEAD = "typeof result.text !== 'string' || Object.keys(result).some(k => !['result', 'text'].includes(k))) return null;\n  const body = result.result;\n  if (!body || Array.isArray(body) || body.type !== 'file_unchanged'"
+cases += [
+    ('unchanged notice ignores its switch', TX, 'textReadResult(result) || (unchangedReads ? unchangedReadResult(result) : null)', 'textReadResult(result) || unchangedReadResult(result)', UNCHANGED),
+    ('unchanged switch accepts non-true values', TX, 'const unchangedReads = enabled && options.unchangedReads === true;', 'const unchangedReads = enabled && !!options.unchangedReads;', UNCHANGED),
+    ('unchanged notice accepts extra file fields', TX, 'Object.keys(file).length !== 1 || ', '', UNCHANGED),
+    ('unchanged notice accepts other types', TX, "body.type !== 'file_unchanged' || Object.keys(body)", 'Object.keys(body)', UNCHANGED),
+    ('unchanged notice accepts extra top-level fields', TX, NOTICE_HEAD, NOTICE_HEAD.replace(" || Object.keys(result).some(k => !['result', 'text'].includes(k))", ''), UNCHANGED),
 ]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']

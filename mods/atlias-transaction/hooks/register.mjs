@@ -65,6 +65,18 @@ export function textReadResult(result) {
   return result;
 }
 
+// Native answer to a re-read of an unchanged file (measured on 2.1.301):
+// {result:{type:'file_unchanged',file:{filePath}},text}. Exact shape only; an
+// error marker or any other key fails the key check.
+export function unchangedReadResult(result) {
+  if (!result || Array.isArray(result) || typeof result.text !== 'string' || Object.keys(result).some(k => !['result', 'text'].includes(k))) return null;
+  const body = result.result;
+  if (!body || Array.isArray(body) || body.type !== 'file_unchanged' || Object.keys(body).some(k => !['type', 'file'].includes(k))) return null;
+  const file = body.file;
+  if (!file || Array.isArray(file) || Object.keys(file).length !== 1 || typeof file.filePath !== 'string') return null;
+  return result;
+}
+
 export function state(result) {
   if (!result || typeof result !== 'object' || Array.isArray(result)) return 'unknown';
   if (Object.getPrototypeOf(result) !== Object.prototype && Object.getPrototypeOf(result) !== null) return 'unknown';
@@ -85,6 +97,7 @@ export function register(on, options = {}) {
   const defer = enabled && options.deferBuiltins === true;
   const compactReads = enabled && options.deduplicateTextReads === true;
   const hotCore = defer && options.hotCoreTools === true;
+  const unchangedReads = enabled && options.unchangedReads === true;
   const base = hotCore ? { ...SPEC, description: HOT_CORE_DESCRIPTION } : SPEC;
   const spec = compactReads ? { ...base, description: base.description + ' Exact numbered Read text is retained; duplicated file.content may be represented by {from:"native.text",format:"line-number-tab-v1"} (remove each numbered prefix) or format:"text-v1" (identical text). All file metadata is retained.' } : base;
   let available = null;
@@ -146,7 +159,7 @@ export function register(on, options = {}) {
         const result = await $.tool.call({ tool: op.tool, ...op.args });
         const status = state(result);
         if (op.tool === 'Read' && status === 'executed') {
-          const nativeText = textReadResult(result);
+          const nativeText = textReadResult(result) || (unchangedReads ? unchangedReadResult(result) : null);
           if (!nativeText) {
             results.push({ index: results.length, tool: op.tool, status: 'require-native-read' });
             halted = 'require-native-read';

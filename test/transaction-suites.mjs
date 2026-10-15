@@ -1,4 +1,4 @@
-import { register, invalid, state, SPEC, LIMIT, NAME, DEFERRED, HOT_CORE, ENVELOPE_NOTE, HOT_CORE_DESCRIPTION, unsupportedReadPlan, textReadResult } from '../mods/atlias-transaction/hooks/register.mjs';
+import { register, invalid, state, SPEC, LIMIT, NAME, DEFERRED, HOT_CORE, ENVELOPE_NOTE, HOT_CORE_DESCRIPTION, unchangedReadResult, unsupportedReadPlan, textReadResult } from '../mods/atlias-transaction/hooks/register.mjs';
 
 function fixture(options = { enabled: true }, overrides = {}) {
   const hooks = [];
@@ -200,5 +200,47 @@ export default async function transactionSuites({ asyncSuite, check }) {
     const worker = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true });
     const response = JSON.parse((await worker.hooks.find(h => h.event === 'tool.call').hook(worker.api, { operations: [{ tool: 'Read', args: { file_path: '/fixture.txt' } }], agentId: 'host-worker-id' }, worker.next)).result);
     check('worker batches still stop before effects under hot core', response.status === 'require-native-tools' && response.attempted === 0 && !worker.calls.some(([kind]) => kind === 'call') && response.reason.includes('load deferred ones through ToolSearch'), info);
+  });
+  await asyncSuite('native unchanged Read notices', 'an exact unchanged-file Read notice passes only under its own switch', async () => {
+    const info = { happened: 'unchanged Read fixture', why: 'Claude Code 2.1.301 answers a re-read of an unchanged file with a native notice; refusing it stops the whole batch.', fix: 'Pass only the exact notice through, behind unchangedReads, and keep every other shape refused.' };
+    const notice = () => ({ result: { type: 'file_unchanged', file: { filePath: '/fixture.txt' } }, text: 'Wasted call — file unchanged since your last Read. Refer to that earlier tool_result instead.' });
+    const plan = [{ tool: 'Read', args: { file_path: '/fixture.txt' } }, { tool: 'Write', args: { file_path: '/later.txt', content: 'later' } }];
+    const run = async (options, value) => {
+      const writes = [];
+      const f = fixture(options, { call: async e => { if (e.tool === 'Write') { writes.push(e); return { result: { type: 'create' }, text: 'written' }; } return value; } });
+      return { answer: await f.batch(plan), writes };
+    };
+    for (const options of [{ enabled: true }, { enabled: true, unchangedReads: 'true' }, { enabled: true, unchangedReads: 1 }, { enabled: true, deferBuiltins: true, hotCoreTools: true }]) {
+      const { answer, writes } = await run(options, notice());
+      check('without unchangedReads=true the notice still stops the batch: ' + JSON.stringify(options), answer.status === 'require-native-read' && answer.attempted === 1 && writes.length === 0, info);
+    }
+    for (const options of [{ enabled: true, unchangedReads: true }, { enabled: true, unchangedReads: true, deduplicateTextReads: true }, { enabled: true, deferBuiltins: true, hotCoreTools: true, unchangedReads: true }]) {
+      const value = notice();
+      const { answer, writes } = await run(options, value);
+      check('the exact notice passes through as executed and later operations run: ' + JSON.stringify(options), answer.status === 'executed' && answer.attempted === 2 && writes.length === 1 && answer.results[0].status === 'executed', info);
+      check('the notice is passed through byte for byte: ' + JSON.stringify(options), JSON.stringify(answer.results[0].native) === JSON.stringify(notice()), info);
+    }
+    check('the exact notice shape is recognized', unchangedReadResult(notice()) !== null && textReadResult(notice()) === null, info);
+    const variants = {
+      'extra file field': v => { v.result.file.content = 'OPAQUE_SENTINEL'; },
+      'extra body field': v => { v.result.base64 = 'OPAQUE_SENTINEL'; },
+      'extra top-level field': v => { v.content = [{ type: 'image', data: 'OPAQUE_SENTINEL' }]; },
+      'missing path': v => { delete v.result.file.filePath; },
+      'non-string path': v => { v.result.file.filePath = 7; },
+      'non-string text': v => { v.text = null; },
+      'other type': v => { v.result.type = 'file_unchanged_v2'; },
+      'array file': v => { v.result.file = ['/fixture.txt']; },
+      'error marker': v => { v.isError = true; },
+    };
+    for (const [name, mutate] of Object.entries(variants)) {
+      const value = notice();
+      mutate(value);
+      check('a malformed notice is not accepted: ' + name, unchangedReadResult(value) === null, info);
+      const { answer, writes } = await run({ enabled: true, unchangedReads: true }, value);
+      check('a malformed notice still stops the batch: ' + name, answer.status !== 'executed' && answer.attempted === 1 && writes.length === 0 && !JSON.stringify(answer).includes('OPAQUE_SENTINEL'), info);
+    }
+    const off = fixture({ enabled: false, unchangedReads: true });
+    const handled = await off.hooks.find(h => h.event === 'tool.call').hook(off.api, { operations: plan }, off.next);
+    check('the switch needs the master switch', handled.operations === plan && off.calls.length === 0, info);
   });
 }
