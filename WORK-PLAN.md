@@ -1,3 +1,19 @@
+# Gev clean checkpoint 2026-10-15T05:02Z
+
+Reviewed implementation saved in ee0e031. R10 frozen preflight0/rootverified1687Node121plants/controller69/25/69;9PID omissions/cleanup unqualified. Neither20x norqualified4x. No push/live install.
+
+New actual same-private-model Read codec ablation r2 TERMINAL0/root verified:8requests,2/2correcteach,0lost,TOTAL51032->46204(1.104493x),fullPEAK15641->13176(1.187083x). BotharmsAtlias/genericfixture only. Failedr1 retained3calls36720TOTAL/16246PEAK; nativebatch actuallyran(observerfalsealarm), firstargerror repaired, finalformatwrong.
+
+Shared scratch local-pipeline-contract-r4 root18contract+9runner0; UUIDreceiptIDcollision fixed and restorationplantcaught1. Root wire-r1 functional8exit0, stale-bindingplantcaught1. Wire removes generated hashes/ordinals only, keeps exact original/followups/skillname/version/body and host source ledger, uses request-bound short receipt aliases. Native/normal adapters NOTwired. Existing lib/provider.mjs has validatedBYO profile/pricing contract; reuse, no paid default rates.
+
+Real helper r2 terminal0:2calls934TOTAL542PEAK; fullauthorityboth, actualfailed exit1 plusUNKNOWN retained, reasoning_effortnone. Helperr3 compact terminal0:2calls500TOTAL279PEAK, source projectionexact/typed evidencepreserved. IMPORTANT: root CROSS-RUN comparison rejected modelFacts.parameters hash mismatch (sameweights/template/digest/server, rawparameterstrings notcaptured); do NOTclaimqualified1.868xgain. Fresh local-pipeline-model-r4-paired same-backend4request base/compact comparison is RUNNINGsession95334, captures rawparameters, inspect actualterminal andRESULT beforeclaims. Retainr2/r3, failedhelperr1 two1024cuts2799TOTAL1461PEAK, and firstfailedrootcomparisonassertion. All new17modelrequests beforepairedrun total138189tokens; failuresincluded. Per-role metering inactualledgers. Newpairedspendextra.
+
+Gev near10%five-hour requests REALVISIBLEinteractive bypass Claude CLI handoff; concreteCLAUDE-SUBHARNESS-HANDOFF-1015.md+bootstrap prepared withunique sessionUUID. CodexCU explicitlyrefuses terminal launch/input; intended authorized non-UI command launch route will be used and window/session evidencechecked, no customCUplugin. DO NOTclaimhandoff orrelayactive beforeactualevidence. AskClaudeenableUsageLimitsrelayforTHATvisible session (showon/resumemode), preserveforeignowners/daily21:20wake, sendHaikuimplementationcouncilandreview. No regularadapterrepair; sharedqualitynormalafter subharness. Legacy normal lib/agent.codexTurn clipslast6/1200, distinct fromqualifiedcontrollerprofile; exactauthorityneeds wiringbeforeclaiminggeneralcontinuity.
+
+Next: root verify paired terminal/parameters, deliver visible handoff nearquota threshold, update STATE/report/progress and sameheartbeat toMEASUREDreset+7min; ifClaudeownsroot, Codexmustmonitorinstead ofconcurrent edits/jobs. Private11435leaseheldbyrunningpairedfixture; neversteal/relaunch. Sourcechange needs newimmutablemanifest. PreserveallClaude worktrees,STOP,graderincident,nativeworker/PDF/cancellationlimits. No paid APIs/credits/resetredemption/WindowsPIDkill.
+
+---
+
 # Gev checkpoint 2026-10-15T04:45Z
 
 Subharness first; Gev also requires shared same-model quality/hallucination/token-efficiency contracts in normal Atlias. Research basis RESEARCH-FIRST 0f/3/9 and H5/H7: retain full authority, qualify capability, count all token spend. No20x or qualified4x claim.
@@ -371,7 +387,7 @@ Protocol/character results are not inference savings. No paid credits or pushes.
 Gev is offline and authorizes necessary Atlias work, unattended Claude auto/bypass
 mode and Usage Limits relays if useful. Choose recommended decisions without
 questions. Latest steering: give the natural-reset estimate ONLY ONCE at the
-first response. It was already given (2â€“4 additional resets, uncertain 20x);
+first response. It was already given (2–4 additional resets, uncertain 20x);
 do not repeat it at completion. Public setup must accept the user's own API
 endpoint, model, key environment variable and token prices. Both native hosts
 must retain original requests and follow-ups, including across compaction.
