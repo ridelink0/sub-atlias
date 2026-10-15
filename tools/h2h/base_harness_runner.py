@@ -620,12 +620,14 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
             body["max_tokens"] = s.num_predict
 
         def note(u):
-            # Every usage block is kept as it came; the slot holds a count only while every part is known.
+            # Keep provisional blocks too, but never commit them as exact spend before final usage.
             if isinstance(u, dict):
                 rec["usage"].append(u)
                 _message_counts(u, got)
-                p, c = _message_totals(got)
-                s.usage[slot] = (p, c) if p is not None and c is not None else None
+
+        def commit_usage():
+            p, c = _message_totals(got)
+            s.usage[slot] = (p, c) if p is not None and c is not None else None
         sent = json.dumps(body).encode("utf-8")
         rec["sent"] = {"bytes": len(sent), "sha256": hashlib.sha256(sent).hexdigest()}  # exactly what the model server was given
         try:
@@ -639,6 +641,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                     try:
                         answer = json.loads(data.decode("utf-8"))
                         note(answer.get("usage"))
+                        commit_usage()
                         _note_stop(s, rec, answer.get("stop_reason"))
                         rec["outcome"] = "complete"
                     except Exception:
@@ -650,15 +653,25 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                     self.send_header("Cache-Control", "no-cache")
                     self.send_header("Connection", "close")
                     self.end_headers()
-                    ended, left = False, False
+                    ended, left, final_output, seen_start, stream_valid = False, False, False, False, True
                     for line in r:
                         # The prompt count comes with message_start, the output count with message_delta.
                         if line.startswith(b"data:") and (b'"usage"' in line or b"message_stop" in line or b'"stop_reason"' in line):
                             try:
                                 ev = json.loads(line[5:].decode("utf-8").strip())
+                                if ended:
+                                    stream_valid = False
+                                if ev.get("type") == "message_start":
+                                    if seen_start:
+                                        stream_valid = False
+                                    seen_start = True
+                                elif ev.get("type") in ("message_delta", "message_stop") and not seen_start:
+                                    stream_valid = False
                                 ended = ended or ev.get("type") == "message_stop"
                                 note((ev.get("message") or {}).get("usage"))
                                 note(ev.get("usage"))
+                                if ev.get("type") == "message_delta" and isinstance(ev.get("usage"), dict) and "output_tokens" in ev["usage"]:
+                                    final_output = True
                                 _note_stop(s, rec, (ev.get("delta") or {}).get("stop_reason"))
                             except Exception:
                                 pass
@@ -669,6 +682,10 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                             left = True
                             break  # the harness went away; the count seen so far stands
                     rec["outcome"] = "complete" if ended else "harness left before the end" if left else "partial: no message_stop"
+                    # message_start's output count (usually zero) is provisional. A closed connection,
+                    # even after a delta, cannot establish final spend without the terminal event.
+                    if ended and final_output and stream_valid:
+                        commit_usage()
                     if not ended:
                         with s.lock:
                             s.partial += 1
@@ -754,16 +771,24 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                     for name, value in (extra or {}).items():
                         self.send_header(name, value)
                     self.end_headers()
-                    ended, left = False, False
+                    ended, left, stream_valid = False, False, True
+                    stream_usage = None
                     for line in r:
                         if line.startswith(b"data:") and line[5:].strip() == b"[DONE]":
+                            if ended:
+                                stream_valid = False
                             ended = True
                         elif line.startswith(b"data:") and (b'"usage"' in line or b'"finish_reason":"' in line or b'"finish_reason": "' in line):
                             try:
                                 ev = json.loads(line[5:].decode("utf-8").strip())
+                                if ended:
+                                    stream_valid = False
                                 if b'"usage"' in line:
                                     rec["usage"].append(ev.get("usage"))
-                                    s.usage[slot] = _usage_of(ev) or s.usage[slot]
+                                    # Ordinary chunks may have null usage. An actual later count,
+                                    # including a malformed one, replaces the earlier observation.
+                                    if ev.get("usage") is not None:
+                                        stream_usage = _usage_of(ev)
                                 for choice in ev.get("choices") or []:
                                     _note_stop(s, rec, (choice or {}).get("finish_reason"))
                             except Exception:
@@ -775,6 +800,8 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                             left = True
                             break  # the harness went away; the count seen so far stands
                     rec["outcome"] = "complete" if ended else "harness left before the end" if left else "partial: no [DONE]"
+                    if ended and stream_valid:
+                        s.usage[slot] = stream_usage
                     if not ended:
                         with s.lock:
                             s.partial += 1

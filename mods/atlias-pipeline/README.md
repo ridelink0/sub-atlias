@@ -19,6 +19,8 @@ Every option is off unless it is exactly `true`. With the master switch `enabled
 
 The packet and the receipts are built with the shared `contract.mjs` (`createPacket`, `createReceipt`), so the format is the one the local planner and reporter read. Receipts are bound to the packet's id and scope version. The packet id hashes the scope version, so after an edit an earlier receipt reads `unknown:stale_packet` when the reporter checks it (the contract's `stale_scope` reason is then never reached). A receipt from a subagent (`agentId` present on `tool.call`) reads `unknown:wrong_actor`.
 
+A check keeps the packet and scope from its invocation. A pending-write scope makes earlier passes stale before an edit can have effects. If an edit was pending when a check started, starts while it runs, or is still pending when it finishes, its numeric result is not evidence for a pass or failure. A new check after all edits complete can count again. A refused edit restores the earlier completed scope. Native tool results, refusals and errors still pass through unchanged.
+
 ## Limits, read before turning anything on
 
 - **Exit codes are not in the declared native results.** The type declarations this repo has (`D:/harness-work/research/claude-code-mods-types-2.1.277.d.ts`, lines 12921 to 12928 for `Bash` and 13097 to 13102 for `PowerShell`) list `stdout`, `stderr`, `interrupted` and related fields, and no `exitCode`. So on those declarations every shell receipt is `unknown:missing_exit_code`, and no pass can be recorded. The mod takes a numeric `exitCode` when a build provides one. The 2.1.300 declarations were not generated for this review, so whether 2.1.300 provides one is unverified.

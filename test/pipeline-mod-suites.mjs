@@ -48,7 +48,7 @@ function harness(options, { store = new Map(), failStore = false, limit = { byte
       return { hooked: false, out: reply, seen: undefined };
     }
     const seen = [];
-    const next = async x => { seen.push(x); if (reply instanceof Error) throw reply; return reply; };
+    const next = async x => { seen.push(x); if (reply instanceof Error) throw reply; return typeof reply === 'function' ? reply(x) : reply; };
     const out = await hook.handler(api, e, next);
     if (submitted && !appendFirst) transcript.push({ role: 'user', text: e.text, toolUses: [] });
     return { hooked: true, out, seen: seen[0] };
@@ -268,6 +268,86 @@ export default async function addSuites({ suite, asyncSuite, check, ROOT, fs, pa
     const c = await h.run('prompt.context', { blocks: [] }, { blocks: [] });
     check('the evidence block is still added when the store is offline (it does not use the store)', c.out.blocks.length === 1 && c.out.blocks[0].name === EVIDENCE_BLOCK,
       { happened: JSON.stringify(c.out.blocks), why: 'The evidence style is independent of the store.', fix: 'Keep the prompt.context handler free of store calls.' });
+  });
+
+  await asyncSuite('pipeline mod expert', 'pipeline mod: overlapping checks never acquire the scope of a later edit', async () => {
+    const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
+    {
+      const h = harness(ALL);
+      await h.run('prompt.submit', prompt('Original request.'), promptReply(prompt('Original request.')));
+      await h.run('tool.call', shell('Bash', {}), shellReply({ exitCode: 0 }));
+      const editing = deferred(), finish = deferred();
+      const writing = h.run('tool.call', edit('Edit'), async () => { editing.resolve(); await finish.promise; return editReply(); });
+      await editing.promise;
+      const pending = await receiptStatuses(h.store);
+      check('an earlier pass is already stale while a write is in flight', !pending.includes('pass'), {
+        happened: JSON.stringify(pending), why: 'A writer may have changed the files before its native result returns.', fix: 'Expose a pending-write scope before forwarding the edit, and clear it only after completion.' });
+      finish.resolve();
+      await writing;
+    }
+    for (const editEndsFirst of [true, false]) {
+      const h = harness(ALL);
+      await h.run('prompt.submit', prompt('Check after the last edit.'), promptReply(prompt('Check after the last edit.')));
+      const read = deferred(), endCheck = deferred(), editing = deferred(), endEdit = deferred();
+      const running = h.run('tool.call', shell('Bash', {}), async () => { read.resolve(); await endCheck.promise; return shellReply({ exitCode: 0 }); });
+      await read.promise;
+      const writing = h.run('tool.call', edit('Edit'), async () => { editing.resolve(); await endEdit.promise; return editReply(); });
+      await editing.promise;
+      if (editEndsFirst) { endEdit.resolve(); await writing; }
+      endCheck.resolve();
+      await running;
+      const during = await receiptStatuses(h.store);
+      check(`a check that read before an edit is unknown when the edit ${editEndsFirst ? 'finished first' : 'is still running'}`, during.length === 1 && during[0].startsWith('unknown:'), {
+        happened: JSON.stringify(during), why: 'Completing a check after an edit does not show it read the edited files.', fix: 'Bind at invocation and refuse numeric evidence across an edit epoch or pending edit.' });
+      if (!editEndsFirst) { endEdit.resolve(); await writing; }
+      await h.run('tool.call', shell('Bash', {}), shellReply({ exitCode: 0 }));
+      const after = await receiptStatuses(h.store);
+      check('a new check after all writes complete is still usable', after.at(-1) === 'pass' && !after.slice(0, -1).includes('pass'), {
+        happened: JSON.stringify(after), why: 'Overlap invalidation must not permanently disable fresh checks.', fix: 'Release the pending edit in a finally block and snapshot each new check separately.' });
+    }
+    {
+      const h = harness(ALL);
+      await h.run('prompt.submit', prompt('Original request.'), promptReply(prompt('Original request.')));
+      const editing = deferred(), endEdit = deferred(), read = deferred(), endCheck = deferred();
+      const writing = h.run('tool.call', edit('Edit'), async () => { editing.resolve(); await endEdit.promise; return editReply(); });
+      await editing.promise;
+      const running = h.run('tool.call', shell('Bash', {}), async () => { read.resolve(); await endCheck.promise; return shellReply({ exitCode: 0 }); });
+      await read.promise;
+      endEdit.resolve();
+      await writing;
+      endCheck.resolve();
+      await running;
+      check('an edit already running when a check starts cannot make that check current by finishing first', (await receiptStatuses(h.store))[0].startsWith('unknown:'), {
+        happened: JSON.stringify(await receiptStatuses(h.store)), why: 'The edit epoch does not change after this check begins, but its read still overlaps a write.', fix: 'Remember pending edits at invocation, as well as later epoch changes.' });
+    }
+    for (const throwing of [false, true]) {
+      const h = harness(ALL);
+      await h.run('prompt.submit', prompt('Original request.'), promptReply(prompt('Original request.')));
+      const read = deferred(), finish = deferred();
+      const running = h.run('tool.call', shell('Bash', {}), async () => { read.resolve(); await finish.promise; return shellReply({ exitCode: 0 }); });
+      await read.promise;
+      const boom = new Error('native edit failed');
+      let thrown;
+      try { await h.run('tool.call', edit('Edit'), throwing ? boom : { deny: 'not allowed' }); } catch (e) { thrown = e; }
+      finish.resolve();
+      await running;
+      const overlap = await receiptStatuses(h.store);
+      check(`a ${throwing ? 'throwing' : 'refused'} overlapping edit cannot promote a running check`, overlap.length === 1 && overlap[0].startsWith('unknown:') && (!throwing || thrown === boom), {
+        happened: JSON.stringify({ overlap, sameError: thrown === boom }), why: 'A failed edit may have written files; the host result and error must still pass through.', fix: 'Keep invocation uncertainty and unwind pending edits on every completion path.' });
+      await h.run('tool.call', shell('Bash', {}), shellReply({ exitCode: 0 }));
+      check('checks after refused or throwing edits are not stuck behind pending state', (await receiptStatuses(h.store)).at(-1) === 'pass', {
+        happened: JSON.stringify(await receiptStatuses(h.store)), why: 'A leaked pending edit would make every later check unknown.', fix: 'Decrement pending edits even for refusal or exceptions.' });
+    }
+    const h = harness(ALL);
+    await h.run('prompt.submit', prompt('Original request.'), promptReply(prompt('Original request.')));
+    const read = deferred(), finish = deferred();
+    const running = h.run('tool.call', shell('Bash', {}), async () => { read.resolve(); await finish.promise; return shellReply({ exitCode: 0 }); });
+    await read.promise;
+    await h.run('prompt.submit', prompt('Follow-up: new requirements.'), promptReply(prompt('Follow-up: new requirements.')));
+    finish.resolve();
+    await running;
+    check('a check from before a follow-up is not rebound to its new authority packet', (await receiptStatuses(h.store))[0].startsWith('unknown:'), {
+      happened: JSON.stringify(await receiptStatuses(h.store)), why: 'A completion after a new request cannot verify that new request.', fix: 'Keep the invocation packet for each check.' });
   });
 
   await asyncSuite('pipeline mod expert', 'pipeline mod: a restarted session never extends an earlier record, and every prompt still passes through', async () => {

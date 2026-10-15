@@ -38,13 +38,27 @@ class Upstream(http.server.BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b'{"type":"error","error":{"type":"api_error","message":"no"}}')
             return
+        if self.path == "/v1/chat/completions":
+            chunks = say.get("chat_chunks", [])
+            text = "".join("data: " + json.dumps(c) + "\n\n" for c in chunks)
+            if say.get("end", True):
+                text += "data: [DONE]\n\n"
+            text += "".join("data: " + json.dumps(c) + "\n\n" for c in say.get("tail", []))
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.end_headers()
+            self.wfile.write(text.encode())
+            return
         ev = [("message_start", {"type": "message_start", "message": {"id": "m", "type": "message", "role": "assistant", "content": [], "usage": say["start"]}}),
               ("content_block_start", {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
               ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": "hi"}}),
               ("content_block_stop", {"type": "content_block_stop", "index": 0})]
+        if "extra_start" in say:
+            ev.insert(1, ("message_start", {"type": "message_start", "message": {"usage": say["extra_start"]}}))
         ev += [("message_delta", {"type": "message_delta", "delta": {"stop_reason": say.get("stop", "end_turn")}, "usage": u}) for u in say.get("deltas", [])]
         if say.get("end", True):
             ev.append(("message_stop", {"type": "message_stop"}))
+        ev.extend((e["type"], e) for e in say.get("tail", []))
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.end_headers()
@@ -82,9 +96,10 @@ def main():
     threading.Thread(target=door.serve_forever, daemon=True).start()
     opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
-    def call(say):
+    def call(say, api="messages"):
         body = {"model": "x", "max_tokens": 5, "stream": True, "messages": [{"role": "user", "content": json.dumps(say)}]}
-        req = urllib.request.Request(door.base + "/v1/messages", data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}, method="POST")
+        path = "/v1/chat/completions" if api == "chat" else "/v1/messages"
+        req = urllib.request.Request(door.base + path, data=json.dumps(body).encode(), headers={"Content-Type": "application/json"}, method="POST")
         try:
             with opener.open(req, timeout=20) as r:
                 return r.status, r.read().decode()
@@ -101,11 +116,11 @@ def main():
           door.usage[-1] is None and r1["counts"]["cacheRead"] == "unknown" and r1["usage"][0]["cache_read_input_tokens"] == -11, (door.usage[-1], r1))
     call({"start": {"input_tokens": 100, "output_tokens": 1}, "deltas": [{"output_tokens": 22}], "end": False})
     r2 = door.receipts[-1]
-    check("a stream that stops before message_stop is a partial call, kept and named, whatever it counted",
-          door.partial == 1 and r2["outcome"].startswith("partial") and door.usage[-1] == (100, 22), (door.partial, r2))
+    check("a stream that stops before message_stop keeps observed counts but exact spend is unknown",
+          door.partial == 1 and r2["outcome"].startswith("partial") and door.usage[-1] is None and r2["counts"]["output"] == 22, (door.partial, r2))
     call({"start": {"input_tokens": 100, "output_tokens": 1}})
-    check("a stream whose only output count is message_start's is recorded with that count, in the open",
-          door.receipts[-1]["counts"] == {"uncached": 100, "output": 1} and door.usage[-1] == (100, 1), door.receipts[-1])
+    check("message_stop without a final delta retains the provisional block but cannot make its output exact",
+          door.receipts[-1]["counts"] == {"uncached": 100, "output": 1} and door.usage[-1] is None, door.receipts[-1])
     s, _ = call({"fail": 500})
     r4 = door.receipts[-1]
     check("an upstream failure is a receipt with its status and an unknown count, and is listed as an error",
@@ -117,7 +132,7 @@ def main():
           door.capped == 1 and door.receipts[-1]["outcome"].startswith("capped") and door.receipts[-1]["slot"] is None and len(door.usage) == 5, (door.capped, door.receipts[-1]))
     check("every call the harness made has exactly one receipt", len(door.receipts) == door.calls == 6, (len(door.receipts), door.calls))
     # Council 1013b: why the model server ended each call is kept, and a reply cut at the output cap is named.
-    door2 = B.Door(f"http://127.0.0.1:{up.server_address[1]}", "qwen3.5:9b", 2048, 9)
+    door2 = B.Door(f"http://127.0.0.1:{up.server_address[1]}", "qwen3.5:9b", 2048, 20)
     threading.Thread(target=door2.serve_forever, daemon=True).start()
     door, keep = door2, door
     call({"start": {"input_tokens": 100, "output_tokens": 1}, "deltas": [{"output_tokens": 2048}], "stop": "max_tokens"})
@@ -127,6 +142,43 @@ def main():
     call({"start": {"input_tokens": 100, "output_tokens": 1}, "deltas": [{"output_tokens": 9}]})
     check("a later reply that ends by itself keeps the count but the run no longer ended on a cut reply",
           door2.receipts[-1].get("stop") == "end_turn" and not door2.receipts[-1].get("cut") and door2.cut == 1 and not B.ended_cut(door2.receipts), (door2.receipts[-1], door2.cut))
+    call({"start": {"input_tokens": 16435, "output_tokens": 0}, "end": False})
+    partial = door2.receipts[-1]
+    check("r4 regression: initial output zero plus a missing terminal never becomes exact zero output",
+          door2.usage[-1] is None and partial["counts"]["output"] == 0 and partial["outcome"].startswith("partial"), partial)
+    summary = B.role_summary(door2.receipts, door2.usage)
+    check("an uncounted partial makes all role cost and peak unknown instead of omitting that request",
+          summary["primary"]["calls"] == 3 and all(summary["primary"][k] is None for k in ["input", "output", "total", "peak"]), summary)
+    call({"start": {"input_tokens": 10, "output_tokens": 0}, "deltas": [{"output_tokens": 0}]})
+    check("control: terminal final output zero is an exact zero, rather than a missing count",
+          door2.usage[-1] == (10, 0) and door2.receipts[-1]["outcome"] == "complete", door2.receipts[-1])
+    call({"start": {"input_tokens": 10, "output_tokens": 0}, "deltas": [{"output_tokens": None}]})
+    check("a malformed final output cannot fall back to the provisional zero",
+          door2.usage[-1] is None and door2.receipts[-1]["counts"]["output"] == "unknown", door2.receipts[-1])
+    call({"start": {"input_tokens": 100, "output_tokens": 0}, "deltas": [{"output_tokens": 22}],
+          "tail": [{"type": "message_start", "message": {"usage": {"input_tokens": 1, "output_tokens": 0}}}]})
+    check("usage after message_stop is preserved but cannot replace final spend with a smaller value",
+          door2.usage[-1] is None and len(door2.receipts[-1]["usage"]) == 3, door2.receipts[-1])
+    call({"start": {"input_tokens": 100, "output_tokens": 0}, "extra_start": {"input_tokens": 1, "output_tokens": 0}, "deltas": [{"output_tokens": 22}]})
+    check("a duplicated message_start cannot reset the exact input count",
+          door2.usage[-1] is None, door2.receipts[-1])
+    chat_door = B.Door(f"http://127.0.0.1:{up.server_address[1]}", "qwen3.5:9b", 2048, 10)
+    threading.Thread(target=chat_door.serve_forever, daemon=True).start()
+    door = chat_door
+    valid = {"usage": {"prompt_tokens": 100, "completion_tokens": 22}}
+    call({"chat_chunks": [valid]}, "chat")
+    check("a terminal chat response commits its final count", chat_door.usage[-1] == (100, 22))
+    call({"chat_chunks": [valid], "end": False}, "chat")
+    check("chat usage before a missing DONE remains provisional", chat_door.usage[-1] is None, chat_door.receipts[-1])
+    call({"chat_chunks": [valid, {"usage": {"prompt_tokens": -1, "completion_tokens": 0}}]}, "chat")
+    check("a malformed later chat count cannot reuse the earlier count", chat_door.usage[-1] is None, chat_door.receipts[-1])
+    call({"chat_chunks": [{"usage": None}, {"usage": {"prompt_tokens": 100, "completion_tokens": 0}}]}, "chat")
+    check("control: null usage on an ordinary chunk does not hide a final counted zero", chat_door.usage[-1] == (100, 0))
+    call({"chat_chunks": []}, "chat")
+    check("DONE with no chat usage is unknown", chat_door.usage[-1] is None)
+    call({"chat_chunks": [valid], "tail": [{"usage": {"prompt_tokens": 1, "completion_tokens": 0}}]}, "chat")
+    check("chat usage after DONE cannot replace the final count", chat_door.usage[-1] is None, chat_door.receipts[-1])
+    chat_door.shutdown()
     door = keep
     ns = types.SimpleNamespace(lock=threading.Lock(), cut=0)
     chat, resp, done, odd = {}, {}, {}, {}

@@ -42,11 +42,11 @@ export function completion(result) {
 
 const isScalar = value => value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
 const actorOf = e => (e.agentId === undefined || e.agentId === null ? MAIN : 'agent:' + String(e.agentId));
-const fresh = sessionId => ({ sessionId, broken: false, scope: 0, seq: 0, original: undefined, followups: [], skills: [], receipts: [], packet: null });
+const fresh = sessionId => ({ sessionId, broken: false, scope: 0, pendingEdits: 0, seq: 0, original: undefined, followups: [], skills: [], receipts: [], packet: null });
 const build = state => createPacket({
   sessionId: state.sessionId,
   actorId: MAIN,
-  scopeVersion: String(state.scope),
+  scopeVersion: String(state.scope) + (state.pendingEdits > 0 ? ':pending' : ''),
   original: state.original,
   followups: state.followups,
   skills: state.skills,
@@ -177,27 +177,64 @@ async function recordSkill($, e, ledger) {
   await update($, ledger, d => { d.skills.push({ name: e.skill, version, body: e.text }); });
 }
 
-async function observeCompletion($, e, result, ledger) {
-  if (!(await ready($, ledger))) return;
-  const status = completion(result);
-  if (EDIT_TOOLS.has(e.tool)) {
-    // Any completion that is not a refusal may have written the file, so older checks stop counting.
-    if (status !== 'refused') await update($, ledger, d => { d.scope += 1; });
-    return;
+async function refreshPending($, ledger) {
+  try { await update($, ledger, d => { d.pendingEdits = ledger.pendingEdits; }); }
+  catch { ledger.state = await breakSession($, ledger.state.sessionId); }
+}
+
+async function beginCall($, e, ledger) {
+  if (!(await ready($, ledger))) return null;
+  const editing = EDIT_TOOLS.has(e.tool);
+  if (editing) {
+    ledger.editEpoch += 1;
+    ledger.pendingEdits += 1;
+    // Invalidate earlier passes before the write can have effects, not only when it returns.
+    await refreshPending($, ledger);
+    if (ledger.state.broken) {
+      ledger.pendingEdits -= 1;
+      ledger.identityLost = true;
+      return null;
+    }
   }
-  if (!SHELL_TOOLS.has(e.tool) || !ledger.state.packet || status === 'refused') return;
-  const seq = ledger.state.seq + 1;
-  const packet = ledger.state.packet;
-  const event = { eventKey: `${e.tool}:${seq}`, actorId: actorOf(e), kind: 'check', packetId: packet.packetId, scopeVersion: packet.scopeVersion };
-  // Only a numeric exit code from a completed call is exit evidence. Stdout text never is.
-  const body = result && typeof result === 'object' ? result.result : undefined;
-  if (status === 'executed' && body && typeof body === 'object' && Object.hasOwn(body, 'exitCode') && isScalar(body.exitCode)) event.exitCode = body.exitCode;
-  const receipt = await createReceipt(packet, event);
-  await update($, ledger, d => {
-    d.seq = seq;
-    d.receipts.push(receipt);
-    if (d.receipts.length > MAX_RECEIPTS) d.receipts.splice(0, d.receipts.length - MAX_RECEIPTS);
-  });
+  return { sessionId: ledger.state.sessionId, packet: ledger.state.packet, actorId: actorOf(e),
+    editing, editEpoch: ledger.editEpoch, pendingEdits: ledger.pendingEdits };
+}
+
+async function observeCompletion($, e, result, ledger, started) {
+  try {
+    if (!(await ready($, ledger))) return;
+    if (!started || started.sessionId !== ledger.state.sessionId) {
+      ledger.state = await breakSession($, ledger.state.sessionId);
+      return;
+    }
+    const status = completion(result);
+    if (EDIT_TOOLS.has(e.tool)) {
+      // Any completion that is not a refusal may have written the file, so older checks stop counting.
+      if (status !== 'refused') await update($, ledger, d => { d.scope += 1; });
+      return;
+    }
+    if (!SHELL_TOOLS.has(e.tool) || !started.packet || status === 'refused') return;
+    const seq = ledger.state.seq + 1;
+    // A check belongs to the authority and files at invocation, never to a later edit or follow-up.
+    // An overlapping edit makes its observation uncertain, even if the edit has not finished yet.
+    const packet = started.packet;
+    const overlap = started.pendingEdits > 0 || ledger.pendingEdits > 0 || started.editEpoch !== ledger.editEpoch;
+    const event = { eventKey: `${e.tool}:${seq}`, actorId: started.actorId, kind: 'check', packetId: packet.packetId, scopeVersion: packet.scopeVersion };
+    // Only a numeric exit code from a completed call is exit evidence. Stdout text never is.
+    const body = result && typeof result === 'object' ? result.result : undefined;
+    if (!overlap && status === 'executed' && body && typeof body === 'object' && Object.hasOwn(body, 'exitCode') && isScalar(body.exitCode)) event.exitCode = body.exitCode;
+    const receipt = await createReceipt(packet, event);
+    await update($, ledger, d => {
+      d.seq = seq;
+      d.receipts.push(receipt);
+      if (d.receipts.length > MAX_RECEIPTS) d.receipts.splice(0, d.receipts.length - MAX_RECEIPTS);
+    });
+  } finally {
+    if (started && started.editing) {
+      ledger.pendingEdits -= 1;
+      if (ledger.state && !ledger.state.broken) await refreshPending($, ledger);
+    }
+  }
 }
 
 export function register(on, options) {
@@ -211,7 +248,7 @@ export function register(on, options) {
   if (!collectAuthority && !evidenceStyle) return;
 
   // The in-process ledger. Its copy in $.store is for a restart; the in-process one wins.
-  const ledger = { state: null, identityLost: false, chain: Promise.resolve() };
+  const ledger = { state: null, identityLost: false, chain: Promise.resolve(), editEpoch: 0, pendingEdits: 0 };
   // State changes happen one at a time, so events from parallel subagents cannot interleave.
   const serial = work => {
     const run = ledger.chain.then(work).catch(() => {});
@@ -235,15 +272,16 @@ export function register(on, options) {
     on('tool.call', async ($, e, next) => {
       const tool = e && e.tool;
       if (!EDIT_TOOLS.has(tool) && !SHELL_TOOLS.has(tool)) return next(e);
+      const started = await serial(() => beginCall($, e, ledger));
       let result;
       try {
         result = await next(e);
       } catch (error) {
         // The native call failed, possibly after writing a file: an edit still advances the scope.
-        if (EDIT_TOOLS.has(tool)) await serial(() => observeCompletion($, e, undefined, ledger));
+        if (EDIT_TOOLS.has(tool)) await serial(() => observeCompletion($, e, undefined, ledger, started));
         throw error;
       }
-      await serial(() => observeCompletion($, e, result, ledger));
+      await serial(() => observeCompletion($, e, result, ledger, started));
       return result;
     });
   }
