@@ -1069,6 +1069,7 @@ await (await import('./proc-suites.mjs')).default({ asyncSuite, check, skip, TMP
 await (await import('./control-suites.mjs')).default({ suite, asyncSuite, check, TMP, ROOT, fs, path, spawnSync });
 await (await import('./lean-suites.mjs')).default({ suite, check, brief, TMP, ROOT, fs, path });
 await (await import('./gatecheck-suites.mjs')).default({ suite, check, skip, core, gate, router, track, TMP, fs, path });
+await (await import('./lazy-brief-suites.mjs')).default({ suite, check, core, gate, router, track, TMP, fs, path });
 await (await import('./sametext-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./straytool-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./guardreset-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
