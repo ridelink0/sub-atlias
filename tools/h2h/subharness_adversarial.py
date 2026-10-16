@@ -175,10 +175,10 @@ cases += [
     ('hot core ignores its own switch', TX, 'const hotCore = defer && options.hotCoreTools === true;', 'const hotCore = defer;', HOT),
     ('hot core acts without deferral', TX, 'const hotCore = defer && options.hotCoreTools === true;', 'const hotCore = enabled && options.hotCoreTools === true;', HOT),
     ('hot core tools still deferred', TX, ' && !(hotCore && hot.includes(n))', '', HOT),
-    ('hot core advertises names not deferred', TX, "'\\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE", "'\\nNative tools deferred by this mod: ' + DEFERRED.join(', ') + '. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE", HOT),
+    ('hot core advertises names not deferred', TX, "'\\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly.' + (omitBatch", "'\\nNative tools deferred by this mod: ' + DEFERRED.join(', ') + '. Load one with select:<name> before calling it directly.' + (omitBatch", HOT),
     ('hot core adds text when nothing is deferred', TX, 'return available.length ? {', 'return true ? {', HOT),
     ('batch envelope boundary omitted', TX, "  + ' ' + ENVELOPE_NOTE;", '  ;', HOT),
-    ('ToolSearch envelope boundary omitted', TX, " + ENVELOPE_NOTE.replace('only this batch', 'only the batch') }", " }", HOT),
+    ('ToolSearch envelope boundary omitted', TX, "' ' + ENVELOPE_NOTE.replace('only this batch', 'only the batch'))", "'')", HOT),
     ('visible Read still routed through ToolSearch', TX, ".replace('Use standalone Read through ToolSearch for those inputs.'", ".replace('Use standalone Read via ToolSearch for those inputs.'", HOT),
     ('hot core text lost without Read dedup', TX, "All file metadata is retained.' } : base;", "All file metadata is retained.' } : SPEC;", HOT),
 ]
@@ -327,6 +327,10 @@ cases += [
     ('hotGlob keeps nothing extra visible', 'mods/atlias-transaction/hooks/register.mjs', "[...shells, 'Glob'] : shells;", "shells : shells;", HOTCORE_SUITE),
     # A hot list that applies without hot core (the hotCore guard on the deferral) is the meaningful break here;
     # dropping hotCore from `hot` itself changes nothing, because that guard already holds.
+    ('omitBatch accepts values other than true', 'mods/atlias-transaction/hooks/register.mjs', "const omitBatch = hotCore && options.omitBatch === true;", "const omitBatch = hotCore && Boolean(options.omitBatch);", HOTCORE_SUITE),
+    ('omitBatch works without hot core', 'mods/atlias-transaction/hooks/register.mjs', "const omitBatch = hotCore && options.omitBatch === true;", "const omitBatch = options.omitBatch === true;", HOTCORE_SUITE),
+    ('omitBatch still registers the batch', 'mods/atlias-transaction/hooks/register.mjs', "if (!omitBatch) await $.tool.register({", "await $.tool.register({", HOTCORE_SUITE),
+    ('omitBatch keeps the envelope sentence', 'mods/atlias-transaction/hooks/register.mjs', "(omitBatch ? '' : ' ' + ENVELOPE_NOTE", "(false ? '' : ' ' + ENVELOPE_NOTE", HOTCORE_SUITE),
     ('hot list applies without hot core', 'mods/atlias-transaction/hooks/register.mjs', "!(hotCore && hot.includes(n))", "!hot.includes(n)", HOTCORE_SUITE),
 ]
 RUNNER_SELFTEST = [sys.executable, 'tools/h2h/base_harness_selftest.py']

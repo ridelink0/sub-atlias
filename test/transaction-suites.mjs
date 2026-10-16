@@ -182,6 +182,15 @@ export default async function transactionSuites({ asyncSuite, check }) {
     check('hotGlob keeps Glob natively visible and drops it from the deferred names, Grep stays deferred', await glob.describe('Glob') === original
       && !/\bGlob\b/.test((await glob.describe('ToolSearch')).description.split('Native tools deferred by this mod:')[1] || '') && (await glob.describe('Grep')).isDeferred === true && (await glob.describe('Bash')).isDeferred === true, info);
     for (const hotGlob of [undefined, false, 'true', 1]) { const plain = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true, hotGlob }); check('hotGlob other than exactly true keeps Glob deferred: ' + hotGlob, (await plain.describe('Glob')).isDeferred === true, info); }
+    // omitBatch (Gev 2026-10-16): only with hotCoreTools and only when exactly true; the deferral is unchanged, no batch is registered.
+    const lean = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true, deferShell: true, hotGlob: true, omitBatch: true });
+    const leanSearch = (await lean.describe('ToolSearch')).description;
+    check('omitBatch registers no batch, keeps the same deferral, and drops the envelope sentence', lean.registered === undefined
+      && (await lean.describe('Bash')).isDeferred === true && (await lean.describe('Grep')).isDeferred === true && await lean.describe('Read') === original
+      && leanSearch === (await glob.describe('ToolSearch')).description.replace(' ' + ENVELOPE_NOTE.replace('only this batch', 'only the batch'), ''), info);
+    for (const omitBatch of [undefined, false, 'true', 1]) { const kept = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true, omitBatch }); check('omitBatch other than exactly true still registers the batch: ' + omitBatch, kept.registered !== undefined, info); }
+    const batchNoHot = await started({ enabled: true, deferBuiltins: true, omitBatch: true });
+    check('omitBatch without hotCoreTools keeps the old batch and text', batchNoHot.registered?.description === SPEC.description && (await batchNoHot.describe('ToolSearch')).description === oldSearch, info);
     const globNoHot = await started({ enabled: true, deferBuiltins: true, hotGlob: true });
     check('hotGlob without hotCoreTools keeps the old deferral of Glob', (await globNoHot.describe('Glob')).isDeferred === true && (await globNoHot.describe('ToolSearch')).description === oldSearch, info);
     for (const tool of HOT_CORE) check('hot core tool keeps its exact native placement and text: ' + tool, await hot.describe(tool) === original, info);

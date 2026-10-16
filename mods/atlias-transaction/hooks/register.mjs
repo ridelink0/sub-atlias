@@ -116,6 +116,9 @@ export function register(on, options = {}) {
   // Its schema is ~730 bytes on 2.1.301; deferred, a 9B called it three times with a guessed `query` before loading it.
   const hot = hotCore && options.hotGlob === true ? [...shells, 'Glob'] : shells;
   const unchangedReads = enabled && options.unchangedReads === true;
+  // omitBatch (off unless exactly true, only with hotCore; Gev 2026-10-16): the deferral stays, the batch tool is not
+  // registered. In 26 Atlias runs of sprint-lean-r1/r2b/r2c the 9B never called it, and it was ~1.4 KB of every request.
+  const omitBatch = hotCore && options.omitBatch === true;
   const base = hotCore ? { ...SPEC, description: HOT_CORE_DESCRIPTION } : SPEC;
   const spec = compactReads ? { ...base, description: base.description + ' Exact numbered Read text is retained; duplicated file.content may be represented by {from:"native.text",format:"line-number-tab-v1"} (remove each numbered prefix) or format:"text-v1" (identical text). All file metadata is retained.' } : base;
   let available = null;
@@ -129,7 +132,7 @@ export function register(on, options = {}) {
       if (!names.includes('ToolSearch')) return next(e);
       const operations = TOOLS.filter(n => names.includes(n));
       if (operations.length) {
-        await $.tool.register({ ...spec, inputSchema: { ...SPEC.inputSchema, properties: {
+        if (!omitBatch) await $.tool.register({ ...spec, inputSchema: { ...SPEC.inputSchema, properties: {
           operations: { ...SPEC.inputSchema.properties.operations, items: { ...SPEC.inputSchema.properties.operations.items, properties: {
             ...SPEC.inputSchema.properties.operations.items.properties, tool: { type: 'string', enum: operations },
           } } },
@@ -146,7 +149,7 @@ export function register(on, options = {}) {
     if (!result || typeof result !== 'object' || Array.isArray(result) || ![Object.prototype, null].includes(Object.getPrototypeOf(result))) return result;
     if (e.tool === 'ToolSearch' && typeof result.description !== 'string') return result;
     // Hot core: name only what is actually deferred; nothing deferred, nothing added.
-    if (e.tool === 'ToolSearch' && hotCore) return available.length ? { ...result, description: result.description + '\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE.replace('only this batch', 'only the batch') } : result;
+    if (e.tool === 'ToolSearch' && hotCore) return available.length ? { ...result, description: result.description + '\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly.' + (omitBatch ? '' : ' ' + ENVELOPE_NOTE.replace('only this batch', 'only the batch')) } : result;
     if (e.tool === 'ToolSearch') return { ...result, description: result.description + '\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly. Batch operations: ' + available.filter(n => TOOLS.includes(n)).join(', ') + '.' };
     return available.includes(e.tool) ? { ...result, isDeferred: true } : result;
   }).catch(async ($, e, next) => next(e));
