@@ -9,6 +9,7 @@ import sys
 import tempfile
 import threading
 import time
+import types
 import urllib.error
 import urllib.request
 
@@ -251,6 +252,17 @@ def main():
     free = B.run_tree(grab(400), timeout=60)
     check("a capped check that allocates past its cap fails; under the cap, or with no cap, it runs",
           over[0] != 0 and not over[1] and under == (0, False) and free == (0, False), (over, under, free))
+    # The per-process cap holds for every process of the tree: a grandchild that runs away fails too
+    # (sprint-lean-s6: the base arm's own run of the same task's code took the memory).
+    nested = lambda mib: [sys.executable, "-c", "import subprocess, sys; sys.exit(subprocess.call([sys.executable, '-c', 'b = bytearray(%d * 1024 * 1024); b[-1] = 1']))" % mib]
+    def tree(argv, cap):
+        # Through run_harness, the way the runner starts a harness; the door only needs its first-call time.
+        rc, why = B.run_harness(argv, cwd=None, env=None, door=types.SimpleNamespace(first=None), start_limit=60, task_limit=60,
+                                stdout=B.subprocess.DEVNULL, process_memory=cap)
+        return rc
+    deep_over, deep_under, deep_free = tree(nested(800), 256 * 1024 * 1024), tree(nested(32), 256 * 1024 * 1024), tree(nested(400), 0)
+    check("a per-process cap stops a runaway grandchild, and leaves small or uncapped work alone",
+          deep_over != 0 and deep_under == 0 and deep_free == 0, (deep_over, deep_under, deep_free))
 
     s, b = post({"model": "other", "messages": msg("x"), "temperature": 1.5, "max_tokens": 99999, "max_completion_tokens": 5})
     last = seen[-1]

@@ -32,15 +32,18 @@ if WIN:
     K.CloseHandle.argtypes, K.CloseHandle.restype = [W.HANDLE], W.BOOL
     N.NtResumeProcess.argtypes, N.NtResumeProcess.restype = [W.HANDLE], ctypes.c_long
 
-def start_owned(argv, job_memory=0, **kwargs):
-    """job_memory (bytes, 0 = no limit): the most committed memory the whole owned tree may hold. Gev
+def start_owned(argv, job_memory=0, process_memory=0, **kwargs):
+    """job_memory (bytes, 0 = no limit): the most committed memory the whole owned tree may hold;
+    process_memory (bytes, 0 = no limit): the most any one process in the tree may hold. Gev
     2026-10-16: a model-written solution under the grader took more than 7 GB within its 60 s and
-    tripped the launcher's memory guard on three screens; with a limit its allocations fail instead."""
+    tripped the launcher's memory guard on three screens, and on a fourth the base arm's own run of the
+    same task did; with a limit its allocations fail instead."""
     if not WIN:
         kwargs["start_new_session"] = True
-        if job_memory:
+        cap = min(x for x in (job_memory, process_memory) if x) if (job_memory or process_memory) else 0
+        if cap:
             import resource
-            kwargs["preexec_fn"] = lambda: resource.setrlimit(resource.RLIMIT_AS, (job_memory, job_memory))
+            kwargs["preexec_fn"] = lambda: resource.setrlimit(resource.RLIMIT_AS, (cap, cap))
         p = subprocess.Popen(argv, **kwargs)
     else:
         job = K.CreateJobObjectW(None, None)
@@ -51,6 +54,9 @@ def start_owned(argv, job_memory=0, **kwargs):
         if job_memory:
             limits.basic.flags |= 0x200  # JOB_OBJECT_LIMIT_JOB_MEMORY
             limits.job_memory = int(job_memory)
+        if process_memory:
+            limits.basic.flags |= 0x100  # JOB_OBJECT_LIMIT_PROCESS_MEMORY, every process in the tree
+            limits.process_memory = int(process_memory)
         p = None
         try:
             if not K.SetInformationJobObject(job, 9, ctypes.byref(limits), ctypes.sizeof(limits)):

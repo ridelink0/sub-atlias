@@ -817,7 +817,7 @@ class DoorHandler(http.server.BaseHTTPRequestHandler):
                 pass
 
 
-def run_harness(argv, *, cwd, env, door, start_limit, task_limit, stdout, stdin_text=None):
+def run_harness(argv, *, cwd, env, door, start_limit, task_limit, stdout, stdin_text=None, process_memory=0):
     """argv as the root of its own process tree, with the prompt on stdin when given. Two limits,
     each ending the whole tree: `start_limit` seconds to make the first model call (OpenCode run
     from source needs about 150 s on this PC before it asks for anything, nanobot a few), then
@@ -827,7 +827,7 @@ def run_harness(argv, *, cwd, env, door, start_limit, task_limit, stdout, stdin_
           "stdout": stdout, "stderr": subprocess.STDOUT}
     if not WIN:
         kw["start_new_session"] = True
-    p = start_owned(argv, **kw)
+    p = start_owned(argv, process_memory=process_memory, **kw)
     with _LIVE_LOCK:
         LIVE.add(p)
     try:
@@ -1137,14 +1137,16 @@ def run_one(task, a, shims):
         env = offline_env(state, door, shims, extra_path=[pathlib.Path(a.ripgrep).parent] if a.harness == "opencode" and a.ripgrep else (), extra=caches, harness=a.harness)
         argv, cwd, stdin_text = HARNESS[a.harness](a, task, ws, state, door, budget, env)
         with open(log, "wb") as buf:
-            rc, stopped = run_harness(argv, cwd=cwd, env=env, door=door, start_limit=a.start_timeout, task_limit=a.task_timeout, stdout=buf, stdin_text=stdin_text)
+            rc, stopped = run_harness(argv, cwd=cwd, env=env, door=door, start_limit=a.start_timeout, task_limit=a.task_timeout, stdout=buf, stdin_text=stdin_text,
+                                 process_memory=int(getattr(a, "harness_process_memory_mib", 0) or 0) * 1024 * 1024)
             # A start that never reached the model is tried once more: no call was made, so the task
             # is not attempted twice (stock OpenCode sometimes asks for its model before it has found it).
             if door.calls == 0 and rc != 0 and not stopped:
                 starts = 2
                 buf.write(b"[no model call was made; started again]" + os.linesep.encode())
                 buf.flush()
-                rc, stopped = run_harness(argv, cwd=cwd, env=env, door=door, start_limit=a.start_timeout, task_limit=a.task_timeout, stdout=buf, stdin_text=stdin_text)
+                rc, stopped = run_harness(argv, cwd=cwd, env=env, door=door, start_limit=a.start_timeout, task_limit=a.task_timeout, stdout=buf, stdin_text=stdin_text,
+                                 process_memory=int(getattr(a, "harness_process_memory_mib", 0) or 0) * 1024 * 1024)
         stop = stopped or f"exit {rc}"
     except Exception as e:  # a harness that cannot start is a fail, not a skipped task
         stop = f"crash: {type(e).__name__}: {e}"[:200]
@@ -1274,6 +1276,7 @@ def main():
     ap.add_argument("--resume", action="store_true", help="keep the tasks already in --out and run only the rest")
     ap.add_argument("--keep", action="store_true", help="keep the workspace of a passing task too")
     ap.add_argument("--check-memory-mib", type=int, default=0, help="most memory the grading check's process tree may commit (0 = no limit)")
+    ap.add_argument("--harness-process-memory-mib", type=int, default=0, help="most memory any one process in the harness tree may commit, the code it runs included (0 = no limit)")
     ap.add_argument("--model", required=True, help="the Ollama model name, for example qwen3.5:9b")
     ap.add_argument("--api-base", default="http://127.0.0.1:11435")
     ap.add_argument("--work", default=os.path.join(tempfile.gettempdir(), "base-h2h"))
