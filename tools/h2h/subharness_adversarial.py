@@ -329,6 +329,10 @@ cases += [
     # dropping hotCore from `hot` itself changes nothing, because that guard already holds.
     ('hot list applies without hot core', 'mods/atlias-transaction/hooks/register.mjs', "!(hotCore && hot.includes(n))", "!hot.includes(n)", HOTCORE_SUITE),
 ]
+RUNNER_SELFTEST = [sys.executable, 'tools/h2h/base_harness_selftest.py']
+cases += [
+    ('model parameters hashed in server order', 'tools/h2h/base_harness_runner.py', 'return "\\n".join(sorted(line.strip() for line in text.splitlines() if line.strip()))', 'return text', RUNNER_SELFTEST),
+]
 EFFICIENCY_SUITE = ['node', 'test/run.mjs', 'efficiency: native placement preserves']
 cases += [
     ('efficiency hotGlob still defers Glob', 'mods/atlias-efficiency/hooks/register.mjs', "if (!DEFER.includes(event.tool) || keep.includes(event.tool)) return result;", "if (!DEFER.includes(event.tool)) return result;", EFFICIENCY_SUITE),

@@ -982,6 +982,13 @@ def _digest(obj):
     return hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
 
+def canonical_parameters(text):
+    """Ollama's /api/show renders a model's stored parameters as one line each, in an order that
+    changed with every server start for the same blob (sprint runs 2026-10-16: three hashes for one
+    params digest). Sorted lines keep every value, repeated ones included, in one order."""
+    return "\n".join(sorted(line.strip() for line in text.splitlines() if line.strip()))
+
+
 def file_digest(path):
     h = hashlib.sha256()
     try:
@@ -1020,7 +1027,7 @@ def model_facts(api_base, model):
     return {"name": model, "server": (ask("/api/version") or {}).get("version"),
             "digest": next((m.get("digest") for m in tags.get("models", []) if model in (m.get("name"), m.get("model"))), None),
             "template": _digest(show["template"]) if isinstance(show.get("template"), str) else None,
-            "parameters": _digest(show["parameters"]) if isinstance(show.get("parameters"), str) else None,
+            "parameters": _digest(canonical_parameters(show["parameters"])) if isinstance(show.get("parameters"), str) else None,
             "quantization": (show.get("details") or {}).get("quantization_level")}
 
 

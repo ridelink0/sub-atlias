@@ -236,6 +236,14 @@ def main():
     def msg(text):
         return [{"role": "user", "content": text}]
 
+    # Gev 2026-10-16: /api/show listed the same stored parameters in another order on each server start.
+    one = "num_ctx                        32768\ntemperature                    0.2\nstop                           \"<a>\"\nstop                           \"<b>\""
+    two = "stop                           \"<b>\"\ntemperature                    0.2\n\nnum_ctx                        32768\nstop                           \"<a>\""
+    check("model parameters hash the same whatever order the server lists them in", B._digest(B.canonical_parameters(one)) == B._digest(B.canonical_parameters(two)))
+    check("a changed or missing parameter value still changes the parameters hash",
+          B.canonical_parameters(one) != B.canonical_parameters(one.replace("0.2", "0.6"))
+          and B.canonical_parameters(one) != B.canonical_parameters(one.replace("stop                           \"<b>\"", "")))
+
     s, b = post({"model": "other", "messages": msg("x"), "temperature": 1.5, "max_tokens": 99999, "max_completion_tokens": 5})
     last = seen[-1]
     check("a plain call is forwarded with the model, temperature and output cap set",
