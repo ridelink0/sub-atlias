@@ -19,6 +19,7 @@ It is the first step, not a saving. What each piece costs has to be known before
 
 - `claude plugin validate --strict` passes on Claude Code 2.1.296 (2026-10-12), and atlias's own suite drives every hook and proves each one passes its event on untouched (`node test/run.mjs "meter:"`).
 - It has not yet been run in a live session, so the numbers it prints there are unseen.
+- MEASURED 2026-10-16 with no model on Claude Code 2.1.301 (native-meter-door-r1, native-meter-retry-r2 in the Gev handoff folder): each ledger row equalled the provider door's count for the same request, and absent cache counts arrive as 0. A request that failed and was retried by Claude Code left no ledger row while the door recorded the failed attempt with no count, so the meter's total can be known while the true all-attempt total is unknown. The ledger therefore never replaces the door for TOTAL or PEAK across attempts and roles; it labels what the finished steps did.
 - The exact ledger (2026-10-16) is tested against synthetic step results only. Whether its counts equal what the provider door meters for the same requests on the installed Claude Code is NOT yet qualified; no ratio or saving may be read from it before that comparison passes.
 - It lives outside the main atlias plugin on purpose: what a Claude Code older than 2.1.287 does with a hooks module is not known.
 - Mods are an early-access surface that Anthropic says may change between releases.
