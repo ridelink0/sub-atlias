@@ -42,6 +42,25 @@ export default async function lazyBriefSuites({ suite, check, core, gate, router
     { happened: JSON.stringify(brief.lazyRules()), why: 'A rule set that grows by accident costs every call.', fix: 'Keep lazyRules() to its rules.' });
   });
 
+  suite('no working rules expert', 'the brief can carry no working rules at all', () => {
+    const checked = project('norules', { 'main.py': 'def f():\n    return 1\n', 'check.py': 'from main import f\nassert f() == 1\n' });
+    const arm = { gateRunsCheck: true, quietDoneClaim: true };
+    for (const [label, extra] of [['full brief', {}], ['hooks-only brief', { hooksOnly: true }]]) {
+      const none = say(checked, { ...extra, ...arm, noWorkingRules: true }, { doublePass: false });
+      const noneLazy = say(checked, { ...extra, ...arm, noWorkingRules: true, lazyBrief: true }, { doublePass: false });
+      const lazy = say(checked, { ...extra, ...arm, lazyBrief: true }, { doublePass: false });
+      check(`${label}: no working rules section and no rule text`, !none.includes('## Working rules') && !/Do the least|Done means verified|atlias runs/.test(none) && !none.includes(brief.RULES[1]),
+      { happened: none, why: 'Gev: Atlias rules must not make the model spend more tokens; the lazy set cost the 9B quality (sprint-lean-s1).', fix: 'Return before the working rules when flags.noWorkingRules is on.' });
+      check(`${label}: it overrides lazyBrief`, noneLazy === none,
+      { happened: noneLazy, why: 'The switch means none, whatever other rule set is on.', fix: 'Check flags.noWorkingRules before the lazyBrief branch.' });
+      check(`${label}: the brief still says it is Atlias, and is shorter than the lazy one`, /^\[atlias /.test(none) && none.length < lazy.length && lazy.startsWith(none),
+      { happened: `${none.length} against ${lazy.length} characters`, why: 'Only the rules go; the rest of the brief stays as it was.', fix: 'Leave every other brief section alone.' });
+    }
+    const off = say(checked, arm, { doublePass: false });
+    check('off by default, and off the rules are as before', core.config().flags.noWorkingRules === false && off.includes('## Working rules') && off.includes(brief.RULES[1]),
+    { happened: off, why: 'New behaviour is a default-off switch, so stored runs stay comparable.', fix: 'Default flags.noWorkingRules to false in lib/core.mjs.' });
+  });
+
   suite('quiet done claim expert', 'the gate never holds a done reply for the want of a check', () => {
     const edited = [{ t: 1, kind: 'prompt' }, { t: 2, kind: 'edit', file: 'main.py' }];
     const done = 'Done, the function is fixed.';
