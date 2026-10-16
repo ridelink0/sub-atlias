@@ -244,6 +244,14 @@ def main():
           B.canonical_parameters(one) != B.canonical_parameters(one.replace("0.2", "0.6"))
           and B.canonical_parameters(one) != B.canonical_parameters(one.replace("stop                           \"<b>\"", "")))
 
+    # Gev 2026-10-16: a model-written solution under the grader took more than 7 GB in its 60 s (three screen stops).
+    grab = lambda mib: [sys.executable, "-c", f"b = bytearray({mib} * 1024 * 1024); b[-1] = 1"]
+    over = B.run_tree(grab(800), timeout=60, job_memory=256 * 1024 * 1024)
+    under = B.run_tree(grab(32), timeout=60, job_memory=256 * 1024 * 1024)
+    free = B.run_tree(grab(400), timeout=60)
+    check("a capped check that allocates past its cap fails; under the cap, or with no cap, it runs",
+          over[0] != 0 and not over[1] and under == (0, False) and free == (0, False), (over, under, free))
+
     s, b = post({"model": "other", "messages": msg("x"), "temperature": 1.5, "max_tokens": 99999, "max_completion_tokens": 5})
     last = seen[-1]
     check("a plain call is forwarded with the model, temperature and output cap set",

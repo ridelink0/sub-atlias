@@ -124,7 +124,7 @@ def validate(spec):
     for h in hosts:
         positive(h["numCtx"], "numCtx")
         positive(h.get("numPredict", 2048), "numPredict")
-        for key in ("budget", "taskTimeout", "startTimeout"):
+        for key in ("budget", "taskTimeout", "startTimeout", "checkMemoryMiB"):
             if key in h:
                 positive(h[key], key)
         if not pathlib.Path(h["client"]).is_file():
@@ -327,7 +327,7 @@ def base_identity(manifest, tasks, host, task_id):
     search = search["base"] if isinstance(search, dict) else search
     return digest({"client": manifest["clientHashes"][host], "model": spec["model"],
                    "apiBase": spec.get("apiBase", "http://127.0.0.1:11435"),
-                   "host": {k: h.get(k) for k in ("host", "numCtx", "numPredict", "budget", "taskTimeout", "startTimeout")},
+                   "host": {k: h.get(k) for k in ("host", "numCtx", "numPredict", "budget", "taskTimeout", "startTimeout", "checkMemoryMiB")},
                    "toolSearch": search, "task": digest(tasks[task_id]) if task_id in tasks else None,
                    "runner": {f: manifest.get("sourceFiles", {}).get(f) for f in BASE_RUNNER_FILES},
                    # Codex review 2026-10-16: the disabled-skill inventory is applied to Codex's base arm too.
@@ -696,6 +696,8 @@ def arguments(root, manifest, trial):
     return types.SimpleNamespace(harness=trial["host"], model=spec["model"], api_base=spec.get("apiBase", "http://127.0.0.1:11435"),
         num_ctx=host["numCtx"], num_predict=host.get("numPredict", 2048), budget=host.get("budget", 0),
         task_timeout=host.get("taskTimeout", 1200), start_timeout=host.get("startTimeout", 600), keep=True, work=str(work),
+        # host.checkMemoryMiB (Gev 2026-10-16): the grading check's memory cap, the same in both arms; absent = none.
+        check_memory_mib=host.get("checkMemoryMiB", 0),
         claude=host["client"], codex=host["client"], codex_home_from=str(pathlib.Path(root) / "prepared-codex-home") if enhanced and trial["host"] == "codex" else "",
         codex_disabled_skills=str(pathlib.Path(root) / "CODEX-DISABLED-SKILLS.json") if manifest.get("codexDisabledSkillsHash") else "",
         codex_bypass_hook_trust=enhanced and host.get("bypassHookTrust", False) is True,
@@ -1155,10 +1157,19 @@ def selftest_cases():
                           ("window", lambda m, t: m["spec"]["hosts"][0].update(numCtx=99)), ("output cap", lambda m, t: m["spec"]["hosts"][0].update(numPredict=51)),
                           ("base tool search", lambda m, t: m["spec"].update(toolSearch={"base": True, "atlias": True})), ("endpoint", lambda m, t: m["spec"].update(apiBase="http://127.0.0.1:1")),
                           ("task", lambda m, t: t["a"].update(prompt="changed")),
-                          ("runner", lambda m, t: m.update(sourceFiles={"tools/h2h/base_harness_runner.py": "other"}))):
+                          ("runner", lambda m, t: m.update(sourceFiles={"tools/h2h/base_harness_runner.py": "other"})),
+                          ("grading memory cap", lambda m, t: m["spec"]["hosts"][0].update(checkMemoryMiB=2048))):
         m2, t2 = copy.deepcopy(old), copy.deepcopy(task_set)
         change(m2, t2)
         check(f"a different {label} changes the base identity", base_identity(m2, t2, "claude", "a") != base_identity(rm, task_set, "claude", "a"))
+    # host.checkMemoryMiB reaches the runner for both arms; absent, the grade has no cap as before.
+    capped = copy.deepcopy(rm)
+    capped["spec"].update(tasks=[], hosts=[{"host": "claude", "numCtx": 100, "numPredict": 50, "client": "c", "checkMemoryMiB": 2048}])
+    arm_caps = [arguments("root", capped, {**t, "arm": arm}).check_memory_mib for t in plan(capped)[:1] for arm in ("base", "atlias")]
+    plain = copy.deepcopy(capped)
+    del plain["spec"]["hosts"][0]["checkMemoryMiB"]
+    check("the grading memory cap reaches both arms, and is off when absent",
+          arm_caps == [2048, 2048] and arguments("root", plain, plan(plain)[0]).check_memory_mib == 0)
     FACTS = {"name": "qwen", "digest": "weights", "parameters": "p1"}
     prior_plan = plan(old)
     def receipt(t, **result):

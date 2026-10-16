@@ -32,9 +32,15 @@ if WIN:
     K.CloseHandle.argtypes, K.CloseHandle.restype = [W.HANDLE], W.BOOL
     N.NtResumeProcess.argtypes, N.NtResumeProcess.restype = [W.HANDLE], ctypes.c_long
 
-def start_owned(argv, **kwargs):
+def start_owned(argv, job_memory=0, **kwargs):
+    """job_memory (bytes, 0 = no limit): the most committed memory the whole owned tree may hold. Gev
+    2026-10-16: a model-written solution under the grader took more than 7 GB within its 60 s and
+    tripped the launcher's memory guard on three screens; with a limit its allocations fail instead."""
     if not WIN:
         kwargs["start_new_session"] = True
+        if job_memory:
+            import resource
+            kwargs["preexec_fn"] = lambda: resource.setrlimit(resource.RLIMIT_AS, (job_memory, job_memory))
         p = subprocess.Popen(argv, **kwargs)
     else:
         job = K.CreateJobObjectW(None, None)
@@ -42,6 +48,9 @@ def start_owned(argv, **kwargs):
             raise ctypes.WinError(ctypes.get_last_error())
         limits = Extended()
         limits.basic.flags = 0x2000  # KILL_ON_JOB_CLOSE; children cannot outlive this owned job.
+        if job_memory:
+            limits.basic.flags |= 0x200  # JOB_OBJECT_LIMIT_JOB_MEMORY
+            limits.job_memory = int(job_memory)
         p = None
         try:
             if not K.SetInformationJobObject(job, 9, ctypes.byref(limits), ctypes.sizeof(limits)):
@@ -88,8 +97,8 @@ def release(p):
     with _LIVE_LOCK:
         LIVE.discard(p)
 
-def run_tree(argv, *, cwd=None, env=None, timeout=60, stdout=None, shell=False):
-    p = start_owned(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL, shell=shell,
+def run_tree(argv, *, cwd=None, env=None, timeout=60, stdout=None, shell=False, job_memory=0):
+    p = start_owned(argv, job_memory=job_memory, cwd=cwd, env=env, stdin=subprocess.DEVNULL, shell=shell,
                     stdout=stdout if stdout is not None else subprocess.DEVNULL, stderr=subprocess.STDOUT)
     try:
         try:

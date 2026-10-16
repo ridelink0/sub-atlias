@@ -1178,7 +1178,9 @@ def run_one(task, a, shims):
     env_chk = os.environ | {"PYTHONIOENCODING": "utf-8", "PYTHONUTF8": "1"}
     with tempfile.TemporaryFile() as buf:
         try:
-            crc, ctimed = run_tree(chk, cwd=str(ws), env=env_chk, timeout=limit, stdout=buf)
+            # --check-memory-mib (0 = off): the grade runs model-written code; a cap makes a runaway fail its check.
+            crc, ctimed = run_tree(chk, cwd=str(ws), env=env_chk, timeout=limit, stdout=buf,
+                                   job_memory=int(getattr(a, "check_memory_mib", 0) or 0) * 1024 * 1024)
         except Exception as e:
             crc, ctimed = -1, False
             buf.write(str(e).encode("utf-8"))
@@ -1271,6 +1273,7 @@ def main():
     ap.add_argument("--budget", type=int, default=0)
     ap.add_argument("--resume", action="store_true", help="keep the tasks already in --out and run only the rest")
     ap.add_argument("--keep", action="store_true", help="keep the workspace of a passing task too")
+    ap.add_argument("--check-memory-mib", type=int, default=0, help="most memory the grading check's process tree may commit (0 = no limit)")
     ap.add_argument("--model", required=True, help="the Ollama model name, for example qwen3.5:9b")
     ap.add_argument("--api-base", default="http://127.0.0.1:11435")
     ap.add_argument("--work", default=os.path.join(tempfile.gettempdir(), "base-h2h"))
