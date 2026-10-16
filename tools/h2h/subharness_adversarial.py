@@ -252,6 +252,20 @@ cases += [
     ('a lost ledger is not detected before the router records the follow-up', 'lib/agent.mjs', "    try { if (!ledger.read(state.sid).some(r => r.kind === 'request')) state.authorityMissing = true; }", '    try { }', ['node', 'test/run.mjs', 'codex authority']),
     ('helpers run on incomplete authority', 'lib/agent.mjs', 'const planned = exact && state.authorityMissing ? { ran: false } :', 'const planned = false ? { ran: false } :', ['node', 'test/run.mjs', 'codex authority']),
 ]
+# Audit A1 (Codex-approved): a partial Anthropic reading is an unknown prompt.
+CACHE = ['node', 'test/run.mjs', 'what the provider says it served from cache']
+cases += [
+    ('a missing input reads as a whole prompt', 'lib/loop.mjs', 'const parts = [input, field(', 'const parts = [input || 0, field(', CACHE),
+    ('a malformed cache field reads as zero', 'lib/loop.mjs', "const field = (k) => (k in usage ? n(usage[k]) : 0);", "const field = (k) => (n(usage[k]) || 0);", CACHE),
+    ('an unknown prompt counts toward the cache rate', 'lib/loop.mjs', 'if (!r || r.cached === null || r.prompt === null) { c.silent++; return c; }', 'if (!r || r.cached === null) { c.silent++; return c; }', CACHE),
+]
+# Audit A3 (Codex-approved): totals and peak are exact only when every round and every run has a count.
+TOKENS = ['node', 'test/run.mjs', 'a run counts the engine tokens it spent']
+cases += [
+    ('a silent round is summed as zero in a task total', 'lib/eval.mjs', 'xs.length > 0 && xs.every((x) => Number.isSafeInteger(x) && x >= 0) && ', 'xs.length > 0 && ', TOKENS),
+    ('exact totals ignore their default-off flag', 'lib/eval.mjs', 'const exactTotals = config().flags?.exactTokenTotals === true;', 'const exactTotals = true;', TOKENS),
+    ('a partial per-round list is read as a run total', 'lib/eval.mjs', 'r[list].length && r[list].every(whole) ?', 'r[list].length && r[list].some(whole) ?', TOKENS),
+]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
 # Validate all anchors before spending time on the first planted execution.

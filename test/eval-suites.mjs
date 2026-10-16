@@ -584,10 +584,24 @@ export default async function register({ asyncSuite, check, TMP }) {
       { happened: JSON.stringify({ promptTotal: r.promptTotal, outputTotal: r.outputTotal, out: r.outputTokens, prompts: r.promptTokens }), why: 'Characters are a proxy; the engine\'s own counts are what a run cost, and "tokens per solved task" is the judge\'s number.', fix: 'runLoop keeps outLog beside promptLog; runTask sums both.' });
     check('and what the model was handed, which is never more than what was recorded', r.handed > 0 && r.handed <= r.chars,
       { happened: `handed ${r.handed}, chars ${r.chars}`, why: 'chars also counts bookkeeping and observations the view had shrunk, so it over-states atlias against a harness with no such record.', fix: 'handed is the role/content JSON of loop.view at the end.' });
+    // Audit A3: one round without a prompt count makes the task's prompt total and peak unknown.
+    let k = 0;
+    const silentRound = async () => { k++; return { content: k === 1 ? blk({ tool: 'write_file', path: 'sum.js', content: 'export function two() { return 2; }' + NL }) : 'Fixed; node test.mjs exits 0.', usage: k === 2 ? { eval_count: 7 } : { prompt_eval_count: 100 * k, eval_count: 7 } }; };
+    process.env.ATLIAS_FLAG_EXACT_TOKEN_TOTALS = '1';
+    let s;
+    try { s = await evals.runTask({ ...FIX, id: 'tok-silent' }, { state: agentMod.newState(process.cwd(), 'echo'), chat: silentRound }); } finally { delete process.env.ATLIAS_FLAG_EXACT_TOKEN_TOTALS; }
+    k = 0;
+    const off = await evals.runTask({ ...FIX, id: 'tok-silent-off' }, { state: agentMod.newState(process.cwd(), 'echo'), chat: silentRound });
+    check('with flags.exactTokenTotals off the stored report shape is unchanged', typeof off.peakPrompt === 'number' && !('promptUnknownRounds' in off), { happened: JSON.stringify({ peak: off.peakPrompt, keys: Object.keys(off).filter((x) => /Unknown/.test(x)) }), why: 'Stored runs are compared with new ones; a default that changes their shape breaks the comparison.', fix: 'Gate the exact totals on flags.exactTokenTotals.' });
+    check('a task with a round that reported no prompt count has an unknown prompt total and peak, and says how many rounds were silent', s.promptTotal === null && s.peakPrompt === null && s.promptUnknownRounds === 1 && s.outputTotal === 7 * s.outputTokens.length,
+      { happened: JSON.stringify({ promptTotal: s.promptTotal, peak: s.peakPrompt, unknown: s.promptUnknownRounds, prompts: s.promptTokens }), why: 'Summing only the rounds that reported showed a lower bound as the task total, and the peak ignored the silent round.', fix: 'exactLog in lib/eval.mjs.' });
     const A = { results: [{ id: 't1', pass: true, chars: 1000, handed: 800, promptTotal: 5000, outputTotal: 500 }, { id: 't2', pass: false, chars: 2000, handed: 1500, promptTotal: 7000, outputTotal: 700 }] };
     const B = { results: [{ id: 't1', pass: true, chars: 900, promptTokens: [1000, 2000], outputTokens: [50, 50] }, { id: 't2', pass: true, chars: 900, promptTokens: [1000, null], outputTokens: [50] }] };
     const text = evals.formatCompare(evals.compare(A, B), 'atlias', 'mini');
-    check('compare prints engine tokens per passing attempt for both, from totals or from the per-round lists', /engine tokens: atlias 12k prompt \(12\.0k per passing attempt\) \+ 1k output; mini 4k prompt \(2\.0k per passing attempt\) \+ 0k output/.test(text) && /handed at the end/.test(text),
+    const C = { results: [{ id: 't1', pass: true, chars: 900, promptTokens: [1000, 2000], outputTokens: [50, 50] }, { id: 't2', pass: true, chars: 900, promptTokens: [1000], outputTokens: [50] }] };
+    const full = evals.formatCompare(evals.compare(A, C), 'atlias', 'mini');
+    check('a side whose every round has a count still sums its per-round lists', /mini 4k prompt \(2\.0k per passing attempt\)/.test(full), { happened: full.split(NL).filter((l) => /engine tokens/.test(l)).join(' | '), why: 'Per-round lists are the only record some runners keep; complete ones are exact.', fix: 'tok() in compare.' });
+    check('compare prints engine tokens from totals, and a side with a run or round lacking a count is unknown, never a lower bound read as a total', /engine tokens: atlias 12k prompt \(12\.0k per passing attempt\) \+ 1k output; mini unknown \(a run or a round has no count\)/.test(text) && /handed at the end/.test(text),
       { happened: text.split(NL).filter((l) => /engine tokens|handed/.test(l)).join(' | '), why: 'The head-to-head is judged on the cost of a solve, and the mini-swe-agent runner keeps only per-round lists.', fix: 'Check costOf tok() in compare.' });
   });
 }
