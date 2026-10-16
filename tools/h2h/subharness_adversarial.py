@@ -310,14 +310,9 @@ cases += [
     ('report: negative-legacy-count-accepted', 'tools/h2h/base_harness_compare.mjs', 'const int = (x) => Number.isSafeInteger(x) && x >= 0;', 'const int = (x) => Number.isSafeInteger(x);', REPORT_ACCOUNTING_SUITE),
 ]
 
-# Gev 2026-10-16: flags.lazyBrief and flags.quietDoneClaim (Atlias rules must not cost the model more calls).
-LAZY_SUITE = ['node', 'test/run.mjs', 'the lazy brief asks for less work']
+# Gev 2026-10-16: flags.quietDoneClaim (Atlias rules must not cost the model more calls; flags.lazyBrief was removed).
 QUIET_SUITE = ['node', 'test/run.mjs', 'the gate never holds a done reply']
 cases += [
-    ('lazy brief: rules added on top of the old ones', 'lib/brief.mjs', 'const rules = flags.lazyBrief ? lazyRules({ check: flags.quietDoneClaim ? check : null })', 'const rules = flags.lazyBrief ? [...lazyRules({ check: flags.quietDoneClaim ? check : null }), ...RULES]', LAZY_SUITE),
-    ('lazy brief: hooks-only brief ignores its flag', 'lib/brief.mjs', 'const short = flags.lazyBrief ? lazyRules(', 'const short = false ? lazyRules(', LAZY_SUITE),
-    ('lazy brief: check named without the quiet gate', 'lib/brief.mjs', 'const rules = flags.lazyBrief ? lazyRules({ check: flags.quietDoneClaim ? check : null })', 'const rules = flags.lazyBrief ? lazyRules({ check })', LAZY_SUITE),
-    ('lazy brief: no longer rules out new tests', 'lib/brief.mjs', 'no new files, tests, comments or refactors', 'no new files, comments or refactors', LAZY_SUITE),
     ('quiet: done claim still raised', 'lib/integrity.mjs', 'if (cfg.doneClaim !== false && !flags.doneclaim', 'if (!flags.doneclaim', QUIET_SUITE),
     ('quiet: stop gate ignores its flag', 'lib/gate.mjs', '...(quiet ? { doneClaim: false } : {})', '...({})', QUIET_SUITE),
     ('quiet: gate skips its own check after a plain reply', 'lib/gate.mjs', 'if (quiet && code.length && noneAfterEdit) return true;', '', QUIET_SUITE),

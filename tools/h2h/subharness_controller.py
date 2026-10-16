@@ -1145,7 +1145,7 @@ def selftest_cases():
             check(f"{key} {bad!r} is refused", rejected)
 
     # Gev 2026-10-16, faster benchmarks: base reuse and smoke fail-fast.
-    rm = {"id": "new", "clientHashes": {"claude": "client"}, "spec": {"model": "qwen", "candidate": "next", "atliasConfig": {"flags": {"lazyBrief": True}},
+    rm = {"id": "new", "clientHashes": {"claude": "client"}, "spec": {"model": "qwen", "candidate": "next", "atliasConfig": {"flags": {"noWorkingRules": True}},
           "toolSearch": {"base": False, "atlias": True}, "hosts": [{"host": "claude", "numCtx": 100, "numPredict": 50, "client": "c"}],
           "stages": [{"name": "smoke", "ids": ["a", "b"], "repeats": 1}]}}
     old = copy.deepcopy(rm)

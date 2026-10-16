@@ -1,7 +1,8 @@
-// Gev, 2026-10-16: Atlias's rules must not cost the model more calls. flags.lazyBrief (a short
-// least-work rule set, Atlias's own take on Ponytail) and flags.quietDoneClaim (the stop gate never
-// holds a done reply for the want of a check; it runs a check it can name instead). Both are off by
-// default and the flag-off golden suite keeps the old bytes. Synthetic fixtures only.
+// Gev, 2026-10-16: Atlias's rules must not cost the model more calls. flags.noWorkingRules (the
+// brief carries no working rules) and flags.quietDoneClaim (the stop gate never holds a done reply
+// for the want of a check; it runs a check it can name instead). Both are off by default and the
+// flag-off golden suite keeps the old bytes. Synthetic fixtures only. (flags.lazyBrief, a least-work
+// rule set and Atlias's take on Ponytail, was removed at Gev's word the same day.)
 import * as brief from '../lib/brief.mjs';
 import * as integrity from '../lib/integrity.mjs';
 
@@ -15,46 +16,17 @@ export default async function lazyBriefSuites({ suite, check, core, gate, router
   };
   const withFlags = (flags, verify = {}) => ({ ...core.config(), flags: { ...core.config().flags, ...flags }, verify: { ...core.config().verify, ...verify } });
   const say = (dir, flags, verify) => brief.build({ cwd: dir, source: 'startup', session_id: `lazy-${process.pid}-${++n}` }, 'claude', withFlags(flags, verify));
-  const rules = (text) => text.slice(text.indexOf('## Working rules'));
-  const py = process.platform === 'win32' ? 'python' : 'python3';
-
-  suite('lazy brief expert', 'the lazy brief asks for less work and names no check to write', () => {
-    const bare = project('bare', { 'main.py': 'def f():\n    return 1\n' });
-    const checked = project('checked', { 'main.py': 'def f():\n    return 1\n', 'check.py': 'from main import f\nassert f() == 1\n' });
-    for (const [label, extra] of [['full brief', {}], ['hooks-only brief', { hooksOnly: true }]]) {
-      const lazy = rules(say(bare, { ...extra, lazyBrief: true }, { doublePass: false }));
-      const old = rules(say(bare, { ...extra }, { doublePass: false }));
-      check(`${label}: lazy rules replace the old ones and ask for the least work`, /Do the least that fully meets the request/.test(lazy) && /no new files, tests/.test(lazy)
-        && !lazy.includes(brief.RULES[1]) && !/re-sends the whole context/.test(lazy),
-      { happened: lazy, why: 'The lazy set replaces the rules; adding it on top would cost bytes on every call.', fix: 'Use lazyRules() in place of the rules list in lib/brief.mjs.' });
-      check(`${label}: lazy rules ask for no check to write, no re-read and no pass line`, !/smallest real check|re-read each changed file|Pass 1|run it after your last edit/.test(lazy),
-      { happened: lazy, why: 'Asked for a check in a project with none, a 9B wrote its own (sprint smoke: base 3 calls, Atlias 9).', fix: 'lazyRules() names a check only when the gate will run it.' });
-      check(`${label}: lazy rules are shorter than the rules they replace`, lazy.length < old.length,
-      { happened: `${lazy.length} against ${old.length} characters`, why: 'Gev: Atlias rules must not make the model spend more tokens.', fix: 'Keep the lazy set shorter than the old rules.' });
-      check(`${label}: off, the rules are the old ones`, old.includes(brief.RULES[1]) && !/Do the least/.test(old),
-      { happened: old, why: 'The flag is off by default.', fix: 'Branch on flags.lazyBrief only.' });
-    }
-    const named = rules(say(checked, { lazyBrief: true, gateRunsCheck: true, quietDoneClaim: true }, { doublePass: false }));
-    const notQuiet = rules(say(checked, { lazyBrief: true, gateRunsCheck: true }, { doublePass: false }));
-    check('the check is named only when the gate will run it after every unchecked edit', named.includes(`atlias runs \`${py} check.py\``) && !/atlias runs/.test(notQuiet),
-    { happened: JSON.stringify({ named, notQuiet }), why: 'Without quietDoneClaim the gate runs the check only for some replies, so "atlias runs it after you finish" would be untrue.', fix: 'Pass the check to lazyRules() only with flags.quietDoneClaim.' });
-    check('lazyRules is exactly the three least-work rules without a check, four with one', brief.lazyRules().length === 3 && brief.lazyRules({ check: 'x' }).length === 4,
-    { happened: JSON.stringify(brief.lazyRules()), why: 'A rule set that grows by accident costs every call.', fix: 'Keep lazyRules() to its rules.' });
-  });
 
   suite('no working rules expert', 'the brief can carry no working rules at all', () => {
     const checked = project('norules', { 'main.py': 'def f():\n    return 1\n', 'check.py': 'from main import f\nassert f() == 1\n' });
     const arm = { gateRunsCheck: true, quietDoneClaim: true };
     for (const [label, extra] of [['full brief', {}], ['hooks-only brief', { hooksOnly: true }]]) {
       const none = say(checked, { ...extra, ...arm, noWorkingRules: true }, { doublePass: false });
-      const noneLazy = say(checked, { ...extra, ...arm, noWorkingRules: true, lazyBrief: true }, { doublePass: false });
-      const lazy = say(checked, { ...extra, ...arm, lazyBrief: true }, { doublePass: false });
+      const ruled = say(checked, { ...extra, ...arm }, { doublePass: false });
       check(`${label}: no working rules section and no rule text`, !none.includes('## Working rules') && !/Do the least|Done means verified|atlias runs/.test(none) && !none.includes(brief.RULES[1]),
-      { happened: none, why: 'Gev: Atlias rules must not make the model spend more tokens; the lazy set cost the 9B quality (sprint-lean-s1).', fix: 'Return before the working rules when flags.noWorkingRules is on.' });
-      check(`${label}: it overrides lazyBrief`, noneLazy === none,
-      { happened: noneLazy, why: 'The switch means none, whatever other rule set is on.', fix: 'Check flags.noWorkingRules before the lazyBrief branch.' });
-      check(`${label}: the brief still says it is Atlias, and is shorter than the lazy one`, /^\[atlias /.test(none) && none.length < lazy.length && lazy.startsWith(none),
-      { happened: `${none.length} against ${lazy.length} characters`, why: 'Only the rules go; the rest of the brief stays as it was.', fix: 'Leave every other brief section alone.' });
+      { happened: none, why: 'Gev: Atlias rules must not make the model spend more tokens; a least-work rule set cost the 9B quality (sprint-lean-s1).', fix: 'Return before the working rules when flags.noWorkingRules is on.' });
+      check(`${label}: the brief still says it is Atlias, and only the rules go`, /^\[atlias /.test(none) && none.length < ruled.length && ruled.startsWith(none),
+      { happened: `${none.length} against ${ruled.length} characters`, why: 'Only the rules go; the rest of the brief stays as it was.', fix: 'Leave every other brief section alone.' });
     }
     const off = say(checked, arm, { doublePass: false });
     check('off by default, and off the rules are as before', core.config().flags.noWorkingRules === false && off.includes('## Working rules') && off.includes(brief.RULES[1]),
@@ -74,7 +46,7 @@ export default async function lazyBriefSuites({ suite, check, core, gate, router
     const v = { integrity: true, doublePass: false };
     check('quiet makes the gate want its check after any unchecked code edit, whatever the reply says', gate.needsCheck({ turn: edited, last: 'Changed main.py.', files: ['main.py'], flags: {}, v, quiet: true })
       && !gate.needsCheck({ turn: edited, last: 'Changed main.py.', files: ['main.py'], flags: {}, v }),
-    { happened: 'needsCheck answer', why: 'The lazy brief tells the model atlias runs the check after it finishes; that must hold for every reply.', fix: 'needsCheck returns true for quiet with an unchecked code edit.' });
+    { happened: 'needsCheck answer', why: 'A brief that tells the model atlias runs the check after it finishes must hold for every reply.', fix: 'needsCheck returns true for quiet with an unchecked code edit.' });
     check('quiet wants no check once one ran after the edit, or when the gate already checked', !gate.needsCheck({ turn: [...edited, { t: 3, kind: 'shell', command: 'python check.py', verify: true, outcome: 'pass' }], last: 'Changed.', files: ['main.py'], flags: {}, v, quiet: true })
       && !gate.needsCheck({ turn: edited, last: 'Changed.', files: ['main.py'], flags: { gatecheck: true }, v, quiet: true }),
     { happened: 'needsCheck answer', why: 'A second run of a check that already ran costs time and proves nothing new.', fix: 'Keep the gatecheck and after-edit guards ahead of the quiet branch.' });
