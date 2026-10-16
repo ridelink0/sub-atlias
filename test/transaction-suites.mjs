@@ -177,6 +177,13 @@ export default async function transactionSuites({ asyncSuite, check }) {
     for (const deferShell of [undefined, false, 'true', 1]) { const plain = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true, deferShell }); check('deferShell other than exactly true keeps Bash hot: ' + deferShell, await plain.describe('Bash') === original, info); }
     const noHot = await started({ enabled: true, deferBuiltins: true, deferShell: true });
     check('deferShell without hotCoreTools keeps the old deferral and text', (await noHot.describe('ToolSearch')).description === oldSearch, info);
+    // hotGlob (sprint-lean-r1): only with hotCoreTools and only when exactly true; Glob stays visible and is no longer named as deferred.
+    const glob = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true, deferShell: true, hotGlob: true });
+    check('hotGlob keeps Glob natively visible and drops it from the deferred names, Grep stays deferred', await glob.describe('Glob') === original
+      && !/\bGlob\b/.test((await glob.describe('ToolSearch')).description.split('Native tools deferred by this mod:')[1] || '') && (await glob.describe('Grep')).isDeferred === true && (await glob.describe('Bash')).isDeferred === true, info);
+    for (const hotGlob of [undefined, false, 'true', 1]) { const plain = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true, hotGlob }); check('hotGlob other than exactly true keeps Glob deferred: ' + hotGlob, (await plain.describe('Glob')).isDeferred === true, info); }
+    const globNoHot = await started({ enabled: true, deferBuiltins: true, hotGlob: true });
+    check('hotGlob without hotCoreTools keeps the old deferral of Glob', (await globNoHot.describe('Glob')).isDeferred === true && (await globNoHot.describe('ToolSearch')).description === oldSearch, info);
     for (const tool of HOT_CORE) check('hot core tool keeps its exact native placement and text: ' + tool, await hot.describe(tool) === original, info);
     const deferred = profile.slice(1).filter(n => !HOT_CORE.includes(n));
     for (const tool of deferred) {

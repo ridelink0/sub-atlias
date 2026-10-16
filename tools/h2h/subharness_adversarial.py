@@ -322,6 +322,13 @@ cases += [
     ('quiet: stop gate ignores its flag', 'lib/gate.mjs', '...(quiet ? { doneClaim: false } : {})', '...({})', QUIET_SUITE),
     ('quiet: gate skips its own check after a plain reply', 'lib/gate.mjs', 'if (quiet && code.length && noneAfterEdit) return true;', '', QUIET_SUITE),
 ]
+cases += [
+    ('hotGlob accepts values other than true', 'mods/atlias-transaction/hooks/register.mjs', "hotCore && options.hotGlob === true ?", "hotCore && options.hotGlob ?", HOTCORE_SUITE),
+    ('hotGlob keeps nothing extra visible', 'mods/atlias-transaction/hooks/register.mjs', "[...shells, 'Glob'] : shells;", "shells : shells;", HOTCORE_SUITE),
+    # A hot list that applies without hot core (the hotCore guard on the deferral) is the meaningful break here;
+    # dropping hotCore from `hot` itself changes nothing, because that guard already holds.
+    ('hot list applies without hot core', 'mods/atlias-transaction/hooks/register.mjs', "!(hotCore && hot.includes(n))", "!hot.includes(n)", HOTCORE_SUITE),
+]
 EFFICIENCY_SUITE = ['node', 'test/run.mjs', 'efficiency: native placement preserves']
 cases += [
     ('names only: descriptions kept', 'mods/atlias-efficiency/hooks/register.mjs', 'out.push(line.slice(0, colon));', 'out.push(line);', EFFICIENCY_SUITE),

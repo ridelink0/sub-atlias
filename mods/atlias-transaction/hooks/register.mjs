@@ -111,7 +111,10 @@ export function register(on, options = {}) {
   const hotCore = defer && options.hotCoreTools === true;
   // deferShell (off unless exactly true, only with hotCore): the shells' schemas (the largest hot piece, ~9 KB
   // measured on 2.1.301) wait behind ToolSearch too; a check can still run as a batch operation with no hop.
-  const hot = hotCore && options.deferShell === true ? HOT_CORE.filter(n => n !== 'Bash' && n !== 'PowerShell') : HOT_CORE;
+  const shells = hotCore && options.deferShell === true ? HOT_CORE.filter(n => n !== 'Bash' && n !== 'PowerShell') : HOT_CORE;
+  // hotGlob (off unless exactly true, only with hotCore; Gev 2026-10-16, sprint-lean-r1): Glob stays natively visible.
+  // Its schema is ~730 bytes on 2.1.301; deferred, a 9B called it three times with a guessed `query` before loading it.
+  const hot = hotCore && options.hotGlob === true ? [...shells, 'Glob'] : shells;
   const unchangedReads = enabled && options.unchangedReads === true;
   const base = hotCore ? { ...SPEC, description: HOT_CORE_DESCRIPTION } : SPEC;
   const spec = compactReads ? { ...base, description: base.description + ' Exact numbered Read text is retained; duplicated file.content may be represented by {from:"native.text",format:"line-number-tab-v1"} (remove each numbered prefix) or format:"text-v1" (identical text). All file metadata is retained.' } : base;
