@@ -627,4 +627,20 @@ export default async function register({ asyncSuite, check, TMP }) {
     check('compare prints engine tokens from totals, and a side with a run or round lacking a count is unknown, never a lower bound read as a total', /engine tokens: atlias 12k prompt \(12\.0k per passing attempt\) \+ 1k output; mini unknown \(a run or a round has no count\)/.test(text) && /handed at the end/.test(text),
       { happened: text.split(NL).filter((l) => /engine tokens|handed/.test(l)).join(' | '), why: 'The head-to-head is judged on the cost of a solve, and the mini-swe-agent runner keeps only per-round lists.', fix: 'Check costOf tok() in compare.' });
   });
+
+  // Gev 2026-10-16, the real harness for 20x: the base-harness runner's atlias harness starts a task from
+  // the same state runTask does, so a task there runs as it does in Atlias's own benchmark.
+  await asyncSuite('eval expert', 'taskState gives every task a fresh state of its own in its own folder', async () => {
+    const base = { sid: 's', engine: 'openai', editWhy: { shared: 1 }, messages: ['old'] };
+    const one = evals.taskState(base, '/w/one');
+    const two = evals.taskState(base, '/w/two');
+    check('the task state keeps the session, sets the folder and starts every counter at zero',
+      one.sid === 's' && one.engine === 'openai' && one.cwd === '/w/one' && one.messages.length === 0 && one.editTries === 0 && one.editFails === 0
+        && one.sameText === 0 && one.numCtx === 0 && Array.isArray(one.childPids) && one.childPids.length === 0 && one.ledger.masked === 0,
+      { happened: JSON.stringify(one), why: 'A task that inherits the messages or counters of the one before is not measured on its own.', fix: 'Return the fresh fields in eval.taskState.' });
+    check('two tasks never share a counter object, and the state passed in is left alone',
+      one.editWhy !== two.editWhy && one.ledger !== two.ledger && one.messages !== two.messages && Object.keys(one.editWhy).length === 0
+        && base.messages.length === 1 && base.editWhy.shared === 1,
+      { happened: JSON.stringify({ one: one.editWhy, two: two.editWhy, base }), why: 'runSuite sums per-task counters; a shared object would be summed twice.', fix: 'Build new objects in eval.taskState on every call.' });
+  });
 }

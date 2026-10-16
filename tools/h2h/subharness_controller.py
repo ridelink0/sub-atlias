@@ -160,6 +160,15 @@ def validate(spec):
         raise ValueError("reuseBase must name an earlier trial directory with its MANIFEST.json")
     if not isinstance(spec.get("smokeFailFast", False), bool):
         raise ValueError("smokeFailFast must be true or false")
+    # spec.atliasArm "native" (Gev 2026-10-16, the real harness for 20x): the Atlias arm is Atlias's own agent
+    # (the runner's atlias harness) with no Claude Code under it, against the bare client as base.
+    if spec.get("atliasArm", "native") != "native" and "atliasArm" in spec:
+        raise ValueError("atliasArm must be \"native\" or absent")
+    if spec.get("atliasArm") == "native":
+        if [h.get("host") for h in hosts] != ["claude"]:
+            raise ValueError("a native Atlias arm is measured against bare Claude Code only")
+        if spec.get("claudeMods") or spec.get("claudeSettings") or spec.get("control") is True:
+            raise ValueError("a native Atlias arm loads no Claude Code mods or settings and is not a control")
     return spec
 
 
@@ -441,7 +450,12 @@ def summarize(manifest, attempts):
                                and ar.get("controllerIntegrity") is True and br.get("controllerIntegrity") is True
                                and ar.get("taskDigests") == br.get("taskDigests") and bool(ar.get("taskDigests"))
                                and pa.get("model") == pb.get("model") and all(pa.get("model", {}).get(k) for k in ("name", "digest", "server", "template", "parameters", "quantization"))
-                               and pa.get("client") == pb.get("client") and all(pa.get("client", {}).get(k) for k in ("sha256", "version"))
+                               and (pa.get("client") == pb.get("client") and all(pa.get("client", {}).get(k) for k in ("sha256", "version"))
+                                    if manifest["spec"].get("atliasArm") != "native" else
+                                    # A native Atlias arm runs another client by design: base is the bare client, known by
+                                    # hash and version; the Atlias arm is Atlias's own agent, known by its code's hash.
+                                    pa.get("harness") == "claude" and pb.get("harness") == "atlias"
+                                    and all(pa.get("client", {}).get(k) for k in ("sha256", "version")) and bool(pb.get("client", {}).get("sha256")))
                                and pa.get("door") == pb.get("door") and bool(pa.get("door"))
                                and pa.get("codexDisabledSkills") == pb.get("codexDisabledSkills"))
                     pairs.append({"taskId": t["taskId"], "repeat": t["repeat"], "conditionsMatched": matched,
@@ -662,7 +676,7 @@ def backend(root):
     module_spec = importlib.util.spec_from_file_location("subharness_frozen_runner", path)
     module = importlib.util.module_from_spec(module_spec)
     module_spec.loader.exec_module(module)
-    originals = {host: module.HARNESS[host] for host in ("claude", "codex")}
+    originals = {host: module.HARNESS[host] for host in ("claude", "codex", "atlias") if host in module.HARNESS}
     def command(host):
         def wrapped(a, task, ws, state, door, budget, env):
             argv, cwd, stdin = originals[host](a, task, ws, state, door, budget, env)
@@ -693,7 +707,8 @@ def arguments(root, manifest, trial):
     work = pathlib.Path(root) / "work" / trial["key"]
     search = spec.get("toolSearch", False)
     search = search[trial["arm"]] if isinstance(search, dict) else search
-    return types.SimpleNamespace(harness=trial["host"], model=spec["model"], api_base=spec.get("apiBase", "http://127.0.0.1:11435"),
+    native = enhanced and spec.get("atliasArm") == "native"
+    return types.SimpleNamespace(harness="atlias" if native else trial["host"], model=spec["model"], api_base=spec.get("apiBase", "http://127.0.0.1:11435"),
         num_ctx=host["numCtx"], num_predict=host.get("numPredict", 2048), budget=host.get("budget", 0),
         task_timeout=host.get("taskTimeout", 1200), start_timeout=host.get("startTimeout", 600), keep=True, work=str(work),
         # host.checkMemoryMiB (Gev 2026-10-16): the grading check's memory cap, the same in both arms; absent = none.
@@ -703,7 +718,7 @@ def arguments(root, manifest, trial):
         claude=host["client"], codex=host["client"], codex_home_from=str(pathlib.Path(root) / "prepared-codex-home") if enhanced and trial["host"] == "codex" else "",
         codex_disabled_skills=str(pathlib.Path(root) / "CODEX-DISABLED-SKILLS.json") if manifest.get("codexDisabledSkillsHash") else "",
         codex_bypass_hook_trust=enhanced and host.get("bypassHookTrust", False) is True,
-        claude_plugin_dir=([str(source)] + [str(source / relpath(p)) for p in spec.get("claudeMods", [])] if enhanced and trial["host"] == "claude" else []),
+        claude_plugin_dir=([str(source)] + [str(source / relpath(p)) for p in spec.get("claudeMods", [])] if enhanced and not native and trial["host"] == "claude" else []),
         controller_enhanced=enhanced, controller_config=spec.get("atliasConfig", {}),
         controller_claude_settings=spec.get("claudeSettings", {}), controller_tool_search=search,
         tasks=spec["tasks"], ids_from="", ripgrep="", tiktoken_cache="", opencode_source="", nanobot="")
@@ -861,6 +876,30 @@ def selftest_cases():
     check("task-set 20x conditions are explicit", r["measured20xNoTaskLoss"] is True)
     check("general capability is never invented", summarize(m, attempts)["goalComplete"] is False)
     check("matched 20x screen proceeds", stage_gate(m, attempts, "claude", "screen")["action"] == "continue")
+    # spec.atliasArm "native": the arms run different clients by design (Gev 2026-10-16).
+    native = copy.deepcopy(m)
+    native["spec"]["atliasArm"] = "native"
+    def as_native(rows, atlias_client=None, atlias_harness="atlias"):
+        out = copy.deepcopy(rows)
+        for row in out:
+            pv = row["result"]["provenance"]
+            if row["trial"]["arm"] == "atlias":
+                pv["harness"], pv["client"] = atlias_harness, ({"sha256": "atlias-lib"} if atlias_client is None else atlias_client)
+            else:
+                pv["harness"] = "claude"
+        return out
+    check("a native Atlias arm pairs with bare Claude Code although the clients differ, and only in native mode",
+          summarize(native, as_native(attempts))["reports"][0]["measurementMatched"] is True
+          and summarize(m, as_native(attempts))["reports"][0]["measurementMatched"] is False)
+    check("a native Atlias arm with no code hash, or that did not run the atlias harness, is unmatched",
+          summarize(native, as_native(attempts, atlias_client={}))["reports"][0]["measurementMatched"] is False
+          and summarize(native, as_native(attempts, atlias_harness="claude"))["reports"][0]["measurementMatched"] is False)
+    na = copy.deepcopy(native)
+    na["spec"].update(model="qwen", hosts=[{"host": "claude", "numCtx": 100, "client": "c"}], tasks=[], atliasConfig={"flags": {"noWorkingRules": True}})
+    arm_args = {t["arm"]: arguments("root", na, t) for t in plan(na)[:2]}
+    check("in native mode the Atlias arm runs the atlias harness with its config and no plugin, and base runs bare Claude Code",
+          arm_args["atlias"].harness == "atlias" and arm_args["atlias"].claude_plugin_dir == [] and arm_args["atlias"].controller_enhanced is True
+          and arm_args["base"].harness == "claude" and arm_args["base"].claude_plugin_dir == [] and arm_args["base"].controller_enhanced is False)
     below = copy.deepcopy(attempts)
     for row in below:
         if row["trial"]["arm"] == "base":
@@ -1143,6 +1182,45 @@ def selftest_cases():
             except ValueError:
                 rejected = True
             check(f"{key} {bad!r} is refused", rejected)
+        # spec.atliasArm "native" (Gev 2026-10-16, the real harness for 20x).
+        def refused(changed):
+            try:
+                validate(changed)
+                return False
+            except ValueError:
+                return True
+        native_spec = {k: v for k, v in copy.deepcopy(spec).items() if k not in ("claudeMods", "claudeSettings")}
+        native_spec["atliasArm"] = "native"
+        # Settings, not mods: a mod folder the fixture lacks is refused for that reason alone.
+        with_settings = copy.deepcopy(native_spec)
+        with_settings["claudeSettings"] = {"pluginConfigs": {}}
+        plain = copy.deepcopy(with_settings)
+        del plain["atliasArm"]
+        other = copy.deepcopy(native_spec)
+        other["atliasArm"] = "plugin"
+        check("a native Atlias arm spec is accepted bare, and refused with Claude Code settings or another arm kind",
+              not refused(native_spec) and refused(with_settings) and not refused(plain) and refused(other))
+
+    # The frozen runner's atlias harness, wrapped as a trial wraps it: the spec's Atlias config lands in its
+    # ATLIAS_HOME. Only where the runner sits beside this file: a planted-break copy of the controller runs
+    # alone in a temp folder.
+    here = pathlib.Path(__file__).resolve().parent
+    if (here / "base_harness_runner.py").is_file():
+        with tempfile.TemporaryDirectory() as native_temp:
+            frozen = pathlib.Path(native_temp) / "native-root"
+            shutil.copytree(here, frozen / "source/tools/h2h", ignore=shutil.ignore_patterns("__pycache__"))
+            wrapped_runner = backend(frozen)
+            state_dir = pathlib.Path(native_temp) / "native-state"
+            state_dir.mkdir()
+            wargs = types.SimpleNamespace(model="m", controller_enhanced=True, controller_config={"flags": {"noWorkingRules": True}},
+                                          controller_tool_search=False, controller_claude_settings={})
+            wenv = {}
+            wargv, _, _ = wrapped_runner.HARNESS["atlias"](wargs, {"prompt": "p", "rounds": 2}, pathlib.Path(native_temp), str(state_dir),
+                                                           types.SimpleNamespace(base="http://127.0.0.1:1"), 4, wenv)
+            written = state_dir / "atlias-home" / "config.json"
+            check("a trial's atlias harness gets the spec's Atlias config in its own ATLIAS_HOME, and no Claude settings",
+                  written.is_file() and json.loads(written.read_text(encoding="utf-8")) == {"flags": {"noWorkingRules": True}}
+                  and wenv.get("ATLIAS_HOME") == str(state_dir / "atlias-home") and "--settings" not in wargv and "ENABLE_TOOL_SEARCH" not in wenv)
 
     # Gev 2026-10-16, faster benchmarks: base reuse and smoke fail-fast.
     rm = {"id": "new", "clientHashes": {"claude": "client"}, "spec": {"model": "qwen", "candidate": "next", "atliasConfig": {"flags": {"noWorkingRules": True}},

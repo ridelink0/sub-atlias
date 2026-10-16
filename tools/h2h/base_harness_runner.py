@@ -975,7 +975,24 @@ def codex_command(a, task, ws, state, door, budget, env):
     return argv, str(ws), task["prompt"]
 
 
-HARNESS = {"nanobot": nanobot_command, "opencode": opencode_command, "claude": claude_command, "codex": codex_command}
+def atlias_command(a, task, ws, state, door, budget, env):
+    """Atlias's own agent (lib/loop.mjs), one task in the task directory, with no Claude Code and no
+    other harness under it (Gev 2026-10-16: the real harness for 20x). tools/h2h/atlias_task.mjs runs
+    it the way `atlias eval` runs a task, on the task's own round budget, its model reached through
+    the door's OpenAI path; the door's call budget still holds above that. Its configuration is
+    ATLIAS_HOME/config.json, which the caller writes (the controller writes the spec's)."""
+    home = pathlib.Path(state) / "atlias-home"
+    home.mkdir(parents=True, exist_ok=True)
+    env.update({"ATLIAS_HOME": str(home), "ATLIAS_TASK_URL": door.base + "/v1", "ATLIAS_TASK_MODEL": a.model,
+                "ATLIAS_NO_DETACH": "1", "PWD": str(ws)})
+    node = shutil.which("node")
+    if not node:
+        raise RuntimeError("node is not on PATH; the atlias harness needs it")
+    driver = pathlib.Path(__file__).resolve().parent / "atlias_task.mjs"
+    return [node, str(driver), "--rounds", str(int(task.get("rounds") or 0))], str(ws), task["prompt"]
+
+
+HARNESS = {"nanobot": nanobot_command, "opencode": opencode_command, "claude": claude_command, "codex": codex_command, "atlias": atlias_command}
 
 
 def _digest(obj):
@@ -1043,7 +1060,9 @@ def provenance(a):
             return done.stdout.decode("utf-8", errors="replace").strip() if done.returncode == 0 else None
         except Exception:
             return None
-    client = {"claude": getattr(a, "claude", None), "codex": getattr(a, "codex", None), "nanobot": getattr(a, "nanobot", None)}.get(a.harness) or str(pathlib.Path(a.opencode_source) / "packages" / "cli")
+    # The atlias harness's client is Atlias's own agent code, the lib tree its driver imports.
+    client = {"claude": getattr(a, "claude", None), "codex": getattr(a, "codex", None), "nanobot": getattr(a, "nanobot", None),
+              "atlias": str(root / "lib")}.get(a.harness) or str(pathlib.Path(a.opencode_source) / "packages" / "cli")
     status = run(["git", "status", "--porcelain"])
     return {"harness": a.harness, "client": {"path": str(client), "sha256": tree_digest(client),
                                              "version": run([client, "--version"]) if a.harness in ("claude", "codex") else None},
@@ -1299,6 +1318,7 @@ def main():
     a = ap.parse_args()
     need = ([a.nanobot] if a.harness == "nanobot" else [a.claude, *a.claude_plugin_dir] if a.harness == "claude"
             else [a.codex, *([a.codex_home_from] if a.codex_home_from else [])] if a.harness == "codex"
+            else [shutil.which("node") or "node", str(pathlib.Path(__file__).resolve().parent / "atlias_task.mjs")] if a.harness == "atlias"
             else [a.bun, str(pathlib.Path(a.opencode_source) / "packages" / "cli" / "src" / "index.ts")])
     # Without its token-counter file nanobot falls back to counting bytes, takes its own first prompt
     # for twice the window and refuses to start (seen 2026-10-11); that is a broken setup, not a result.

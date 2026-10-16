@@ -518,6 +518,29 @@ def main():
     check("the report's role figures for that one task are the task's own", mrep["byRole"] == mbr, mrep["byRole"])
     check("the stand-in upstream got the three calls that were sent, and none of them carried X-Atlias-Role",
           len(forwarded) == 3 and not any("x-atlias-role" in h[2] for h in forwarded), forwarded)
+
+    # Gev 2026-10-16, the real harness for 20x: Atlias's own agent (no Claude Code under it) on one task,
+    # through the same door and grader as base Claude Code. The stand-in answers "hi", so the loop ends on
+    # its first call as an answer; the grade is the task's check.
+    srv = _serve_fake()
+    up = f"http://127.0.0.1:{srv.server_address[1]}"
+    s0 = len(seen)
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as work:
+        aa = argparse.Namespace(harness="atlias", model="qwen3.5:9b", num_ctx=32768, num_predict=2048, api_base=up, work=work, budget=8, keep=True,
+                                start_timeout=60, task_timeout=60, ripgrep="", tiktoken_cache=work, provenance=None, tasks=["T"], ids_from="")
+        arow = B.run_one({"id": "at", "files": {"main.py": "x = 1\n"}, "check": [sys.executable, "-c", "pass"], "rounds": 3, "prompt": "fix main.py"}, aa, work)
+        argv_a, cwd_a, stdin_a = B.HARNESS["atlias"](aa, {"prompt": "p", "rounds": 3}, pathlib.Path(work) / "ws", work, types.SimpleNamespace(base="http://127.0.0.1:1"), 8, {})
+    srv.shutdown()
+    srv.server_close()
+    sent = seen[s0:]
+    first = sent[0] if sent else {}
+    check("the atlias harness runs Atlias's own agent on a task through the door, counted and graded like any harness",
+          arow["harnessExit"] == 0 and arow["pass"] is True and arow["usageComplete"] is True and arow["rounds"] == 1
+          and arow["promptTotal"] == 111 and arow["outputTotal"] == 22 and len(sent) == 1
+          and first.get("model") == "qwen3.5:9b" and first.get("messages", [{}])[0].get("role") == "system"
+          and any("fix main.py" in str(m.get("content")) for m in first.get("messages", [])), (arow.get("harnessExit"), arow.get("pass"), arow.get("rounds"), arow.get("stop"), len(sent)))
+    check("the atlias command is the driver on the task's own rounds, the prompt on stdin, in the task directory",
+          argv_a[1].endswith("atlias_task.mjs") and argv_a[2:] == ["--rounds", "3"] and stdin_a == "p" and cwd_a == str(pathlib.Path(work) / "ws"), argv_a)
     srv = _serve_fake()
     up = f"http://127.0.0.1:{srv.server_address[1]}"
     idoor = B.Door(up, "qwen3.5:9b", 2048, 2)
