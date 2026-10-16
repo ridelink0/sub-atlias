@@ -205,8 +205,8 @@ METER_FILE = 'mods/atlias-meter/hooks/meter.mjs'
 METER_HOOKS = 'mods/atlias-meter/hooks/register.mjs'
 LEDGER = ['node', 'test/run.mjs', 'exact ledger keeps unknown counts']
 cases += [
-    ('ledger reads an unusable count as zero', METER_FILE, 'const count = (v) => (Number.isInteger(v) && v >= 0 ? v : null);', 'const count = (v) => (Number.isFinite(v) && v > 0 ? v : 0);', LEDGER),
-    ('ledger accepts fractional counts', METER_FILE, 'const count = (v) => (Number.isInteger(v) && v >= 0', 'const count = (v) => (Number.isFinite(v) && v >= 0', LEDGER),
+    ('ledger reads an unusable count as zero', METER_FILE, 'const count = (v) => (Number.isSafeInteger(v) && v >= 0 ? v : null);', 'const count = (v) => (Number.isFinite(v) && v > 0 ? v : 0);', LEDGER),
+    ('ledger accepts fractional counts', METER_FILE, 'const count = (v) => (Number.isSafeInteger(v) && v >= 0', 'const count = (v) => (Number.isFinite(v) && v >= 0', LEDGER),
     ('spend hides requests without a count', METER_FILE, '  for (const s of Object.values(out)) if (s.unknown) for', '  for (const s of Object.values(out)) if (false) for', LEDGER),
     ('ledger stores argument values', METER_FILE, 'keys: argKeys(t && t.input) }', 'keys: argKeys(t && t.input), input: t && t.input }', LEDGER),
     ('ledger stores the answer text', METER_FILE, "    stopReason: result && typeof result.stopReason === 'string' ? result.stopReason : null,\n", "    stopReason: result && typeof result.stopReason === 'string' ? result.stopReason : null, answer: result && result.answer,\n", LEDGER),
@@ -243,6 +243,14 @@ cases += [
     ('a failed git diff in the sandbox reads as an empty patch', 'lib/sandbox.mjs', 'error: failed ? oops(failed) : null }', 'error: null }', SANDBOX_DECISION),
     ('a failed git status reads as a clean tree', 'lib/sandbox.mjs', '.filter(Boolean) : null;', '.filter(Boolean) : [];', SANDBOX_DECISION),
     ('an unknown tree status is not refused', 'lib/sandbox.mjs', '  if (dirty === null) return', '  if (false) return', SANDBOX_DECISION),
+]
+# Batch 2a: meter safe-integer bounds and Codex's turn-authority delta (dd38b382).
+cases += [
+    ('an unsafe count is accepted as exact', METER_FILE, 'const count = (v) => (Number.isSafeInteger(v) && v >= 0 ? v : null);', 'const count = (v) => (Number.isInteger(v) && v >= 0 ? v : null);', LEDGER),
+    ('an unsafe running total stays exact', METER_FILE, '    if (!Number.isSafeInteger(one) || !Number.isSafeInteger(s.total + one)) { s.unknown += 1; continue; }\n', '', LEDGER),
+    ('the summed line hides unsafe sums', METER_FILE, '  if (!Object.values(tally.usage).every(Number.isSafeInteger)) tally.unsafe = true;\n', '', LEDGER),
+    ('a lost ledger is not detected before the router records the follow-up', 'lib/agent.mjs', "    try { if (!ledger.read(state.sid).some(r => r.kind === 'request')) state.authorityMissing = true; }", '    try { }', ['node', 'test/run.mjs', 'codex authority']),
+    ('helpers run on incomplete authority', 'lib/agent.mjs', 'const planned = exact && state.authorityMissing ? { ran: false } :', 'const planned = false ? { ran: false } :', ['node', 'test/run.mjs', 'codex authority']),
 ]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']

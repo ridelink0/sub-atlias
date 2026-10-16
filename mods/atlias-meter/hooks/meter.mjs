@@ -19,7 +19,7 @@ export function add(tally, kind, text) {
 // A missing usage or a count that is not a whole non-negative number is added as 0 here, so
 // tally.incomplete counts those requests and the table then calls the sums a lower bound.
 export function addUsage(tally, usage, agentId) {
-  const whole = (v) => Number.isInteger(v) && v >= 0;
+  const whole = (v) => Number.isSafeInteger(v) && v >= 0;
   if (!usage || typeof usage !== 'object') {
     tally.incomplete = (tally.incomplete || 0) + 1;
     return tally;
@@ -32,13 +32,14 @@ export function addUsage(tally, usage, agentId) {
   tally.usage.output += n(usage.output_tokens);
   tally.usage.cacheRead += n(usage.cache_read_input_tokens);
   tally.usage.cacheWrite += n(usage.cache_creation_input_tokens);
+  if (!Object.values(tally.usage).every(Number.isSafeInteger)) tally.unsafe = true;
   return tally;
 }
 // The exact ledger (APPROVED-PLAN-1016 E0): one row per turn.step result. Each count is a
 // whole non-negative number or null when it was missing or not a count; addUsage's sums above
 // read such a count as 0, this ledger never does. A tool call keeps its name and the names of
 // its top-level argument keys, never their values.
-const count = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+const count = (v) => (Number.isSafeInteger(v) && v >= 0 ? v : null);
 function argKeys(input) {
   if (input === null || typeof input !== 'object' || Array.isArray(input)) return null;
   return Object.keys(input).sort();
@@ -68,8 +69,10 @@ export function spend(tally) {
     s.requests += 1;
     if (!known(r.usage)) { s.unknown += 1; continue; }
     const u = r.usage;
-    for (const k of ['input', 'output', 'cacheRead', 'cacheWrite']) s[k] += u[k];
     const one = u.input + u.cacheRead + u.cacheWrite + u.output;
+    // A request, or a running total, past the exact integer range is not a measurement.
+    if (!Number.isSafeInteger(one) || !Number.isSafeInteger(s.total + one)) { s.unknown += 1; continue; }
+    for (const k of ['input', 'output', 'cacheRead', 'cacheWrite']) s[k] += u[k];
     s.total += one;
     s.peak = Math.max(s.peak, one);
   }
@@ -140,6 +143,7 @@ export function table(tally, top = 25) {
   const u = tally.usage;
   const lines = ['atlias-meter: what has been carried since the mod loaded. Characters are exact; nothing was changed.'];
   lines.push(`requests ${tally.requests} (${tally.subagentRequests} by subagents); tokens as the API reported them: input ${u.input}, cache read ${u.cacheRead}, cache written ${u.cacheWrite}, output ${u.output}`);
+  if (tally.unsafe) lines.push('UNSAFE: the sums above passed the range a number can hold exactly, so they are not a measurement; the exact ledger below says unknown instead');
   if (tally.incomplete) lines.push(`INCOMPLETE: ${tally.incomplete} request${tally.incomplete === 1 ? '' : 's'} had no usage or a count that was not a whole number, so the sums above are a lower bound, not a total; the exact ledger below says unknown instead`);
   const fam = Object.entries(families(tally)).sort((a, b) => b[1].chars - a[1].chars || a[0].localeCompare(b[0]));
   if (!fam.length) lines.push('nothing counted yet');

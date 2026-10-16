@@ -201,6 +201,31 @@ export default async function agentCodexAuthoritySuites({ suite, asyncSuite, che
 
   await asyncSuite('codex authority expert', 'codex authority: missing or unreadable authority is said in one explicit line', async () => {
     await withFlag(true, async () => {
+      const st = agentMod.newState(work('turn-lost-ledger'), 'codex'), seen = [];
+      const original = 'Original ' + 'preserve '.repeat(250) + 'TURN_AUTHORITY_TAIL';
+      await agentMod.turn(st, original, null, null, { run: fakeCodex(seen) });
+      fs.unlinkSync(authority.ledgerPath(st.sid));
+      await agentMod.turn(st, 'Follow-up after loss.', null, null, { run: fakeCodex(seen) });
+      check('normal turn detects ledger loss before recording the next follow-up', seen[0].input.includes('TURN_AUTHORITY_TAIL') && seen[1].input.includes('exact request history is incomplete') && !seen[1].input.includes('the exact requests above are complete') && st.authorityMissing === true, {
+        happened: seen[1].input.slice(0, 200), why: 'The router can recreate a missing ledger with only the newest request; that cannot restore the original.', fix: 'Inspect existing authority before router.prompt and retain the missing marker.' });
+      agentMod.saveChat(st);
+      check('the detected missing-authority marker survives save and resume', agentMod.loadChat(st.sid, st.cwd).authorityMissing === true, {
+        happened: 'saved incomplete state', why: 'A restart must not qualify the recreated one-row ledger as complete.', fix: 'Keep authorityMissing in saved exact state.' });
+    });
+    await withFlag(true, async () => {
+      const file = path.join(process.env.ATLIAS_HOME, 'config.json');
+      const before = fs.existsSync(file) ? fs.readFileSync(file) : null;
+      try {
+        fs.writeFileSync(file, JSON.stringify({ localPipeline: { enabled: true, planner: true, reporter: true, baseUrl: 'http://127.0.0.1:18999/v1', model: 'fixture' } }));
+        const st = agentMod.newState(work('incomplete-helpers'), 'codex'), seen = [];
+        authority.record(st.sid, 'Only the retained follow-up.'); st.authorityMissing = true;
+        let calls = 0;
+        await agentMod.turn(st, 'Next.', null, null, { run: fakeCodex(seen), fetchImpl: async () => { calls++; throw Error('incomplete authority must not reach a helper'); } });
+        check('known incomplete authority refuses both optional helpers before any request', calls === 0 && seen.length === 1 && seen[0].input.includes('exact request history is incomplete'), {
+          happened: calls + ' helper calls', why: 'A helper must receive every original instruction; a plausible partial packet is insufficient.', fix: 'Skip planner and reporter when the normal session marks authority missing.' });
+      } finally { if (before === null) fs.unlinkSync(file); else fs.writeFileSync(file, before); }
+    });
+    await withFlag(true, async () => {
       const st = agentMod.newState(work('lost-ledger'), 'codex');
       const original = 'Original ' + 'exact '.repeat(300) + 'AUTHORITY_TAIL_SENTINEL';
       authority.record(st.sid, original);

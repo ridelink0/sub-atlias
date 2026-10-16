@@ -65,6 +65,24 @@ export default async function meterSuites({ suite, asyncSuite, check, fs, path, 
       const r = meter.spend(one);
       check('an unusable count makes its role and the overall figures unknown, never smaller: ' + name, r.main.unknown === 1 && r.main.total === null && r.main.peak === null && r.main.input === null && r.all.total === null && r.all.peak === null && r.subagent.total === 6 && r.subagent.unknown === 0, info);
     }
+    // Counts past Number.MAX_SAFE_INTEGER, alone or added up, are not measurements (Codex review 03:11Z).
+    const big = meter.newTally();
+    meter.addStep(big, { toolUses: [], usage: usage(1e100, 1, 0, 0) });
+    const one = meter.newTally();
+    meter.addStep(one, { toolUses: [], usage: usage(Number.MAX_SAFE_INTEGER, 1, 0, 0) });
+    const across = meter.newTally();
+    const half = Math.floor(Number.MAX_SAFE_INTEGER / 2) + 1;
+    meter.addStep(across, { toolUses: [], usage: usage(half, 0, 0, 0) }, 'a');
+    meter.addStep(across, { toolUses: [], usage: usage(half, 0, 0, 0) });
+    meter.addStep(across, { toolUses: [], usage: usage(3, 1, 0, 0) }, 'b');
+    const acrossSpend = meter.spend(across);
+    check('an unsafe count, an unsafe single request and an unsafe running total all read unknown, never an exact number', big.ledger[0].usage.input === null && meter.spend(big).all.total === null && meter.spend(one).all.total === null && meter.spend(one).all.unknown === 1 && acrossSpend.all.total === null && acrossSpend.all.unknown === 1 && acrossSpend.subagent.total === half + 4 && acrossSpend.main.total === half, { ...info, happened: JSON.stringify({ big: big.ledger[0].usage, one: meter.spend(one).all, across: acrossSpend }) });
+    const legacy = meter.newTally();
+    meter.addUsage(legacy, { input_tokens: Number.MAX_SAFE_INTEGER, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 });
+    meter.addUsage(legacy, { input_tokens: 5, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 });
+    const huge = meter.newTally();
+    meter.addUsage(huge, { input_tokens: 1e100, output_tokens: 0, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 });
+    check('the summed line says UNSAFE once its sums pass the exact range, and a huge count is incomplete', legacy.unsafe === true && meter.table(legacy).includes('UNSAFE: the sums above passed the range') && huge.incomplete === 1 && huge.unsafe === true && !meter.table(meter.newTally()).includes('UNSAFE'), { ...info, happened: JSON.stringify({ unsafe: legacy.unsafe, hugeIncomplete: huge.incomplete }) });
     meter.addStep(t, null);
     check('a missing result is still a ledger row, with nothing known about it', t.ledger.length === 3 && t.ledger[2].usage === null && t.ledger[2].turnId === null && meter.spend(t).all.total === null, info);
     const c = meter.newTally();
