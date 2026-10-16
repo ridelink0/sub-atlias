@@ -209,6 +209,22 @@ export default async function integritySuites({ suite, check, core, gate, track,
     const grepOut = {};
     const none = integrity.findUnwired(repo, [{ file: 'x', line: 1, name: 'anything' }], { run: timedOut }, grepOut);
     check('and a git call that timed out marks its check unfinished', partial && partial.incomplete === true && partial.added.some((a) => /brandNewModule/.test(a.text)) && none.length === 0 && grepOut.incomplete === true, { happened: JSON.stringify({ incomplete: partial && partial.incomplete, added: partial ? partial.added.length : null, grep: grepOut }), why: 'Silence from a check that never finished reads exactly like a clean result, which is the bug that let the gate speak twice.', fix: 'Set incomplete in diffFor and findUnwired when status is null.' });
+    // A git call that ran and failed is no more a clean answer than one that timed out (audit A5).
+    const failed = (code) => () => ({ status: code, stdout: '', stderr: 'fatal: failed', error: null });
+    const diffFailed = integrity.diffFor(repo, [app, spec, extra], { run: (cmd, args, opts) => (args.includes('diff') ? failed(128)() : core.run(cmd, args, opts)) });
+    const listFailed = integrity.diffFor(repo, [app, spec, extra], { run: (cmd, args, opts) => (args.includes('ls-files') ? failed(1)() : core.run(cmd, args, opts)) });
+    const grepFailed = {};
+    integrity.findUnwired(repo, [{ file: 'x', line: 1, name: 'anything' }], { run: failed(2) }, grepFailed);
+    const grepNoMatch = {};
+    integrity.findUnwired(repo, [{ file: 'x', line: 1, name: 'anything' }], { run: failed(1) }, grepNoMatch);
+    check('a git diff, ls-files or grep that failed marks its check unfinished, while grep finding nothing does not', diffFailed && diffFailed.incomplete === true && listFailed && listFailed.incomplete === true && grepFailed.incomplete === true && !grepNoMatch.incomplete, { happened: JSON.stringify({ diff: diffFailed && diffFailed.incomplete, list: listFailed && listFailed.incomplete, grep: grepFailed, noMatch: grepNoMatch }), why: 'A failed git call read as an empty diff, so placeholders and weakened tests in it were never looked at, and the reply passed as if checked.', fix: 'diffFor and findUnwired: any status other than 0 (or 1 for grep) is incomplete.' });
+    const fresh = fs.mkdtempSync(path.join(TMP, 'no-commit-'));
+    core.run('git', ['init', '-q'], { cwd: fresh });
+    const staged = path.join(fresh, 'calc.py');
+    fs.writeFileSync(staged, 'def add(a, b):\n    pass\n');
+    core.run('git', ['add', 'calc.py'], { cwd: fresh });
+    const noCommit = integrity.diffFor(fresh, [staged]);
+    check('in a repository with no commit yet, a staged file is not reported as a clean, complete diff', noCommit && (noCommit.incomplete === true || noCommit.added.some((a) => /pass/.test(a.text))), { happened: JSON.stringify(noCommit && { incomplete: noCommit.incomplete, added: noCommit.added.length }), why: 'git diff HEAD exits 128 before the first commit; the staged placeholder was invisible and the check said complete.', fix: 'diffFor: incomplete when git diff fails.' });
     const s2 = sid('e2e-honest');
     router.prompt({ session_id: s2, cwd: repo, prompt: 'try the change' });
     track.postTool({ session_id: s2, cwd: repo, tool_name: 'Write', tool_input: { file_path: app } });

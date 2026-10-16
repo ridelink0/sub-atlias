@@ -229,6 +229,12 @@ cases += [
     ('a restarted message keeps its earlier usage', 'lib/subharness.mjs', '        if (started || terminal) broken = true;\n', '', ['node', 'test/run.mjs', 'public subharness']),
     ('a malformed MCP frame reaches dispatch', 'mcp/server.mjs', "  if (!msg || typeof msg !== 'object'", "  if (false && typeof msg !== 'object'", ['node', 'test/run.mjs', 'mcp server']),
 ]
+# Whole-audit A5: a failed git call must leave the integrity check unfinished, not clean.
+INTEGRITY_E2E = ['node', 'test/run.mjs', 'the gate on a real repository']
+cases += [
+    ('a failed git diff reads as a clean diff', 'lib/integrity.mjs', 'incomplete: d.status !== 0 || u.status !== 0 }', 'incomplete: d.status === null || u.status === null }', INTEGRITY_E2E),
+    ('a failed git grep reads as no references', 'lib/integrity.mjs', 'if (r.status !== 0 && r.status !== 1) { status.incomplete = true; continue; }', 'if (r.status !== 0 && r.status !== 1) continue;', INTEGRITY_E2E),
+]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
 # Validate all anchors before spending time on the first planted execution.
