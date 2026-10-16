@@ -70,4 +70,39 @@ export default async function visibleCheckSuites({ asyncSuite, suite, check, cor
     check('on, a failing check after an edit reaches the model in its next request without a call of its own', shown,
       { happened: JSON.stringify({ calls: red.calls, stop: red.st.stop }), why: 'A failure the model never sees cannot be fixed; one it must run itself costs a call.', fix: 'The loop runs checkCommand after an edit and adds its result.' });
   });
+
+  // flags.quietNoCheck: a project with no check atlias can name is not asked for one.
+  const QUIET = 'ATLIAS_FLAG_QUIET_NO_CHECK';
+  const withQuiet = async (on, fn) => {
+    const before = process.env[QUIET];
+    if (on) process.env[QUIET] = '1'; else delete process.env[QUIET];
+    try { return await fn(); } finally { if (before == null) delete process.env[QUIET]; else process.env[QUIET] = before; }
+  };
+  const BARE = { 'sum.py': 'def two():' + NL + '    return 1' + NL };
+  await asyncSuite('quiet no check', 'with no check atlias can name, the prompt asks for none and the answer is not sent back', async () => {
+    const bare = dir(BARE);
+    const checked = dir(PROJECT);
+    const offPrompt = await withQuiet(false, async () => loop.systemPrompt(bare, { hasGraph: false, instructions: '' }));
+    const onPrompt = await withQuiet(true, async () => loop.systemPrompt(bare, { hasGraph: false, instructions: '' }));
+    const onChecked = await withQuiet(true, async () => loop.systemPrompt(checked, { hasGraph: false, instructions: '' }));
+    const offChecked = await withQuiet(false, async () => loop.systemPrompt(checked, { hasGraph: false, instructions: '' }));
+    check('on, a project with no check gets a prompt that asks for none and says to report that it could not be checked; off, and any project with a check, keep the prompt as it was',
+      /run the smallest real check/.test(offPrompt) && !/run the smallest real check/.test(onPrompt) && /could not be checked here/.test(onPrompt)
+        && /Never say something works unless a check/.test(onPrompt) && onChecked === offChecked,
+      { happened: JSON.stringify({ off: offPrompt.length, on: onPrompt.length, checkedSame: onChecked === offChecked }), why: 'Asked for a check it cannot have, a 9B writes its own (CanItEdit: 4 to 12 calls on harness-n2c); the honesty rule must stay.', fix: 'lib/loop.mjs systemPrompt behind quietNoCheckHere.' });
+    const runQuiet = (on) => withQuiet(on, async () => {
+      const d = dir(BARE);
+      const script = [fix, 'Done: two() returns 2; no check could be run here.', 'Done.'];
+      let calls = 0;
+      const chat = async () => { calls++; const r = script.shift(); return { content: r === undefined ? 'out of script' : r, calls: [] }; };
+      const st = agentMod.newState(d, 'ollama');
+      await loop.runLoop(st, 'make two() return 2', { chat, say: () => {}, ask: async () => true, limits: { maxToolRounds: 6, maxBadReplies: 3 } });
+      return { calls, st };
+    });
+    const on = await runQuiet(true);
+    const off = await runQuiet(false);
+    check('on, an answer after an edit in a project with no check ends the run; off, it is sent back once for a check',
+      on.calls === 2 && on.st.stop && on.st.stop.reason === 'answered' && off.calls === 3,
+      { happened: JSON.stringify({ on: [on.calls, on.st.stop], off: [off.calls, off.st.stop] }), why: 'Every call re-sends the whole context; a check that cannot exist is not worth one.', fix: 'Skip the unchecked nudge when quietNoCheckHere is true.' });
+  });
 }
