@@ -201,6 +201,23 @@ cases += [
     ('unchanged notice accepts class payloads', TX, " && [Object.prototype, null].includes(Object.getPrototypeOf(value));\n}\n\nfunction exactFields", ';\n}\n\nfunction exactFields', UNCHANGED),
     ('unchanged notice accepts an empty path', TX, " || !file.filePath.length) return null;", ') return null;', UNCHANGED),
 ]
+METER_FILE = 'mods/atlias-meter/hooks/meter.mjs'
+METER_HOOKS = 'mods/atlias-meter/hooks/register.mjs'
+LEDGER = ['node', 'test/run.mjs', 'exact ledger keeps unknown counts']
+cases += [
+    ('ledger reads an unusable count as zero', METER_FILE, 'const count = (v) => (Number.isInteger(v) && v >= 0 ? v : null);', 'const count = (v) => (Number.isFinite(v) && v > 0 ? v : 0);', LEDGER),
+    ('ledger accepts fractional counts', METER_FILE, 'const count = (v) => (Number.isInteger(v) && v >= 0', 'const count = (v) => (Number.isFinite(v) && v >= 0', LEDGER),
+    ('spend hides requests without a count', METER_FILE, '  for (const s of Object.values(out)) if (s.unknown) for', '  for (const s of Object.values(out)) if (false) for', LEDGER),
+    ('ledger stores argument values', METER_FILE, 'keys: argKeys(t && t.input) }', 'keys: argKeys(t && t.input), input: t && t.input }', LEDGER),
+    ('ledger stores the answer text', METER_FILE, "    stopReason: result && typeof result.stopReason === 'string' ? result.stopReason : null,\n", "    stopReason: result && typeof result.stopReason === 'string' ? result.stopReason : null, answer: result && result.answer,\n", LEDGER),
+    ('peak and total leave out cache reads', METER_FILE, 'const one = u.input + u.cacheRead + u.cacheWrite + u.output;', 'const one = u.input + u.cacheWrite + u.output;', LEDGER),
+    ('a missing cache count is treated as known', METER_FILE, 'const known = (u) => !!u && u.input !== null && u.output !== null && u.cacheRead !== null && u.cacheWrite !== null;', 'const known = (u) => !!u && u.input !== null && u.output !== null;', LEDGER),
+    ('the batch tool counts as a wrapped call', METER_FILE, "      else if (t.keys && t.keys.length === 1 && t.keys[0] === 'args') bump('wrapped-args');", "      if (t.keys && t.keys.length === 1 && t.keys[0] === 'args') bump('wrapped-args');", LEDGER),
+    ('a truthy is_error string counts as an error', METER_FILE, "block.type === 'tool_result' && block.is_error === true", "block.type === 'tool_result' && block.is_error", LEDGER),
+    ('subagent requests are counted as main', METER_FILE, "role: agentId ? 'subagent' : 'main'", "role: 'main'", LEDGER),
+    ('a meter failure breaks the step', METER_HOOKS, '    } catch { /* the result goes on as the engine streamed it */ }', '    } catch (err) { throw err; }', LEDGER),
+    ('the table prints zero for an unknown total', METER_FILE, "const show = (v) => (v === null ? 'unknown' : String(v));", 'const show = (v) => String(v || 0);', LEDGER),
+]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
 # Validate all anchors before spending time on the first planted execution.

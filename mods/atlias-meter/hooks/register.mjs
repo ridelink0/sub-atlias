@@ -3,7 +3,7 @@
 // session is the /atlias-meter command, which prints what has been counted.
 // Codex's two reports for Gev (2026-10-12) both put a read-only meter first:
 // what each piece costs has to be known before anything is cut.
-import { newTally, add, addChars, addUsage, resultChars, toolGroup, table } from './meter.mjs';
+import { newTally, add, addChars, addUsage, addStep, resultChars, resultErrors, toolGroup, table } from './meter.mjs';
 
 const tally = newTally();
 export const COMMAND = 'atlias-meter';
@@ -25,13 +25,22 @@ export function register(on) {
   // The blocks sent with a conversation's first message.
   on('prompt.context', async ($, e, next) => { for (const block of e.blocks || []) add(tally, 'context:' + block.name, block.text); return next(e); });
   // Every tool result as it is stored, by the tool that produced it.
-  on('session.append', { door: 'tool-result' }, async ($, e, next) => { addChars(tally, 'result:' + toolGroup(e.origin && e.origin.tool), resultChars(e.message)); return next(e); })
+  on('session.append', { door: 'tool-result' }, async ($, e, next) => {
+    const group = toolGroup(e.origin && e.origin.tool);
+    addChars(tally, 'result:' + group, resultChars(e.message));
+    resultErrors(tally, group, e.message);
+    return next(e);
+  })
     // If the count ever fails, the row is stored exactly as it would have been without the mod.
     .catch(async ($, e, next) => next(e));
-  // Every request: what the API says it cost.
+  // Every request: what the API says it cost, summed, and one exact ledger row with the tool
+  // names and argument key names it called. A failed count leaves the result untouched.
   on('turn.step', async function* ($, e, next) {
     const result = yield* next(e);
-    addUsage(tally, result && result.usage, e.agentId);
+    try {
+      addUsage(tally, result && result.usage, e.agentId);
+      addStep(tally, result, e.agentId);
+    } catch { /* the result goes on as the engine streamed it */ }
     return result;
   });
   // Kept where another session can read it; a failed save must never fail the turn.

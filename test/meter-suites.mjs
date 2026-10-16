@@ -41,6 +41,45 @@ export default async function meterSuites({ suite, asyncSuite, check, fs, path, 
       { happened: meter.table(many, 3), why: 'A table cut short in silence reads as the whole of it.', fix: 'table.' });
   });
 
+  await asyncSuite('meter expert', 'meter: the exact ledger keeps unknown counts unknown and only tool metadata', async () => {
+    const info = { happened: 'exact ledger fixture', why: 'Every later efficiency claim is read off this ledger (APPROVED-PLAN-1016 E0): an unknown count read as zero makes an arm look cheaper than it was.', fix: 'addStep, spend, causes and resultErrors in mods/atlias-meter/hooks/meter.mjs.' };
+    const t = meter.newTally();
+    const usage = (i, o, r, w) => ({ input_tokens: i, output_tokens: o, cache_read_input_tokens: r, cache_creation_input_tokens: w, model: 'm' });
+    meter.addStep(t, { turnId: 't1', index: 0, answer: 'ANSWER_SENTINEL', stopReason: 'tool_use', toolUses: [{ name: 'Read', input: { file_path: '/VALUE_SENTINEL', limit: 3 } }, { name: 'ToolSearch', input: { query: 'VALUE_SENTINEL' } }], usage: usage(10, 5, 90, 7) });
+    meter.addStep(t, { turnId: 't1', index: 1, stopReason: 'end_turn', toolUses: [], usage: usage(1, 2, 0, 0) }, 'agent-1');
+    check('a request keeps its four counts, its ids and only tool names and argument key names', JSON.stringify(t.ledger[0]) === JSON.stringify({ role: 'main', agentId: null, turnId: 't1', index: 0, stopReason: 'tool_use', model: 'm', usage: { input: 10, output: 5, cacheRead: 90, cacheWrite: 7 }, tools: [{ name: 'Read', keys: ['file_path', 'limit'] }, { name: 'ToolSearch', keys: ['query'] }] }) && !JSON.stringify(t).includes('SENTINEL'), info);
+    const s = meter.spend(t);
+    check('spend counts every token once by role and overall, and peak is the largest request', s.main.total === 112 && s.main.peak === 112 && s.subagent.total === 3 && s.all.total === 115 && s.all.peak === 112 && s.all.requests === 2 && s.all.unknown === 0 && s.all.cacheRead === 90, info);
+    const cases = { 'no usage': null, 'negative output': usage(1, -3, 0, 0), 'missing cache read': { input_tokens: 1, output_tokens: 1, cache_creation_input_tokens: 0 }, 'fractional input': usage(1.5, 1, 0, 0), 'string count': usage('4', 1, 0, 0), 'NaN cache': usage(1, 1, Number.NaN, 0) };
+    for (const [name, u] of Object.entries(cases)) {
+      const one = meter.newTally();
+      meter.addStep(one, { turnId: 't', index: 0, toolUses: [], usage: usage(3, 3, 0, 0) }, 'agent-2');
+      meter.addStep(one, { turnId: 't', index: 1, toolUses: [], stopReason: null, usage: u });
+      const r = meter.spend(one);
+      check('an unusable count makes its role and the overall figures unknown, never smaller: ' + name, r.main.unknown === 1 && r.main.total === null && r.main.peak === null && r.main.input === null && r.all.total === null && r.all.peak === null && r.subagent.total === 6 && r.subagent.unknown === 0, info);
+    }
+    meter.addStep(t, null);
+    check('a missing result is still a ledger row, with nothing known about it', t.ledger.length === 3 && t.ledger[2].usage === null && t.ledger[2].turnId === null && meter.spend(t).all.total === null, info);
+    const c = meter.newTally();
+    meter.addStep(c, { toolUses: [], usage: usage(1, 1, 0, 0) });
+    meter.addStep(c, { toolUses: [{ name: 'Read', input: { args: { file_path: '/x' } } }, { name: meter.BATCH_TOOL, input: { args: [] } }, { name: 'mcp__atlias-transaction__batch', input: { operations: [] } }, { name: 'Bash', input: 'not an object' }, { name: 'Edit', input: ['args'] }, null], usage: usage(1, 1, 0, 0) });
+    const seen = meter.causes(c);
+    check('observed calls are labelled from metadata alone, and only a standalone args-only call is a wrapped call', JSON.stringify(seen) === JSON.stringify({ 'no-tool': 1, 'tool:Read': 1, 'wrapped-args': 1, 'tool:mcp:atlias-transaction': 2, batch: 2, 'tool:Bash': 1, 'tool:Edit': 1, 'tool:unknown': 1 }) && c.ledger[1].tools[3].keys === null && c.ledger[1].tools[4].keys === null, { ...info, happened: JSON.stringify(seen) });
+    meter.resultErrors(c, 'Bash', { content: [{ type: 'tool_result', is_error: true }, { type: 'tool_result', is_error: 'true' }, { type: 'tool_result' }, null, { type: 'text', is_error: true }] });
+    meter.resultErrors(c, 'Bash', { content: [{ type: 'tool_result', is_error: true }] });
+    meter.resultErrors(c, 'Read', null);
+    check('only tool results marked is_error true are counted as errors, by tool group', JSON.stringify(c.resultErrors) === JSON.stringify({ Bash: 2 }), info);
+    const text = meter.table(t);
+    check('the table states the exact ledger and says unknown instead of a number', text.includes('exact ledger all: 3 requests, 1 without a usable count; total unknown, peak unknown') && text.includes('exact ledger subagent: 1 requests, 0 without a usable count; total 3, peak 3') && text.includes('observed calls: ') && text.includes('search 1') && meter.table(c).includes('error results: Bash 2'), { ...info, happened: text });
+    const hooks = [];
+    mod.register((event, a, b) => { hooks.push({ event, fn: typeof a === 'function' ? a : b }); return { catch() {} }; });
+    const hostile = { turnId: 't', index: 0, toolUses: [], get usage() { throw new Error('usage getter failed'); } };
+    const gen = hooks.find((h) => h.event === 'turn.step').fn({}, { turnId: 't', index: 0 }, async function* () { return hostile; });
+    let it = await gen.next();
+    while (!it.done) it = await gen.next();
+    check('a result the meter cannot read still goes on exactly as the engine streamed it', it.value === hostile, info);
+  });
+
   await asyncSuite('meter expert', 'meter: every hook passes its event on exactly as it arrived', async () => {
     const hooks = [];
     mod.register((event, a, b) => { hooks.push({ event, matcher: typeof a === 'function' ? null : a, fn: typeof a === 'function' ? a : b }); return { catch() {} }; });
