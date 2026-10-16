@@ -244,6 +244,22 @@ def prepare(spec_file, root):
     return manifest
 
 
+def facts_hold(read, expected, tries=4, wait=15, sleep=time.sleep):
+    """Whether the live model facts still equal the ones a run started with. harness-n1 (2026-10-16): after
+    a base run hit its 1,200 s limit the server was still finishing the stopped request, the metadata reads
+    timed out, and facts that could not be read were taken for changed ones, holding the trial. A fact
+    that reads back different fails at once; only a reading with unread facts (None) is taken again."""
+    for attempt in range(tries):
+        facts = read()
+        if facts == expected:
+            return True
+        unread = isinstance(facts, dict) and any(v is None for v in facts.values())
+        if not unread or attempt == tries - 1:
+            return False
+        sleep(wait)
+    return False
+
+
 def verify(root):
     root = pathlib.Path(root)
     m = read(root / "MANIFEST.json")
@@ -799,7 +815,7 @@ def run_owned(root, gpu_lock, max_tasks=0):
                     result = runner.run_one(tasks[trial["taskId"]], a, shims)
                     try:
                         verify(root)
-                        result["controllerIntegrity"] = runner.model_facts(a.api_base, a.model) == a.provenance["model"]
+                        result["controllerIntegrity"] = facts_hold(lambda: runner.model_facts(a.api_base, a.model), a.provenance["model"])
                     except (OSError, ValueError):
                         result["controllerIntegrity"] = False
                     outcome = "measured"
@@ -876,6 +892,22 @@ def selftest_cases():
     check("task-set 20x conditions are explicit", r["measured20xNoTaskLoss"] is True)
     check("general capability is never invented", summarize(m, attempts)["goalComplete"] is False)
     check("matched 20x screen proceeds", stage_gate(m, attempts, "claude", "screen")["action"] == "continue")
+    # facts_hold (harness-n1): unread model facts are read again; a changed fact fails at once.
+    want = {"name": "m", "digest": "d", "parameters": "p"}
+    def reader(*rows):
+        seq, n = list(rows), []
+        def read():
+            n.append(1)
+            return seq.pop(0) if seq else rows[-1]
+        return read, n
+    r1, n1 = reader(want)
+    r2, n2 = reader({**want, "digest": None}, want)
+    r3, n3 = reader({**want, "digest": "other"}, want)
+    r4, n4 = reader({**want, "digest": None})
+    stub = lambda _s: None
+    check("unread model facts are read again before integrity is judged; a changed fact fails at once",
+          facts_hold(r1, want, sleep=stub) and len(n1) == 1 and facts_hold(r2, want, sleep=stub) and len(n2) == 2
+          and not facts_hold(r3, want, sleep=stub) and len(n3) == 1 and not facts_hold(r4, want, tries=3, sleep=stub) and len(n4) == 3)
     # spec.atliasArm "native": the arms run different clients by design (Gev 2026-10-16).
     native = copy.deepcopy(m)
     native["spec"]["atliasArm"] = "native"
@@ -1327,6 +1359,8 @@ def selftest(receipt_path):
                 ("stage native completion gate bypassed", 'if measured["arms"][arm]["nativeCompleted"] != measured["arms"][arm]["expected"]:', 'if False:'),
                 ("stage task loss gate bypassed", 'if measured["lost"] != 0:', 'if False:')]
     mutants += [("stage gate not dispatched", 'if prerequisite:', 'if False:')]
+    mutants += [("unread facts never read again", 'if not unread or attempt == tries - 1:', 'if True:'),
+                ("changed facts read again as if unread", 'unread = isinstance(facts, dict) and any(v is None for v in facts.values())', 'unread = True')]
     mutants += [("smoke task loss gate bypassed", 'if measured.get("lost") != 0:', 'if False:'),
                 ("smoke native completion gate bypassed", 'if measured["arms"][arm]["expected"] != measured["arms"][arm]["nativeCompleted"]:', 'if False:'),
                 ("diagnostic smoke claims qualification", '"qualified": not bypassed and not reasons', '"qualified": not reasons')]
