@@ -322,6 +322,12 @@ cases += [
     ('quiet: stop gate ignores its flag', 'lib/gate.mjs', '...(quiet ? { doneClaim: false } : {})', '...({})', QUIET_SUITE),
     ('quiet: gate skips its own check after a plain reply', 'lib/gate.mjs', 'if (quiet && code.length && noneAfterEdit) return true;', '', QUIET_SUITE),
 ]
+EFFICIENCY_SUITE = ['node', 'test/run.mjs', 'efficiency: native placement preserves']
+cases += [
+    ('names only: descriptions kept', 'mods/atlias-efficiency/hooks/register.mjs', 'out.push(line.slice(0, colon));', 'out.push(line);', EFFICIENCY_SUITE),
+    ('names only: ignores the master switch', 'mods/atlias-efficiency/hooks/register.mjs', 'const namesOnly = enabled && options.skillNamesOnly === true;', 'const namesOnly = options.skillNamesOnly === true;', EFFICIENCY_SUITE),
+    ('names only: loses to the brief listing', 'mods/atlias-efficiency/hooks/register.mjs', 'text: namesOnly ? namesListing(result.text, true) : briefListing(result.text, listing)', 'text: listing ? briefListing(result.text, listing) : namesListing(result.text, true)', EFFICIENCY_SUITE),
+]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
 # Validate all anchors before spending time on the first planted execution.

@@ -168,6 +168,18 @@ export default async function authorityEfficiencySuites({ suite, asyncSuite, che
     const outcomes = [await through({ enabled: true, skillListing: true }), await through({ enabled: true }), await through({ skillListing: true }), await through({}), await through({ enabled: true, skillListing: true }, { ...listingEvent, origin: { kind: 'plugin', event: 'prompt.submit' } })];
     check('the listing is cut only with both switches on, and only the engine\'s own listing', outcomes[0] === brief && outcomes.slice(1).every((text) => text === listed),
       { happened: outcomes.map((text) => text.length), why: 'Each cut is its own switch under the master switch, and another plugin\'s text is not this mod\'s to shorten.', fix: 'Gate on enabled, skillListing and origin.kind === engine.' });
+    const names = mod.namesListing(listed, true);
+    const nameLines = names.slice(0, -mod.NAMES_NOTE.length).split('\n');
+    check('a names-only listing keeps every skill name whole and in order, with no description', names.endsWith(mod.NAMES_NOTE)
+      && JSON.stringify(nameLines) === JSON.stringify(['Skills available:', '- atlias:double-check', '- dataviz', '- init', '- ' + 'n'.repeat(150)]),
+      { happened: nameLines, why: 'A skill the model cannot name is a skill it cannot call; the names-only listing may lose descriptions, never a skill.', fix: 'Keep the text before the first ": " of each item and drop continuation lines.' });
+    check('names-only off, nothing to cut, or not a string comes back untouched', mod.namesListing(listed, false) === listed
+      && mod.namesListing('Skills available:\n- atlias:double-check', true) === 'Skills available:\n- atlias:double-check' && mod.namesListing(undefined, true) === undefined,
+      { happened: mod.namesListing('Skills available:\n- atlias:double-check', true), why: 'Off must be the native listing byte for byte, and the note must not appear where nothing was cut.', fix: 'Return the input unless a line was cut.' });
+    const nameOutcomes = [await through({ enabled: true, skillNamesOnly: true }), await through({ enabled: true, skillNamesOnly: true, skillListing: true }), await through({ skillNamesOnly: true }),
+      await through({ enabled: true, skillNamesOnly: true }, { ...listingEvent, origin: { kind: 'plugin', event: 'prompt.submit' } })];
+    check('names only needs the master switch, wins over the brief listing, and touches only the engine\'s listing', nameOutcomes[0] === names && nameOutcomes[1] === names && nameOutcomes[2] === listed && nameOutcomes[3] === listed,
+      { happened: nameOutcomes.map((text) => text.length), why: 'Each cut is its own switch under the master switch, and another plugin\'s text is not this mod\'s to shorten.', fix: 'Gate namesOnly on enabled and origin.kind === engine.' });
     const dropped = await hooks({ enabled: true, skillListing: true })['prompt.attachment']({}, listingEvent, async () => ({ text: null }));
     check('a listing another hook already left out stays out', dropped.text === null,
       { happened: dropped, why: 'A null text means the attachment is omitted; rewriting it would put it back.', fix: 'Pass a non-string text through.' });

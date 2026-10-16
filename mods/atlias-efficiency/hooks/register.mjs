@@ -22,6 +22,29 @@ export function placement(event, result, enabled, compatible) {
 export const LISTING_CAP = 120;
 export const LISTING_NOTE = '\nDescriptions above are cut short by the atlias-efficiency mod. Every skill listed is still available, and its full instructions load unchanged when it is invoked.';
 
+// skillNamesOnly (Gev 2026-10-16, a step toward 8x): the listing keeps every name, in order, and no
+// description. The sprint's lean request still carried ~1,800 bytes of listing on every call.
+export const NAMES_NOTE = '\nOnly skill names are listed here, by the atlias-efficiency mod. Every skill is still available, and its full instructions load unchanged when it is invoked.';
+
+export function namesListing(text, enabled) {
+  if (!enabled || typeof text !== 'string') return text;
+  const out = [];
+  let items = 0;
+  let cut = false;
+  for (const line of text.split('\n')) {
+    if (!line.startsWith('- ')) {
+      if (items) cut = true; else out.push(line);
+      continue;
+    }
+    items++;
+    const colon = line.indexOf(': ');
+    if (colon < 0) { out.push(line); continue; }
+    out.push(line.slice(0, colon));
+    cut = true;
+  }
+  return cut ? out.join('\n') + NAMES_NOTE : text;
+}
+
 export function briefListing(text, enabled) {
   if (!enabled || typeof text !== 'string') return text;
   const out = [];
@@ -76,13 +99,14 @@ export function compactText(event, result, enabled) {
 export function register(on, options = {}) {
   const enabled = options.enabled === true;
   const listing = enabled && options.skillListing === true;
+  const namesOnly = enabled && options.skillNamesOnly === true;
   const noMemory = enabled && options.omitMemorySection === true;
   const compact = enabled && options.compactToolText === true;
   on('prompt.section', { name: 'memory' }, async ($, e, next) => section(e, await next(e), noMemory)).catch(async ($, e, next) => next(e));
   on('prompt.attachment', { type: 'skill_listing' }, async ($, e, next) => {
     const result = await next(e);
-    if (!listing || e?.origin?.kind !== 'engine' || typeof result?.text !== 'string') return result;
-    return { ...result, text: briefListing(result.text, listing) };
+    if (!(listing || namesOnly) || e?.origin?.kind !== 'engine' || typeof result?.text !== 'string') return result;
+    return { ...result, text: namesOnly ? namesListing(result.text, true) : briefListing(result.text, listing) };
   }).catch(async ($, e, next) => next(e));
   on('tool.describe', async ($, e, next) => {
     const result = await next(e);

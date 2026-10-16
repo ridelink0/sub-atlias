@@ -14,6 +14,11 @@ cuts each description in the skill listing to one line of at most 120 characters
 keeps its whole name and stays available, the listing says that it was cut, and a skill's own
 instructions are never changed. It does not depend on ToolSearch.
 
+`options.skillNamesOnly`, default off and only read when `enabled` is on, lists every skill by its
+name alone, in order, and says so; it takes precedence over `skillListing`. A skill's own
+instructions still load unchanged when it is invoked. Bytes saved are not tokens or solves until a
+paired run measures them.
+
 Two more switches, both default off and only read when `enabled` is on:
 `options.omitMemorySection` leaves Claude Code's own memory instructions out of the system
 prompt (Atlias's memory tools take their place; no other section is touched), and

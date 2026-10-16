@@ -18,6 +18,12 @@
       "description": "Cut each skill's description in the listing to one line. Skill names and a skill's own instructions are never changed. Needs Atlias efficiency on.",
       "default": false
     },
+    "skillNamesOnly": {
+      "type": "boolean",
+      "title": "Skill names only",
+      "description": "List skills by name only, with no description. Every skill stays available and its own instructions are never changed. Overrides Brief skill listing. Needs Atlias efficiency on.",
+      "default": false
+    },
     "omitMemorySection": {
       "type": "boolean",
       "title": "Leave out Claude Code's memory instructions",
