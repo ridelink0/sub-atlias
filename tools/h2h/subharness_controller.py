@@ -329,22 +329,33 @@ def base_identity(manifest, tasks, host, task_id):
                    "apiBase": spec.get("apiBase", "http://127.0.0.1:11435"),
                    "host": {k: h.get(k) for k in ("host", "numCtx", "numPredict", "budget", "taskTimeout", "startTimeout")},
                    "toolSearch": search, "task": digest(tasks[task_id]) if task_id in tasks else None,
-                   "runner": {f: manifest.get("sourceFiles", {}).get(f) for f in BASE_RUNNER_FILES}})
+                   "runner": {f: manifest.get("sourceFiles", {}).get(f) for f in BASE_RUNNER_FILES},
+                   # Codex review 2026-10-16: the disabled-skill inventory is applied to Codex's base arm too.
+                   "codexDisabledSkills": manifest.get("codexDisabledSkillsHash") if host == "codex" else None})
 
 
-def reusable_base(manifest, tasks, prior_manifest, prior_tasks, prior_attempts, done):
+REUSE_STAGES = ("smoke", "screen")
+
+
+def reusable_base(manifest, tasks, prior_manifest, prior_tasks, prior_attempts, done, facts=None):
     """spec.reuseBase: base receipts of an earlier frozen trial that this manifest may count as its own
     base arm, without re-running the bare client. A receipt is taken only when its base identity is
     identical, it was measured once with complete usage and controller integrity, and its trial has
     the same host, stage, repeat and task. Its result carries reusedFrom; the pairing check at
-    summarize still compares its model, client and door provenance with the new Atlias run's."""
+    summarize still compares its model, client and door provenance with the new Atlias run's.
+    `facts` are the live backend's model facts: a receipt measured on other model facts is not
+    taken (sprint-lean-r1: the same weights reported another parameters hash, so its one reused pair
+    could never match). Only smoke and screen take reused results; a confirmation or later stage
+    is measured fresh and balanced (Codex review 2026-10-16)."""
+    if facts is None:
+        return []
     by_trial = {}
     for a in prior_attempts:
         t = a["trial"]
         by_trial.setdefault((t["host"], t["stage"], t["repeat"], t["taskId"], t["arm"]), []).append(a)
     out = []
     for trial in plan(manifest):
-        if trial["arm"] != "base" or trial["key"] in done:
+        if trial["arm"] != "base" or trial["key"] in done or trial["stage"] not in REUSE_STAGES:
             continue
         rows = by_trial.get((trial["host"], trial["stage"], trial["repeat"], trial["taskId"], "base"), [])
         if len(rows) != 1:
@@ -354,6 +365,8 @@ def reusable_base(manifest, tasks, prior_manifest, prior_tasks, prior_attempts, 
                 or count(r.get("promptTotal")) is None or count(r.get("outputTotal")) is None):
             continue
         if base_identity(prior_manifest, prior_tasks, trial["host"], trial["taskId"]) != base_identity(manifest, tasks, trial["host"], trial["taskId"]):
+            continue
+        if (r.get("provenance") or {}).get("model") != facts:
             continue
         result = copy.deepcopy(r)
         result["reusedFrom"] = {"manifest": prior_manifest["id"], "attempt": prior["attempt"], "receiptHash": digest(prior)}
@@ -429,7 +442,8 @@ def summarize(manifest, attempts):
                                and ar.get("taskDigests") == br.get("taskDigests") and bool(ar.get("taskDigests"))
                                and pa.get("model") == pb.get("model") and all(pa.get("model", {}).get(k) for k in ("name", "digest", "server", "template", "parameters", "quantization"))
                                and pa.get("client") == pb.get("client") and all(pa.get("client", {}).get(k) for k in ("sha256", "version"))
-                               and pa.get("door") == pb.get("door") and bool(pa.get("door")))
+                               and pa.get("door") == pb.get("door") and bool(pa.get("door"))
+                               and pa.get("codexDisabledSkills") == pb.get("codexDisabledSkills"))
                     pairs.append({"taskId": t["taskId"], "repeat": t["repeat"], "conditionsMatched": matched,
                                   "basePass": ar.get("pass") is True, "atliasPass": br.get("pass") is True,
                                   "completionLost": ar.get("nativeCompleted") is True and br.get("nativeCompleted") is not True})
@@ -449,7 +463,8 @@ def summarize(manifest, attempts):
                             "solvedBase": sum(p["basePass"] for p in pairs), "solvedAtlias": sum(p["atliasPass"] for p in pairs),
                             # Gev, 2026-10-13: never worse than the bare client. The stage gate stays stricter (any lost task holds).
                             "neverWorse": qualified and sum(p["atliasPass"] for p in pairs) >= sum(p["basePass"] for p in pairs),
-                            "measured20xNoTaskLoss": qualified and total_ratio is not None and peak_ratio is not None
+                            # Reused base results screen a candidate; they never back a 20x claim (Codex review 2026-10-16).
+                            "measured20xNoTaskLoss": qualified and a["reused"] == 0 and total_ratio is not None and peak_ratio is not None
                             and total_ratio >= 20 and peak_ratio >= 20 and lost == 0
                             and a["nativeCompleted"] == a["expected"] and b["nativeCompleted"] == b["expected"]})
     return {"schema": SCHEMA, "manifest": manifest["id"], "generated": now(), "reports": reports,
@@ -720,8 +735,9 @@ def run_owned(root, gpu_lock, max_tasks=0):
         if reuse:
             prior_root = pathlib.Path(reuse).resolve()
             prior_manifest = verify(prior_root)
+            facts = runner.model_facts(manifest["spec"].get("apiBase", "http://127.0.0.1:11435"), manifest["spec"]["model"])
             for trial, result in reusable_base(manifest, tasks, prior_manifest, read(prior_root / "TASKS.json"),
-                                               load_attempts(prior_root, prior_manifest), done):
+                                               load_attempts(prior_root, prior_manifest), done, facts):
                 attempts.append(retain(root, manifest, trial, result, "measured"))
                 done.add(trial["key"])
             report(root, manifest)
@@ -1143,12 +1159,13 @@ def selftest_cases():
         m2, t2 = copy.deepcopy(old), copy.deepcopy(task_set)
         change(m2, t2)
         check(f"a different {label} changes the base identity", base_identity(m2, t2, "claude", "a") != base_identity(rm, task_set, "claude", "a"))
+    FACTS = {"name": "qwen", "digest": "weights", "parameters": "p1"}
     prior_plan = plan(old)
     def receipt(t, **result):
-        base = {"id": t["taskId"], "pass": True, "usageComplete": True, "controllerIntegrity": True, "promptTotal": 10, "outputTotal": 1, "nativeCompleted": True}
+        base = {"id": t["taskId"], "pass": True, "usageComplete": True, "controllerIntegrity": True, "promptTotal": 10, "outputTotal": 1, "nativeCompleted": True, "provenance": {"model": copy.deepcopy(FACTS)}}
         return {"attempt": t["key"], "trial": t, "outcome": "measured", "result": {**base, **result}}
     prior = [receipt(t) for t in prior_plan]
-    got = reusable_base(rm, task_set, old, task_set, prior, set())
+    got = reusable_base(rm, task_set, old, task_set, prior, set(), FACTS)
     check("matching measured base receipts are reused, each naming its source, and no Atlias receipt is",
           len(got) == 2 and all(t["arm"] == "base" and (r.get("reusedFrom") or {}).get("manifest") == "old" and (r.get("reusedFrom") or {}).get("receiptHash") for t, r in got)
           and {t["key"] for t, _ in got} == {t["key"] for t in plan(rm) if t["arm"] == "base"})
@@ -1156,12 +1173,37 @@ def selftest_cases():
     for label, bad in (("unmeasured", {"outcome": "interrupted"}), ("usage incomplete", {"usageComplete": False}),
                        ("integrity unknown", {"controllerIntegrity": None}), ("unknown prompt total", {"promptTotal": None})):
         rows = [p if p["trial"] is not a_base else ({**p, **bad} if "outcome" in bad else {**p, "result": {**p["result"], **bad}}) for p in prior]
-        check(f"a {label} prior base receipt is not reused", all(t["taskId"] != "a" for t, _ in reusable_base(rm, task_set, old, task_set, rows, set())))
-    check("a duplicated prior attempt is not reused", all(t["taskId"] != "a" for t, _ in reusable_base(rm, task_set, old, task_set, prior + [receipt(a_base)], set())))
+        check(f"a {label} prior base receipt is not reused", all(t["taskId"] != "a" for t, _ in reusable_base(rm, task_set, old, task_set, rows, set(), FACTS)))
+    check("a duplicated prior attempt is not reused", all(t["taskId"] != "a" for t, _ in reusable_base(rm, task_set, old, task_set, prior + [receipt(a_base)], set(), FACTS)))
     changed_tasks = copy.deepcopy(task_set)
     changed_tasks["a"]["prompt"] = "changed"
-    check("a prior run of a task that has since changed is not reused", all(t["taskId"] != "a" for t, _ in reusable_base(rm, changed_tasks, old, task_set, prior, set())))
-    check("a trial already done here is not reused over", reusable_base(rm, task_set, old, task_set, prior, {t["key"] for t in plan(rm)}) == [])
+    check("a prior run of a task that has since changed is not reused", all(t["taskId"] != "a" for t, _ in reusable_base(rm, changed_tasks, old, task_set, prior, set(), FACTS)))
+    check("a trial already done here is not reused over", reusable_base(rm, task_set, old, task_set, prior, {t["key"] for t in plan(rm)}, FACTS) == [])
+    check("without live model facts nothing is reused", reusable_base(rm, task_set, old, task_set, prior, set()) == [])
+    check("a receipt measured on other model facts is not reused (sprint-lean-r1)",
+          reusable_base(rm, task_set, old, task_set, prior, set(), {**FACTS, "parameters": "p2"}) == [])
+    confirm_new, confirm_old = copy.deepcopy(rm), copy.deepcopy(old)
+    for m_ in (confirm_new, confirm_old):
+        m_["spec"]["stages"] = [{"name": "confirmation", "ids": ["a", "b"], "repeats": 2}]
+    check("confirmation results are never reused", reusable_base(confirm_new, task_set, confirm_old, task_set, [receipt(t) for t in plan(confirm_old)], set(), FACTS) == [])
+    cx_new, cx_old = copy.deepcopy(rm), copy.deepcopy(old)
+    for m_ in (cx_new, cx_old):
+        m_["clientHashes"]["codex"] = "codex-client"
+        m_["spec"]["hosts"].append({"host": "codex", "numCtx": 100, "client": "x"})
+    cx_new["codexDisabledSkillsHash"], cx_old["codexDisabledSkillsHash"] = "inventory-A", "inventory-B"
+    check("a different or absent Codex skill inventory changes Codex's base identity, not Claude's",
+          base_identity(cx_new, task_set, "codex", "a") != base_identity(cx_old, task_set, "codex", "a")
+          and base_identity(cx_new, task_set, "codex", "a") != base_identity({**cx_old, "codexDisabledSkillsHash": None}, task_set, "codex", "a")
+          and base_identity(cx_new, task_set, "claude", "a") == base_identity(cx_old, task_set, "claude", "a"))
+    inventory = copy.deepcopy(attempts)
+    next(a for a in inventory if a["trial"]["arm"] == "atlias")["result"]["provenance"]["codexDisabledSkills"] = {"sha256": "other"}
+    check("a pair whose arms ran with different skill inventories is unmatched", summarize(m, inventory)["reports"][0]["measurementMatched"] is False)
+    reused_rows = copy.deepcopy(attempts)
+    for row in reused_rows:
+        if row["trial"]["arm"] == "base":
+            row["result"]["reusedFrom"] = {"manifest": "old", "attempt": "x", "receiptHash": "y"}
+    rr = summarize(m, reused_rows)["reports"][0]
+    check("reused base results are counted and never back a 20x claim", rr["arms"]["base"]["reused"] == 4 and rr["measured20xNoTaskLoss"] is False and rr["totalReduction"] == 22)
     new_plan = plan(rm)
     def pair(task_id, base_pass=True, atlias_pass=True, **extra):
         return [receipt(t, **({"pass": base_pass} if t["arm"] == "base" else {"pass": atlias_pass}), **extra) for t in new_plan if t["taskId"] == task_id]
@@ -1213,6 +1255,11 @@ def selftest(receipt_path):
                 ("reused base is not labelled", 'result["reusedFrom"] = {', 'result["unlabelled"] = {'),
                 ("base identity ignores the task", '"task": digest(tasks[task_id]) if task_id in tasks else None', '"task": None'),
                 ("base identity ignores the client", '{"client": manifest["clientHashes"][host],', '{"client": None,'),
+                ("reuse ignores the live model facts", 'if (r.get("provenance") or {}).get("model") != facts:', 'if False:'),
+                ("reuse takes confirmation results", 'or trial["stage"] not in REUSE_STAGES:', ':'),
+                ("base identity ignores the Codex skill inventory", '"codexDisabledSkills": manifest.get("codexDisabledSkillsHash") if host == "codex" else None', '"codexDisabledSkills": None'),
+                ("pairs ignore the Codex skill inventory", 'and pa.get("codexDisabledSkills") == pb.get("codexDisabledSkills"))', ')'),
+                ("reused base backs a 20x claim", '"measured20xNoTaskLoss": qualified and a["reused"] == 0 and', '"measured20xNoTaskLoss": qualified and'),
                 ("base identity ignores the runner", '"runner": {f: manifest.get("sourceFiles", {}).get(f) for f in BASE_RUNNER_FILES}', '"runner": None'),
                 ("smoke fail-fast calls a half-run pair lost", 'passed.get((repeat, task_id, "atlias")) is False', 'not passed.get((repeat, task_id, "atlias"))'),
                 ("smoke fail-fast ignores incomplete runs", 'elif a["result"].get("nativeCompleted") is not True:', 'elif False:')]
