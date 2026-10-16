@@ -109,6 +109,9 @@ export function register(on, options = {}) {
   const defer = enabled && options.deferBuiltins === true;
   const compactReads = enabled && options.deduplicateTextReads === true;
   const hotCore = defer && options.hotCoreTools === true;
+  // deferShell (off unless exactly true, only with hotCore): the shells' schemas (the largest hot piece, ~9 KB
+  // measured on 2.1.301) wait behind ToolSearch too; a check can still run as a batch operation with no hop.
+  const hot = hotCore && options.deferShell === true ? HOT_CORE.filter(n => n !== 'Bash' && n !== 'PowerShell') : HOT_CORE;
   const unchangedReads = enabled && options.unchangedReads === true;
   const base = hotCore ? { ...SPEC, description: HOT_CORE_DESCRIPTION } : SPEC;
   const spec = compactReads ? { ...base, description: base.description + ' Exact numbered Read text is retained; duplicated file.content may be represented by {from:"native.text",format:"line-number-tab-v1"} (remove each numbered prefix) or format:"text-v1" (identical text). All file metadata is retained.' } : base;
@@ -128,7 +131,7 @@ export function register(on, options = {}) {
             ...SPEC.inputSchema.properties.operations.items.properties, tool: { type: 'string', enum: operations },
           } } },
         } } });
-        if (names.includes('ToolSearch')) available = DEFERRED.filter(n => names.includes(n) && !(hotCore && HOT_CORE.includes(n)));
+        if (names.includes('ToolSearch')) available = DEFERRED.filter(n => names.includes(n) && !(hotCore && hot.includes(n)));
       }
     }
     return next(e);

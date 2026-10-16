@@ -170,6 +170,13 @@ export default async function transactionSuites({ asyncSuite, check }) {
       check('hotCoreTools without active deferral keeps the old batch description: ' + label, options.enabled ? native.registered.description === SPEC.description : native.registered === undefined, info);
     }
     const hot = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true });
+    // deferShell: only with hotCoreTools and only when exactly true; then the shells are deferred and named, the rest unchanged.
+    const shells = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true, deferShell: true });
+    for (const tool of ['Read', 'Edit', 'Write']) check('deferShell keeps ' + tool + ' natively visible', await shells.describe(tool) === original, info);
+    check('deferShell defers Bash and names it in ToolSearch, still as a batch operation', (await shells.describe('Bash')).isDeferred === true && (await shells.describe('ToolSearch')).description.includes('Bash') && shells.registered.inputSchema.properties.operations.items.properties.tool.enum.includes('Bash'), info);
+    for (const deferShell of [undefined, false, 'true', 1]) { const plain = await started({ enabled: true, deferBuiltins: true, hotCoreTools: true, deferShell }); check('deferShell other than exactly true keeps Bash hot: ' + deferShell, await plain.describe('Bash') === original, info); }
+    const noHot = await started({ enabled: true, deferBuiltins: true, deferShell: true });
+    check('deferShell without hotCoreTools keeps the old deferral and text', (await noHot.describe('ToolSearch')).description === oldSearch, info);
     for (const tool of HOT_CORE) check('hot core tool keeps its exact native placement and text: ' + tool, await hot.describe(tool) === original, info);
     const deferred = profile.slice(1).filter(n => !HOT_CORE.includes(n));
     for (const tool of deferred) {

@@ -174,7 +174,7 @@ TX = 'mods/atlias-transaction/hooks/register.mjs'
 cases += [
     ('hot core ignores its own switch', TX, 'const hotCore = defer && options.hotCoreTools === true;', 'const hotCore = defer;', HOT),
     ('hot core acts without deferral', TX, 'const hotCore = defer && options.hotCoreTools === true;', 'const hotCore = enabled && options.hotCoreTools === true;', HOT),
-    ('hot core tools still deferred', TX, ' && !(hotCore && HOT_CORE.includes(n))', '', HOT),
+    ('hot core tools still deferred', TX, ' && !(hotCore && hot.includes(n))', '', HOT),
     ('hot core advertises names not deferred', TX, "'\\nNative tools deferred by this mod: ' + available.join(', ') + '. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE", "'\\nNative tools deferred by this mod: ' + DEFERRED.join(', ') + '. Load one with select:<name> before calling it directly. ' + ENVELOPE_NOTE", HOT),
     ('hot core adds text when nothing is deferred', TX, 'return available.length ? {', 'return true ? {', HOT),
     ('batch envelope boundary omitted', TX, "  + ' ' + ENVELOPE_NOTE;", '  ;', HOT),
@@ -265,6 +265,12 @@ cases += [
     ('a silent round is summed as zero in a task total', 'lib/eval.mjs', 'xs.length > 0 && xs.every((x) => Number.isSafeInteger(x) && x >= 0) && ', 'xs.length > 0 && ', TOKENS),
     ('exact totals ignore their default-off flag', 'lib/eval.mjs', 'const exactTotals = config().flags?.exactTokenTotals === true;', 'const exactTotals = true;', TOKENS),
     ('a partial per-round list is read as a run total', 'lib/eval.mjs', 'r[list].length && r[list].every(whole) ?', 'r[list].length && r[list].some(whole) ?', TOKENS),
+]
+# Sprint E2: deferShell (default off) defers the shells' schemas under hot core.
+HOTCORE_SUITE = ['node', 'test/run.mjs', 'hot core keeps the common native tools']
+cases += [
+    ('deferShell accepts values other than true', 'mods/atlias-transaction/hooks/register.mjs', "hotCore && options.deferShell === true ?", "hotCore && options.deferShell ?", HOTCORE_SUITE),
+    ('deferShell defers nothing', 'mods/atlias-transaction/hooks/register.mjs', "HOT_CORE.filter(n => n !== 'Bash' && n !== 'PowerShell')", 'HOT_CORE', HOTCORE_SUITE),
 ]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
