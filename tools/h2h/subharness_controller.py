@@ -156,6 +156,10 @@ def validate(spec):
         raise ValueError("candidate preflight must retain the repository's full functional suite")
     if not any("tools/h2h/subharness_adversarial.py" in c for c in checks):
         raise ValueError("candidate preflight must retain the planted regression suite")
+    if "reuseBase" in spec and (not isinstance(spec["reuseBase"], str) or not (pathlib.Path(spec["reuseBase"]) / "MANIFEST.json").is_file()):
+        raise ValueError("reuseBase must name an earlier trial directory with its MANIFEST.json")
+    if not isinstance(spec.get("smokeFailFast", False), bool):
+        raise ValueError("smokeFailFast must be true or false")
     return spec
 
 
@@ -308,6 +312,68 @@ def retain(root, manifest, trial, result, outcome="measured"):
     return receipt
 
 
+def base_identity(manifest, tasks, host, task_id):
+    """Everything a bare-client base run depends on (Gev 2026-10-16, faster benchmarks): the client
+    binary, the model and endpoint, the host's window, output cap, budget and timeouts, the base arm's
+    tool search and the task itself. Atlias's source, config, mods and settings are not in it, because
+    the base arm never loads them. A control trial's second arm is bare too, so control is in it."""
+    spec = manifest["spec"]
+    h = next(x for x in spec["hosts"] if x["host"] == host)
+    search = spec.get("toolSearch", False)
+    search = search["base"] if isinstance(search, dict) else search
+    return digest({"client": manifest["clientHashes"][host], "model": spec["model"],
+                   "apiBase": spec.get("apiBase", "http://127.0.0.1:11435"),
+                   "host": {k: h.get(k) for k in ("host", "numCtx", "numPredict", "budget", "taskTimeout", "startTimeout")},
+                   "toolSearch": search, "task": digest(tasks[task_id]) if task_id in tasks else None})
+
+
+def reusable_base(manifest, tasks, prior_manifest, prior_tasks, prior_attempts, done):
+    """spec.reuseBase: base receipts of an earlier frozen trial that this manifest may count as its own
+    base arm, without re-running the bare client. A receipt is taken only when its base identity is
+    identical, it was measured once with complete usage and controller integrity, and its trial has
+    the same host, stage, repeat and task. Its result carries reusedFrom; the pairing check at
+    summarize still compares its model, client and door provenance with the new Atlias run's."""
+    by_trial = {}
+    for a in prior_attempts:
+        t = a["trial"]
+        by_trial.setdefault((t["host"], t["stage"], t["repeat"], t["taskId"], t["arm"]), []).append(a)
+    out = []
+    for trial in plan(manifest):
+        if trial["arm"] != "base" or trial["key"] in done:
+            continue
+        rows = by_trial.get((trial["host"], trial["stage"], trial["repeat"], trial["taskId"], "base"), [])
+        if len(rows) != 1:
+            continue
+        prior, r = rows[0], rows[0]["result"]
+        if (prior.get("outcome") != "measured" or r.get("usageComplete") is not True or r.get("controllerIntegrity") is not True
+                or count(r.get("promptTotal")) is None or count(r.get("outputTotal")) is None):
+            continue
+        if base_identity(prior_manifest, prior_tasks, trial["host"], trial["taskId"]) != base_identity(manifest, tasks, trial["host"], trial["taskId"]):
+            continue
+        result = copy.deepcopy(r)
+        result["reusedFrom"] = {"manifest": prior_manifest["id"], "attempt": prior["attempt"], "receiptHash": digest(prior)}
+        out.append((trial, result))
+    return out
+
+
+def smoke_must_hold(manifest, attempts, host):
+    """spec.smokeFailFast: reasons the smoke gate is already certain to hold, from the attempts so far.
+    The gate holds on any lost task, on any task either arm did not complete natively and on any
+    attempt that was not measured, and more attempts cannot undo one of those."""
+    smoke = [a for a in attempts if a["trial"]["host"] == host and a["trial"]["stage"] == "smoke"]
+    reasons = []
+    for a in smoke:
+        if a.get("outcome") != "measured":
+            reasons.append(f"{a['trial']['arm']} {a['trial']['taskId']}: attempt {a.get('outcome')}")
+        elif a["result"].get("nativeCompleted") is not True:
+            reasons.append(f"{a['trial']['arm']} {a['trial']['taskId']}: not natively complete")
+    passed = {(a["trial"]["repeat"], a["trial"]["taskId"], a["trial"]["arm"]): a["result"].get("pass") is True for a in smoke}
+    for (repeat, task_id, arm), ok in passed.items():
+        if arm == "base" and ok and passed.get((repeat, task_id, "atlias")) is False:
+            reasons.append(f"lost {task_id}")
+    return reasons
+
+
 def summarize(manifest, attempts):
     wanted = plan(manifest)
     by_key = {}
@@ -339,6 +405,7 @@ def summarize(manifest, attempts):
                              # Calls the door answered itself past the step budget (c17 F8): a run that ends there did not end by itself.
                              "cappedCalls": sum(str(x.get("outcome", "")).startswith("capped") for r in results for x in (r.get("receipts") or [])),
                              "promptTotal": sum(r["promptTotal"] for r in results) if counted else None,
+                             "reused": sum("reusedFrom" in r for r in results),
                              "firstBlockPrompt": first_block_prompt(results),
                              # Sprint integrity guard (native-hookblock-r1): a plugin can end a task with no primary-model call at all,
                              # which is not the same model doing the work for less. Such a task, or one whose primary calls are unknown,
@@ -484,6 +551,9 @@ def report(root, manifest=None):
         bypassed = decision.get("bypassed")
         reasons = "none" if not decision["reasons"] else "<br>".join(str(x).replace("|", "\\|") for x in decision["reasons"])
         lines.append(f"| {decision['host']} | {decision['stage']} | {decision['gate']} | {decision['action']} | {qualified if qualified is not None else 'n/a'} | {bypassed if bypassed is not None else 'n/a'} | {reasons} |")
+    for r in data["reports"]:
+        if r["arms"]["base"].get("reused"):
+            lines += ["", f"REUSED BASE ({r['host']} {r['stage']}): {r['arms']['base']['reused']} of {r['arms']['base']['expected']} base results come from the earlier frozen trial {manifest['spec'].get('reuseBase')} (identical client, model, endpoint, host settings, base tool search and task; each result names its source receipt in reusedFrom)."]
     if data.get("control"):
         lines += ["", "CONTROL TRIAL: the second arm is the bare client too; only the settings the spec gives it per arm differ. Its numbers are noise or that setting, never Atlias."]
     lines += ["", "Solves come first (Gev, 2026-10-13: never worse than the bare client). Never worse means every pair matched and the Atlias arm solved at least as many matched tasks as base; the stage gate is stricter and holds on any lost task. One run per arm cannot tell a loss from noise: re-run a lost task before calling it a loss.",
@@ -641,6 +711,15 @@ def run_owned(root, gpu_lock, max_tasks=0):
                     "promptTotal": None, "outputTotal": None, "peakContext": None, "stop": "interrupted attempt: spend unknown"}, "interrupted"))
                 done.add(active["trial"]["key"])
             active_path.unlink()
+        reuse = manifest["spec"].get("reuseBase")
+        if reuse:
+            prior_root = pathlib.Path(reuse).resolve()
+            prior_manifest = verify(prior_root)
+            for trial, result in reusable_base(manifest, tasks, prior_manifest, read(prior_root / "TASKS.json"),
+                                               load_attempts(prior_root, prior_manifest), done):
+                attempts.append(retain(root, manifest, trial, result, "measured"))
+                done.add(trial["key"])
+            report(root, manifest)
         n = 0
         held = {}
         try:
@@ -694,6 +773,13 @@ def run_owned(root, gpu_lock, max_tasks=0):
                 report(root, manifest)
                 print(f"{trial['host']} {trial['stage']} repeat {trial['repeat'] + 1} {trial['arm']} {trial['taskId']}: {result.get('pass')}; usage {result.get('usageComplete')}", flush=True)
                 n += 1
+                if trial["stage"] == "smoke" and manifest["spec"].get("smokeFailFast") is True and manifest["spec"].get("smokeGate", True) is not False:
+                    early = smoke_must_hold(manifest, attempts, trial["host"])
+                    if early:
+                        gate = {"manifest": manifest["id"], "host": trial["host"], "stage": "smoke", "gate": "smoke-fail-fast",
+                                "reasons": early, "action": "hold", "attemptsHash": digest([a for a in attempts if a["trial"]["host"] == trial["host"]])}
+                        write(root / "gates" / f"{trial['host']}-smoke-fail-fast.json", gate)
+                        held[trial["host"]] = {"gate": gate, "next": trial}
                 if (result.get("controllerIntegrity") is not True or result.get("usageComplete") is not True
                     or result.get("loadedWindow") != a.num_ctx or not result.get("rounds") or result.get("modelErrors")):
                     write(root / "STATE.json", {"manifest": manifest["id"], "phase": "held-native-qualification", "trial": trial, "at": now()})
@@ -1023,6 +1109,65 @@ def selftest_cases():
         except ValueError:
             rejected = True
         check("local controller refuses paid remote endpoints", rejected)
+        for key, bad in (("reuseBase", 7), ("reuseBase", str(pathlib.Path(temp) / "no-such-trial")), ("smokeFailFast", "yes")):
+            changed = copy.deepcopy(spec)
+            changed[key] = bad
+            try:
+                validate(changed)
+                rejected = False
+            except ValueError:
+                rejected = True
+            check(f"{key} {bad!r} is refused", rejected)
+
+    # Gev 2026-10-16, faster benchmarks: base reuse and smoke fail-fast.
+    rm = {"id": "new", "clientHashes": {"claude": "client"}, "spec": {"model": "qwen", "candidate": "next", "atliasConfig": {"flags": {"lazyBrief": True}},
+          "toolSearch": {"base": False, "atlias": True}, "hosts": [{"host": "claude", "numCtx": 100, "numPredict": 50, "client": "c"}],
+          "stages": [{"name": "smoke", "ids": ["a", "b"], "repeats": 1}]}}
+    old = copy.deepcopy(rm)
+    old["id"] = "old"
+    old["spec"]["atliasConfig"] = {}
+    old["spec"]["toolSearch"] = {"base": False, "atlias": False}
+    task_set = {"a": {"id": "a", "prompt": "x"}, "b": {"id": "b", "prompt": "y"}}
+    check("base identity ignores Atlias config and the Atlias arm's tool search",
+          base_identity(rm, task_set, "claude", "a") == base_identity(old, task_set, "claude", "a"))
+    for label, change in (("model", lambda m, t: m["spec"].update(model="other")), ("client", lambda m, t: m["clientHashes"].update(claude="other")),
+                          ("window", lambda m, t: m["spec"]["hosts"][0].update(numCtx=99)), ("output cap", lambda m, t: m["spec"]["hosts"][0].update(numPredict=51)),
+                          ("base tool search", lambda m, t: m["spec"].update(toolSearch={"base": True, "atlias": True})), ("endpoint", lambda m, t: m["spec"].update(apiBase="http://127.0.0.1:1")),
+                          ("task", lambda m, t: t["a"].update(prompt="changed"))):
+        m2, t2 = copy.deepcopy(old), copy.deepcopy(task_set)
+        change(m2, t2)
+        check(f"a different {label} changes the base identity", base_identity(m2, t2, "claude", "a") != base_identity(rm, task_set, "claude", "a"))
+    prior_plan = plan(old)
+    def receipt(t, **result):
+        base = {"id": t["taskId"], "pass": True, "usageComplete": True, "controllerIntegrity": True, "promptTotal": 10, "outputTotal": 1, "nativeCompleted": True}
+        return {"attempt": t["key"], "trial": t, "outcome": "measured", "result": {**base, **result}}
+    prior = [receipt(t) for t in prior_plan]
+    got = reusable_base(rm, task_set, old, task_set, prior, set())
+    check("matching measured base receipts are reused, each naming its source, and no Atlias receipt is",
+          len(got) == 2 and all(t["arm"] == "base" and (r.get("reusedFrom") or {}).get("manifest") == "old" and (r.get("reusedFrom") or {}).get("receiptHash") for t, r in got)
+          and {t["key"] for t, _ in got} == {t["key"] for t in plan(rm) if t["arm"] == "base"})
+    a_base = next(t for t in prior_plan if t["arm"] == "base" and t["taskId"] == "a")
+    for label, bad in (("unmeasured", {"outcome": "interrupted"}), ("usage incomplete", {"usageComplete": False}),
+                       ("integrity unknown", {"controllerIntegrity": None}), ("unknown prompt total", {"promptTotal": None})):
+        rows = [p if p["trial"] is not a_base else ({**p, **bad} if "outcome" in bad else {**p, "result": {**p["result"], **bad}}) for p in prior]
+        check(f"a {label} prior base receipt is not reused", all(t["taskId"] != "a" for t, _ in reusable_base(rm, task_set, old, task_set, rows, set())))
+    check("a duplicated prior attempt is not reused", all(t["taskId"] != "a" for t, _ in reusable_base(rm, task_set, old, task_set, prior + [receipt(a_base)], set())))
+    changed_tasks = copy.deepcopy(task_set)
+    changed_tasks["a"]["prompt"] = "changed"
+    check("a prior run of a task that has since changed is not reused", all(t["taskId"] != "a" for t, _ in reusable_base(rm, changed_tasks, old, task_set, prior, set())))
+    check("a trial already done here is not reused over", reusable_base(rm, task_set, old, task_set, prior, {t["key"] for t in plan(rm)}) == [])
+    new_plan = plan(rm)
+    def pair(task_id, base_pass=True, atlias_pass=True, **extra):
+        return [receipt(t, **({"pass": base_pass} if t["arm"] == "base" else {"pass": atlias_pass}), **extra) for t in new_plan if t["taskId"] == task_id]
+    check("smoke fail-fast does not hold a clean or gained-only smoke", smoke_must_hold(rm, pair("a") + pair("b", base_pass=False), "claude") == [])
+    check("smoke fail-fast holds on a lost task", smoke_must_hold(rm, pair("a", atlias_pass=False), "claude") == ["lost a"])
+    check("smoke fail-fast holds on an incomplete native run or an unmeasured attempt",
+          smoke_must_hold(rm, pair("a", nativeCompleted=False), "claude") != []
+          and smoke_must_hold(rm, [{**x, "outcome": "interrupted"} for x in pair("a")], "claude") != [])
+    check("smoke fail-fast waits for both arms of a task before calling it lost", smoke_must_hold(rm, [x for x in pair("a", atlias_pass=False) if x["trial"]["arm"] == "base"], "claude") == [])
+    sm_attempts = pair("a", atlias_pass=False) + pair("b")
+    check("every reason smoke fail-fast gives is one the smoke gate itself holds on",
+          smoke_gate(rm, sm_attempts, "claude")["action"] == "hold")
     return cases
 
 
@@ -1055,6 +1200,15 @@ def selftest(receipt_path):
                 ("bad first usage block counted", 'return sum(firsts) if firsts and all(f is not None for f in firsts) else None', 'return sum(f or 0 for f in firsts) if firsts else None'),
                 ("control arm runs Atlias", 'enhanced = trial["arm"] == "atlias" and spec.get("control") is not True', 'enhanced = trial["arm"] == "atlias"'),
                 ("control trial takes Atlias config", 'if spec.get("control") is True and (spec.get("atliasConfig")', 'if False and (spec.get("atliasConfig")')]
+    # Gev 2026-10-16: base reuse and smoke fail-fast.
+    mutants += [("reused base ignores its identity", 'if base_identity(prior_manifest, prior_tasks, trial["host"], trial["taskId"]) != base_identity(manifest, tasks, trial["host"], trial["taskId"]):', 'if False:'),
+                ("reused base takes an unmeasured receipt", 'if (prior.get("outcome") != "measured" or r.get("usageComplete") is not True', 'if (False or r.get("usageComplete") is not True'),
+                ("reused base takes a duplicated attempt", 'if len(rows) != 1:', 'if not rows:'),
+                ("reused base is not labelled", 'result["reusedFrom"] = {', 'result["unlabelled"] = {'),
+                ("base identity ignores the task", '"task": digest(tasks[task_id]) if task_id in tasks else None', '"task": None'),
+                ("base identity ignores the client", '{"client": manifest["clientHashes"][host],', '{"client": None,'),
+                ("smoke fail-fast calls a half-run pair lost", 'passed.get((repeat, task_id, "atlias")) is False', 'not passed.get((repeat, task_id, "atlias"))'),
+                ("smoke fail-fast ignores incomplete runs", 'elif a["result"].get("nativeCompleted") is not True:', 'elif False:')]
     source = pathlib.Path(__file__).read_text(encoding="utf-8")
     planted = []
     with tempfile.TemporaryDirectory() as temp:
