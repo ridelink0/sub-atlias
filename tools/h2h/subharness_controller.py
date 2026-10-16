@@ -339,7 +339,12 @@ def summarize(manifest, attempts):
                              # Calls the door answered itself past the step budget (c17 F8): a run that ends there did not end by itself.
                              "cappedCalls": sum(str(x.get("outcome", "")).startswith("capped") for r in results for x in (r.get("receipts") or [])),
                              "promptTotal": sum(r["promptTotal"] for r in results) if counted else None,
-                             "firstBlockPrompt": first_block_prompt(results)}
+                             "firstBlockPrompt": first_block_prompt(results),
+                             # Sprint integrity guard (native-hookblock-r1): a plugin can end a task with no primary-model call at all,
+                             # which is not the same model doing the work for less. Such a task, or one whose primary calls are unknown,
+                             # holds the whole measurement.
+                             "zeroPrimaryCalls": sum(count(((r.get("byRole") or {}).get("primary") or {}).get("calls")) == 0 for r in results),
+                             "primaryCallsUnknown": sum(count(((r.get("byRole") or {}).get("primary") or {}).get("calls")) is None for r in results)}
                 arms[arm]["tokensPerSolved"] = arms[arm]["totalTokens"] / arms[arm]["passed"] if arms[arm]["totalTokens"] is not None and arms[arm]["passed"] else None
             for t in (t for t in group if t["arm"] == "base"):
                 opposite = next(x for x in group if x["arm"] == "atlias" and x["taskId"] == t["taskId"] and x["repeat"] == t["repeat"])
@@ -360,7 +365,8 @@ def summarize(manifest, attempts):
             qualified = (a["complete"] and b["complete"] and a["usageComplete"] and b["usageComplete"]
                          and a["windowMatched"] and b["windowMatched"] and len(pairs) == a["expected"]
                          and count(a["peakContext"]) is not None and count(b["peakContext"]) is not None
-                         and all(p["conditionsMatched"] for p in pairs))
+                         and all(p["conditionsMatched"] for p in pairs)
+                         and a["zeroPrimaryCalls"] == 0 and b["zeroPrimaryCalls"] == 0 and a["primaryCallsUnknown"] == 0 and b["primaryCallsUnknown"] == 0)
             total_ratio = a["totalTokens"] / b["totalTokens"] if qualified and b["totalTokens"] else None
             peak_ratio = a["peakContext"] / b["peakContext"] if qualified and b["peakContext"] else None
             lost = sum(p["basePass"] and not p["atliasPass"] for p in pairs)
@@ -715,11 +721,20 @@ def selftest_cases():
     attempts = [{"attempt": str(i), "trial": t, "outcome": "measured", "result": {"id": t["taskId"], "pass": True,
                  "nativeCompleted": True, "usageComplete": True, "promptTotal": 200 if t["arm"] == "base" else 5,
                  "outputTotal": 20 if t["arm"] == "base" else 5, "peakContext": 100 if t["arm"] == "base" else 4,
-                 "loadedWindow": 100, "controllerIntegrity": True, "taskDigests": {"prompt": t["taskId"]}, "provenance": copy.deepcopy(conditions)}} for i, t in enumerate(p)]
+                 "loadedWindow": 100, "controllerIntegrity": True, "taskDigests": {"prompt": t["taskId"]}, "provenance": copy.deepcopy(conditions),
+                 "byRole": {"primary": {"calls": 3}}}} for i, t in enumerate(p)]
     cases = []
     def check(name, condition):
         cases.append({"name": name, "passed": bool(condition)})
     r = summarize(m, attempts)["reports"][0]
+    no_call = copy.deepcopy(attempts)
+    next(a for a in no_call if a["trial"]["arm"] == "atlias")["result"]["byRole"] = {"primary": {"calls": 0}}
+    unknown_calls = copy.deepcopy(attempts)
+    next(a for a in unknown_calls if a["trial"]["arm"] == "atlias")["result"].pop("byRole")
+    nc, uc = summarize(m, no_call)["reports"][0], summarize(m, unknown_calls)["reports"][0]
+    check("a task the Atlias arm ended with no primary-model call holds the measurement and any 20x claim",
+          nc["arms"]["atlias"]["zeroPrimaryCalls"] == 1 and nc["measurementMatched"] is False and nc["totalReduction"] is None and nc["measured20xNoTaskLoss"] is False)
+    check("unknown primary calls hold the measurement too", uc["arms"]["atlias"]["primaryCallsUnknown"] == 1 and uc["measurementMatched"] is False)
     check("balanced AB/BA order", p[0]["arm"] != p[4]["arm"] and len(p) == 8)
     host_smoke = copy.deepcopy(m)
     host_smoke["spec"]["hosts"].append({"host": "codex", "numCtx": 100})
@@ -1029,6 +1044,7 @@ def selftest(receipt_path):
     mutants += [("smoke task loss gate bypassed", 'if measured.get("lost") != 0:', 'if False:'),
                 ("smoke native completion gate bypassed", 'if measured["arms"][arm]["expected"] != measured["arms"][arm]["nativeCompleted"]:', 'if False:'),
                 ("diagnostic smoke claims qualification", '"qualified": not bypassed and not reasons', '"qualified": not reasons')]
+    mutants += [("zero primary calls accepted", 'and a["zeroPrimaryCalls"] == 0 and b["zeroPrimaryCalls"] == 0', 'and True')]
     mutants += [("never worse ignores solves", 'sum(p["atliasPass"] for p in pairs) >= sum(p["basePass"] for p in pairs)', 'True'),
                 ("never worse gate bypassed", 'if not measured["neverWorse"]:', 'if False:')]
     mutants += [("held host ends the other host's stages", 'held[trial["host"]] = {"next": trial, "gate": gate}',
