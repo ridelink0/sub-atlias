@@ -1020,6 +1020,33 @@ suite('proof expert', 'the doctor proves what it reports', () => {
   fs.writeFileSync(silent, 'process.stdin.resume(); setTimeout(() => process.exit(0), 50);');
   const quiet = hosts.probeServer(silent, 4000);
   check('a server that answers nothing is not reported as fine', !quiet.ok, { happened: JSON.stringify(quiet), why: 'Silence is the most common failure and the easiest to mistake for success.', fix: 'Require a serverInfo line in the answer.' });
+  const hello = { jsonrpc: '2.0', id: 1, result: { protocolVersion: '2025-06-18', capabilities: { tools: {} }, serverInfo: { name: 'fixture', version: '1.0.0' } } };
+  const probe = (name, response, exit = 0, prefix = '') => {
+    const p = path.join(TMP, `doctor-${name}.mjs`);
+    const output = prefix + JSON.stringify(response) + '\n';
+    fs.writeFileSync(p, `process.stdout.write(${JSON.stringify(output)}); process.exitCode=${exit};\n`);
+    return hosts.probeServer(p, 5000);
+  };
+  const cases = [
+    ['wrong request id', { ...hello, id: 2 }],
+    ['string request id', { ...hello, id: '1' }],
+    ['missing jsonrpc version', { id: 1, result: hello.result }],
+    ['both result and error', { ...hello, error: { code: -32603, message: 'not ready' } }],
+    ['missing protocol version', { ...hello, result: { capabilities: {}, serverInfo: hello.result.serverInfo } }],
+    ['malformed capabilities', { ...hello, result: { ...hello.result, capabilities: [] } }],
+    ['missing server identity', { ...hello, result: { ...hello.result, serverInfo: {} } }],
+    ['empty server identity', { ...hello, result: { ...hello.result, serverInfo: { name: ' ', version: '' } } }],
+  ];
+  for (const [name, response] of cases) {
+    const result = probe(name.replaceAll(' ', '-'), response);
+    check(`the doctor rejects ${name}`, result.ok === false, { happened: JSON.stringify(result), why: 'An unrelated or invalid initialize response does not establish that the host has working tools.', fix: 'Require the matching JSON-RPC initialize result and its mandatory fields.' });
+  }
+  const failedAfterReply = probe('failed-child', hello, 1);
+  check('a valid-looking response from a failed child is not success', failedAfterReply.ok === false, { happened: JSON.stringify(failedAfterReply), why: 'The subprocess failed even though it printed a handshake.', fix: 'Require terminal status 0 and no process error.' });
+  const logged = probe('diagnostic', hello, 0, 'diagnostic serverInfo is next\n');
+  check('diagnostic text does not hide a later valid response', logged.ok === true, { happened: JSON.stringify(logged), why: 'A log mentioning serverInfo is not the initialize response.', fix: 'Parse each line and correlate its JSON-RPC request ID.' });
+  const duplicate = probe('duplicate', hello, 0, JSON.stringify(hello) + '\n');
+  check('duplicate initialize responses are not a unique handshake', duplicate.ok === false, { happened: JSON.stringify(duplicate), why: 'Conflicting repeated responses cannot qualify one request.', fix: 'Require exactly one correlated response.' });
 });
 
 await (await import('./integrity-suites.mjs')).default({ suite, check, core, gate, track, router, PROJECT, TMP, ROOT, spawnSync, fs, path });
@@ -1028,6 +1055,7 @@ await (await import('./shortcut-suites.mjs')).default({ suite, check, TMP, ROOT,
 await (await import('./agent-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, hookRun, PROJECT, TMP, ROOT, fs, path, spawnSync });
 await (await import('./eval-suites.mjs')).default({ suite, asyncSuite, check, TMP });
 await (await import('./host-suites.mjs')).default({ suite, check, PROJECT });
+await (await import('./host-config-suites.mjs')).default({ suite, check, TMP, ROOT, fs, path, spawnSync });
 await (await import('./unit-suites.mjs')).default({ suite, asyncSuite, check, PROJECT, TMP, fs, path });
 await (await import('./pointer-suites.mjs')).default({ suite, check, core, track, router, TMP, ROOT, fs, path });
 await (await import('./skills-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
@@ -1051,6 +1079,7 @@ await (await import('./native-protocol-suites.mjs')).default({ asyncSuite, check
 await (await import('./brief-nocheck-suites.mjs')).default({ suite, check, core, TMP, fs, path, ROOT });
 await (await import('./toolset-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./meter-suites.mjs')).default({ suite, asyncSuite, check, fs, path, ROOT });
+await (await import('./report-accounting-suites.mjs')).default({ suite, check });
 await (await import('./authority-efficiency-suites.mjs')).default({ suite, asyncSuite, check, fs, path, PROJECT });
 await (await import('./public-subharness-suites.mjs')).default({ suite, asyncSuite, check, core, router, track, brief, fs, path, PROJECT });
 await (await import('./oracle-ledger-suites.mjs')).default({ asyncSuite, check, skip, ROOT, spawnSync });

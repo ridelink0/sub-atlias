@@ -22,7 +22,7 @@ import fs from 'node:fs';
 
 const arg = (name) => { const i = process.argv.indexOf('--' + name); return i > 0 ? process.argv[i + 1] : null; };
 const read = (file) => { try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch { return null; } };
-const int = (x) => Number.isSafeInteger(x);
+const int = (x) => Number.isSafeInteger(x) && x >= 0;
 const corpusOf = (id) => (/^canitedit/.test(id) ? 'canitedit' : /^humanevalfix/.test(id) ? 'humanevalfix' : 'other');
 const per = (x) => (Number.isFinite(x) ? Math.round(x) : null);
 const median = (xs) => { const a = xs.filter(Number.isFinite).sort((p, q) => p - q); return a.length ? (a.length % 2 ? a[(a.length - 1) / 2] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2) : null; };
@@ -31,8 +31,18 @@ const median = (xs) => { const a = xs.filter(Number.isFinite).sort((p, q) => p -
 export function armView(report, ids) {
   const rows = Array.isArray(report?.results) ? report.results.filter((r) => r && ids.has(r.id)) : [];
   if (!ids.size || rows.length !== ids.size || new Set(rows.map((r) => r.id)).size !== ids.size) return null;
-  if (rows.some((r) => typeof r.pass !== 'boolean' || !int(r.promptTotal) || !int(r.outputTotal))) return null;
+  const matches = (r, list, total) => {
+    if (!Object.hasOwn(r, list)) return true;
+    const counts = r[list];
+    if (!Array.isArray(counts) || !counts.length || !counts.every(int)) return false;
+    const sum = counts.reduce((n, v) => n + v, 0);
+    return int(sum) && sum === r[total];
+  };
+  if (rows.some((r) => typeof r.pass !== 'boolean' || !int(r.promptTotal) || !int(r.outputTotal) || !int(r.peakPrompt)
+    || !matches(r, 'promptTokens', 'promptTotal') || !matches(r, 'outputTokens', 'outputTotal')
+    || (Object.hasOwn(r, 'promptTokens') && r.promptTokens.reduce((n, v) => Math.max(n, v), 0) !== r.peakPrompt))) return null;
   const solved = rows.filter((r) => r.pass), tokens = rows.reduce((n, r) => n + r.promptTotal + r.outputTotal, 0);
+  if (!int(tokens)) return null;
   const how = (r) => { const s = String(r.stop ?? ''); return /step limit reached|LimitsExceeded/.test(s) ? 'stepLimit' : /^timeout/.test(s) ? 'timeLimit' : (Array.isArray(r.promptTokens) ? r.promptTokens.length : r.rounds) ? 'byItself' : 'noModelCall'; };
   const ended = { byItself: 0, stepLimit: 0, timeLimit: 0, noModelCall: 0 };
   for (const r of rows) ended[how(r)]++;
@@ -40,13 +50,14 @@ export function armView(report, ids) {
   for (const r of rows) { const c = byCorpus[corpusOf(r.id)] ||= { n: 0, passed: 0 }; c.n++; if (r.pass) c.passed++; }
   const first = rows.map((r) => (Array.isArray(r.promptTokens) && int(r.promptTokens[0]) ? r.promptTokens[0] : NaN));
   const calls = rows.map((r) => (Array.isArray(r.promptTokens) ? r.promptTokens.length : int(r.rounds) ? r.rounds : NaN));
+  const completeMedian = (values) => values.every(Number.isFinite) ? median(values) : null;
   return {
     n: rows.length, passed: solved.length, byCorpus, tokens,
     promptPerSolve: solved.length ? per(rows.reduce((n, r) => n + r.promptTotal, 0) / solved.length) : null,
     outputPerSolve: solved.length ? per(rows.reduce((n, r) => n + r.outputTotal, 0) / solved.length) : null,
     tokensPerSolve: solved.length ? per(tokens / solved.length) : null,
-    firstPromptMedian: median(first), peakPrompt: Math.max(0, ...rows.map((r) => (int(r.peakPrompt) ? r.peakPrompt : 0))),
-    callsMedian: median(calls), startSecondsMedian: per(median(rows.map((r) => (int(r.startMs) ? r.startMs / 1000 : NaN)))),
+    firstPromptMedian: completeMedian(first), peakPrompt: Math.max(0, ...rows.map((r) => r.peakPrompt)),
+    callsMedian: completeMedian(calls), startSecondsMedian: per(completeMedian(rows.map((r) => (int(r.startMs) ? r.startMs / 1000 : NaN)))),
     ended, rows: new Map(rows.map((r) => [r.id, { pass: r.pass, tokens: r.promptTotal + r.outputTotal, visiblyUnfinished: how(r) !== 'byItself' }])),
   };
 }

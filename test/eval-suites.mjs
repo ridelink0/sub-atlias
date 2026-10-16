@@ -595,6 +595,29 @@ export default async function register({ asyncSuite, check, TMP }) {
     check('with flags.exactTokenTotals off the stored report shape is unchanged', typeof off.peakPrompt === 'number' && !('promptUnknownRounds' in off), { happened: JSON.stringify({ peak: off.peakPrompt, keys: Object.keys(off).filter((x) => /Unknown/.test(x)) }), why: 'Stored runs are compared with new ones; a default that changes their shape breaks the comparison.', fix: 'Gate the exact totals on flags.exactTokenTotals.' });
     check('a task with a round that reported no prompt count has an unknown prompt total and peak, and says how many rounds were silent', s.promptTotal === null && s.peakPrompt === null && s.promptUnknownRounds === 1 && s.outputTotal === 7 * s.outputTokens.length,
       { happened: JSON.stringify({ promptTotal: s.promptTotal, peak: s.peakPrompt, unknown: s.promptUnknownRounds, prompts: s.promptTokens }), why: 'Summing only the rounds that reported showed a lower bound as the task total, and the peak ignored the silent round.', fix: 'exactLog in lib/eval.mjs.' });
+    process.env.ATLIAS_FLAG_EXACT_TOKEN_TOTALS = '1';
+    try {
+      let calls = 0;
+      const cacheSilent = await evals.runTask({ ...FIX, id: 'cache-silent' }, { state: agentMod.newState(process.cwd(), 'echo'), chat: async () => {
+        calls++;
+        return { content: calls === 1 ? blk({ tool: 'write_file', path: 'sum.js', content: 'export function two() { return 2; }' + NL }) : 'Finished.',
+          usage: { prompt_eval_count: 100, eval_count: 7, ...(calls === 2 ? {} : { prompt_eval_cached_count: 50 }) } };
+      } });
+      check('one silent cache round keeps the exact task cache total unknown', cacheSilent.cachedTotal === null
+        && cacheSilent.cachedTokens.includes(null) && cacheSilent.cachedTokens.includes(50),
+      { happened: JSON.stringify(cacheSilent.cachedTokens), why: 'Summing only known cache rounds is a lower bound.', fix: 'Apply exact totals to cached tokens too.' });
+      for (const repeat of [1, 2]) {
+        let requests = 0;
+        const totals = await evals.runSuite(repeat === 1 ? [{ ...FIX, id: 'counted-a' }, { ...FIX, id: 'silent-b' }] : [{ ...FIX, id: 'repeated-counts' }], {
+          repeat, state: agentMod.newState(process.cwd(), 'echo'), chat: async () => ({ content: 'Finished.',
+            usage: ++requests === 1 ? { prompt_eval_count: 100, prompt_eval_cached_count: 20, eval_count: 7 } : { eval_count: 7 } }),
+        });
+        check(`exact suite totals retain unknown counts across ${repeat === 1 ? 'tasks' : 'attempts'}`, totals.promptTotal === null
+          && totals.cachedTotal === null && totals.outputTotal === 14 && totals.peakPrompt === null,
+        { happened: JSON.stringify({ prompt: totals.promptTotal, output: totals.outputTotal, cached: totals.cachedTotal, peak: totals.peakPrompt }),
+          why: 'A suite cannot discard an unknown task or attempt and call the remaining sum exact.', fix: 'Validate every attempt before rolling up its total.' });
+      }
+    } finally { delete process.env.ATLIAS_FLAG_EXACT_TOKEN_TOTALS; }
     const A = { results: [{ id: 't1', pass: true, chars: 1000, handed: 800, promptTotal: 5000, outputTotal: 500 }, { id: 't2', pass: false, chars: 2000, handed: 1500, promptTotal: 7000, outputTotal: 700 }] };
     const B = { results: [{ id: 't1', pass: true, chars: 900, promptTokens: [1000, 2000], outputTokens: [50, 50] }, { id: 't2', pass: true, chars: 900, promptTokens: [1000, null], outputTokens: [50] }] };
     const text = evals.formatCompare(evals.compare(A, B), 'atlias', 'mini');

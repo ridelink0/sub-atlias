@@ -264,13 +264,50 @@ TOKENS = ['node', 'test/run.mjs', 'a run counts the engine tokens it spent']
 cases += [
     ('a silent round is summed as zero in a task total', 'lib/eval.mjs', 'xs.length > 0 && xs.every((x) => Number.isSafeInteger(x) && x >= 0) && ', 'xs.length > 0 && ', TOKENS),
     ('exact totals ignore their default-off flag', 'lib/eval.mjs', 'const exactTotals = config().flags?.exactTokenTotals === true;', 'const exactTotals = true;', TOKENS),
-    ('a partial per-round list is read as a run total', 'lib/eval.mjs', 'r[list].length && r[list].every(whole) ?', 'r[list].length && r[list].some(whole) ?', TOKENS),
+    ('a partial per-round list is read as a run total', 'lib/eval.mjs', '!counts.every(whole)', '!counts.some(whole)', TOKENS),
 ]
 # Sprint E2: deferShell (default off) defers the shells' schemas under hot core.
 HOTCORE_SUITE = ['node', 'test/run.mjs', 'hot core keeps the common native tools']
 cases += [
     ('deferShell accepts values other than true', 'mods/atlias-transaction/hooks/register.mjs', "hotCore && options.deferShell === true ?", "hotCore && options.deferShell ?", HOTCORE_SUITE),
     ('deferShell defers nothing', 'mods/atlias-transaction/hooks/register.mjs', "HOT_CORE.filter(n => n !== 'Bash' && n !== 'PowerShell')", 'HOT_CORE', HOTCORE_SUITE),
+]
+
+# A3: retained request evidence, task/attempt rollups and strict report summaries.
+HOST_CONFIG_SUITE = ['node', 'test/run.mjs', 'host config: installation']
+cases += [
+    ('config: Codex corrupt config replaced as empty', 'lib/hosts.mjs', "mergeHooksJson(hostConfigForWrite(hooksPath), 'codex')", "mergeHooksJson(readJson(hooksPath, {}) || {}, 'codex')", HOST_CONFIG_SUITE),
+    ('config: Gemini corrupt config replaced as empty', 'lib/hosts.mjs', 'mergeGeminiSettings(hostConfigForWrite(p), withHooks)', 'mergeGeminiSettings(readJson(p, {}) || {}, withHooks)', HOST_CONFIG_SUITE),
+    ('config: Antigravity corrupt config replaced as empty', 'lib/hosts.mjs', 'const doc = hostConfigForWrite(mcpPath);', 'const doc = readJson(mcpPath, {}) || {};', HOST_CONFIG_SUITE),
+    ('config: unreadable config treated as missing', 'lib/hosts.mjs', "if (error.code === 'ENOENT') return {};", 'return {};', HOST_CONFIG_SUITE),
+    ('config: non-object config accepted', 'lib/hosts.mjs', "if (!doc || typeof doc !== 'object' || Array.isArray(doc)) throw new Error(", 'if (false) throw new Error(', HOST_CONFIG_SUITE),
+    ('config: valid BOM config refused', 'lib/hosts.mjs', r"doc = JSON.parse(raw.replace(/^\uFEFF/, ''));", 'doc = JSON.parse(raw);', HOST_CONFIG_SUITE),
+    ('config: JSON error leaks config content', 'lib/hosts.mjs', 'catch { throw new Error(`atlias: invalid JSON in host config ${file}; original file left unchanged.`); }', 'catch (error) { throw error; }', HOST_CONFIG_SUITE),
+]
+
+DOCTOR_SUITE = ['node', 'test/run.mjs', 'the doctor proves what it reports']
+cases += [
+    ('doctor: failed child accepted', 'lib/hosts.mjs', 'if (r.status !== 0 || r.error) return failed();', 'if (false) return failed();', DOCTOR_SUITE),
+    ('doctor: unrelated response accepted', 'lib/hosts.mjs', 'if (message && message.id === 1) replies.push(message);', "if (message && Object.hasOwn(message, 'result')) replies.push(message);", DOCTOR_SUITE),
+    ('doctor: duplicate response accepted', 'lib/hosts.mjs', 'const reply = replies.length === 1 ? replies[0] : null;', 'const reply = replies.length >= 1 ? replies[0] : null;', DOCTOR_SUITE),
+    ('doctor: missing identity accepted', 'lib/hosts.mjs', '!text(info.name) || !text(info.version)', 'false', DOCTOR_SUITE),
+    ('doctor: invalid capabilities accepted', 'lib/hosts.mjs', '!object(result.capabilities)', 'false', DOCTOR_SUITE),
+    ('doctor: missing rpc version accepted', 'lib/hosts.mjs', "reply.jsonrpc !== '2.0'", 'false', DOCTOR_SUITE),
+    ('doctor: error response accepted', 'lib/hosts.mjs', "Object.hasOwn(reply, 'error')", 'false', DOCTOR_SUITE),
+    ('doctor: missing protocol version accepted', 'lib/hosts.mjs', '!text(result.protocolVersion)', 'false', DOCTOR_SUITE),
+]
+
+REPORT_ACCOUNTING_SUITE = ['node', 'test/run.mjs', 'unknown or contradictory requests']
+cases += [
+    ('report: legacy-total-hides-silent-request', 'lib/eval.mjs', 'if (!Object.hasOwn(r, list)) return whole(r[total]) ? r[total] : null;', 'if (whole(r[total])) return r[total]; if (!Object.hasOwn(r, list)) return null;', REPORT_ACCOUNTING_SUITE),
+    ('report: unknown-peak-disappears', 'lib/eval.mjs', 'return peaks.length && peaks.every((v) => v !== null) ? peaks.reduce((n, v) => Math.max(n, v), 0) : null;', 'return peaks.some((v) => v !== null) ? peaks.reduce((n, v) => Math.max(n, v || 0), 0) : null;', REPORT_ACCOUNTING_SUITE),
+    ('report: measured-zero-becomes-unknown', 'lib/eval.mjs', 'return peaks.length && peaks.every((v) => v !== null) ? peaks.reduce((n, v) => Math.max(n, v), 0) : null;', 'return peaks.length && peaks.every((v) => v !== null) ? (peaks.reduce((n, v) => Math.max(n, v), 0) || null) : null;', REPORT_ACCOUNTING_SUITE),
+    ('report: arm-ignores-contradictory-total', 'tools/h2h/base_harness_compare.mjs', 'return int(sum) && sum === r[total];', 'return int(sum);', REPORT_ACCOUNTING_SUITE),
+    ('report: arm-aggregate-overflows', 'tools/h2h/base_harness_compare.mjs', 'if (!int(tokens)) return null;', '', REPORT_ACCOUNTING_SUITE),
+    ('report: partial-cache-becomes-total', 'lib/eval.mjs', 'cachedTotal: exactTotals ? (exactLog(st.cacheLog) ? st.cacheLog.reduce((n, x) => n + x, 0) : null) : (nums(st.cacheLog).length ? nums(st.cacheLog).reduce((n, x) => n + x, 0) : null),', 'cachedTotal: nums(st.cacheLog).length ? nums(st.cacheLog).reduce((n, x) => n + x, 0) : null,', TOKENS),
+    ('report: suite-drops-unknown-attempt', 'lib/eval.mjs', 'if (config().flags?.exactTokenTotals === true) {', 'if (false) {', TOKENS),
+    ('report: partial-median-becomes-exact', 'tools/h2h/base_harness_compare.mjs', 'const completeMedian = (values) => values.every(Number.isFinite) ? median(values) : null;', 'const completeMedian = (values) => median(values);', REPORT_ACCOUNTING_SUITE),
+    ('report: negative-legacy-count-accepted', 'tools/h2h/base_harness_compare.mjs', 'const int = (x) => Number.isSafeInteger(x) && x >= 0;', 'const int = (x) => Number.isSafeInteger(x);', REPORT_ACCOUNTING_SUITE),
 ]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
