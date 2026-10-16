@@ -201,6 +201,23 @@ export default async function agentCodexAuthoritySuites({ suite, asyncSuite, che
 
   await asyncSuite('codex authority expert', 'codex authority: missing or unreadable authority is said in one explicit line', async () => {
     await withFlag(true, async () => {
+      const st = agentMod.newState(work('lost-ledger'), 'codex');
+      const original = 'Original ' + 'exact '.repeat(300) + 'AUTHORITY_TAIL_SENTINEL';
+      authority.record(st.sid, original);
+      st.history.push({ role: 'user', text: original }, { role: 'assistant', text: 'noted' });
+      fs.unlinkSync(authority.ledgerPath(st.sid));
+      const seen = [];
+      agentMod.codexTurn(st, 'Next.', { run: fakeCodex(seen) });
+      const input = seen[0]?.input || '';
+      check('a lost ledger never calls clipped recent history complete', seen.length === 1 && input.includes('exact request history is incomplete') && !input.includes('exact requests above are complete') && !input.includes('AUTHORITY_TAIL_SENTINEL'), {
+        happened: input.slice(0, 200), why: 'A missing file returns no rows, which cannot certify retained instructions.', fix: 'Require at least one retained request before claiming complete history.' });
+      fs.writeFileSync(authority.ledgerPath(st.sid), '[]');
+      const empty = [];
+      agentMod.codexTurn(st, 'Next.', { run: fakeCodex(empty) });
+      check('an empty ledger also reports missing authority instead of an exact-history claim', empty[0].input.includes('no request rows are available') && !empty[0].input.includes('exact requests above are complete'), {
+        happened: empty[0].input.slice(0, 200), why: 'A valid JSON array can still contain none of the required instruction history.', fix: 'Treat absent request rows as incomplete, whether the file is absent or empty.' });
+    });
+    await withFlag(true, async () => {
       const st = agentMod.newState(work('missing-state'), 'codex');
       authority.record(st.sid, 'The only recorded request.');
       st.authorityMissing = true;

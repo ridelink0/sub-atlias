@@ -221,6 +221,14 @@ cases += [
     ('a count that is not whole is complete', METER_FILE, '.every(whole)) tally.incomplete', '.every(() => true)) tally.incomplete', ['node', 'test/run.mjs', 'meter: counting is exact']),
     ('the table prints zero for an unknown total', METER_FILE, "const show = (v) => (v === null ? 'unknown' : String(v));", 'const show = (v) => String(v || 0);', LEDGER),
 ]
+# Codex whole-audit fixes (patch v2, 6a2a892), integrated on this branch: one plant per fixed line.
+cases += [
+    ('an empty authority ledger is called complete', 'lib/agent.mjs', 'complete: !state.authorityMissing && requests.length > 0 }', 'complete: !state.authorityMissing }', ['node', 'test/run.mjs', 'codex authority']),
+    ('a failed pinned launch is marked started', 'lib/agent.mjs', "  if (r.status !== 0 || r.error) return `claude failed:", "  state.started = true;\n  if (r.status !== 0 || r.error) return `claude failed:", ['node', 'test/run.mjs', 'engine handshake']),
+    ('provisional output usage counts as final', 'lib/subharness.mjs', 'tokens: terminal && !broken && outputFinal ?', 'tokens: terminal && !broken ?', ['node', 'test/run.mjs', 'public subharness']),
+    ('a restarted message keeps its earlier usage', 'lib/subharness.mjs', '        if (started || terminal) broken = true;\n', '', ['node', 'test/run.mjs', 'public subharness']),
+    ('a malformed MCP frame reaches dispatch', 'mcp/server.mjs', "  if (!msg || typeof msg !== 'object'", "  if (false && typeof msg !== 'object'", ['node', 'test/run.mjs', 'mcp server']),
+]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']
 # Validate all anchors before spending time on the first planted execution.

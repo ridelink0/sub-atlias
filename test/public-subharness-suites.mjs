@@ -73,6 +73,19 @@ export default async function publicSubharnessSuites({ suite, asyncSuite, check,
     const anthRaw = { input_tokens: 4, output_tokens: 0, cache_read_input_tokens: 7 };
     const anth = parseSSE('anthropic', [{ type: 'message_start', message: { usage: anthRaw } }, { type: 'message_delta', usage: { output_tokens: 3 } }, { type: 'message_delta', usage: { output_tokens: 5 } }, { type: 'message_stop' }]);
     verify('Anthropic stream merges cumulative output with the original input categories', anth.tokens?.total === 16 && anth.rawUsage.output_tokens === 5 && anth.rawUsage.cache_read_input_tokens === 7, anth, 'Merge usage snapshots without summing deltas twice.');
+    const begin = { type: 'message_start', message: { usage: anthRaw } }, end = { type: 'message_stop' };
+    const provisional = parseSSE('anthropic', [begin, end]);
+    verify('a stopped stream without final output usage keeps provisional counters but exact cost unknown', provisional.terminal && provisional.tokens === null && equal(provisional.rawUsage, anthRaw), provisional, 'Require message_delta output usage, not the initial zero.');
+    const zero = parseSSE('anthropic', [begin, { type: 'message_delta', usage: { output_tokens: 0 } }, end]);
+    verify('a final observed zero is valid and distinct from the provisional zero', zero.tokens?.total === 11, zero, 'Accept a real final zero without guessing missing counts.');
+    const invalid = [undefined, null, [], {}, { output_tokens: -1 }, { output_tokens: '0' }, { output_tokens: 0.5 }, { output_tokens: Number.MAX_SAFE_INTEGER + 1 }];
+    verify('a malformed later output snapshot cannot reuse an earlier valid count', invalid.every(usage => parseSSE('anthropic', [begin, { type: 'message_delta', usage: { output_tokens: 5 } }, { type: 'message_delta', usage }, end]).tokens === null), 'eight malformed later snapshots checked', 'Retain malformed final usage as an unknown condition.');
+    const outOfOrder = [[{ type: 'message_delta', usage: { input_tokens: 4, output_tokens: 5 } }, end], [begin, end, { type: 'message_delta', usage: { output_tokens: 5 } }], [begin, { type: 'message_delta', usage: { output_tokens: 5 } }, begin, end]];
+    verify('misordered or restarted message envelopes cannot certify a partial request', outOfOrder.every(events => parseSSE('anthropic', events).tokens === null), 'three invalid event orders checked', 'Bind final usage to one started message before its terminal event.');
+    // A restart followed by its own valid final delta: only the restart guard rejects it, since the
+    // second message alone would otherwise look complete (found when this guard's plant survived).
+    const restartedThenFinal = parseSSE('anthropic', [begin, { type: 'message_delta', usage: { output_tokens: 5 } }, begin, { type: 'message_delta', usage: { output_tokens: 3 } }, end]);
+    verify('a message restarted mid-stream cannot certify the second message alone', restartedThenFinal.tokens === null && !restartedThenFinal.terminal, restartedThenFinal, 'Treat a second message_start in one stream as broken.');
     const errored = parseSSE('anthropic', [{ type: 'message_start', message: { usage: anthRaw } }, { type: 'error', error: { message: 'fixture failure' } }, { type: 'message_stop' }]);
     verify('a stream error prevents a later stop from certifying partial usage', errored.tokens === null && !errored.terminal, errored, 'Keep the stream error as an unknown-usage condition.');
     const malformed = native.usageReader('responses', true); malformed.push('data: invalid-json\n\ndata: ' + JSON.stringify({ type: 'response.completed', response: { usage: raw } }) + '\n\n');

@@ -317,7 +317,12 @@ async function mcpSuite() {
   if (only.length && !only.some((o) => 'mcp server'.includes(o.toLowerCase()))) return;
   current = { expert: 'MCP expert', name: 'mcp server', passed: 0, failed: [] };
   results.push(current);
-  const child = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.mjs')], { env: process.env, cwd: PROJECT });
+  const mcpProject = path.join(PROJECT, 'mcp-protocol-fixture');
+  fs.mkdirSync(mcpProject, { recursive: true });
+  // The round-trip checks updating an existing note, without depending on a
+  // previous suite to have created one in the shared test project.
+  progress.update(mcpProject, 'mcp-protocol-fixture', null);
+  const child = spawn(process.execPath, [path.join(ROOT, 'mcp', 'server.mjs')], { env: process.env, cwd: mcpProject });
   const lines = [];
   let buf = '';
   child.stdout.on('data', (d) => { buf += d; let i; while ((i = buf.indexOf('\n')) !== -1) { lines.push(buf.slice(0, i)); buf = buf.slice(i + 1); } });
@@ -326,11 +331,15 @@ async function mcpSuite() {
   send({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test' } } });
   send({ jsonrpc: '2.0', method: 'notifications/initialized' });
   send({ jsonrpc: '2.0', id: 2, method: 'tools/list' });
-  send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'harness_progress', arguments: { action: 'set', text: 'ship it', cwd: PROJECT } } });
-  send({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'harness_progress', arguments: { action: 'get', cwd: PROJECT } } });
+  send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'harness_progress', arguments: { action: 'set', text: 'ship it', cwd: mcpProject } } });
+  send({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'harness_progress', arguments: { action: 'get', cwd: mcpProject } } });
   send({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'no_such_tool', arguments: {} } });
   send({ jsonrpc: '2.0', id: 6, method: 'unknown/method' });
-  await waitFor(6);
+  const malformed = [null, true, 0, 'not a request', [], {}, { jsonrpc: '2.0', id: 7, method: 4 }, { jsonrpc: '2.0', id: {}, method: 'ping' }];
+  for (const frame of malformed) send(frame);
+  child.stdin.write('{"jsonrpc":"2.0","id":1e309,"method":"ping"}\n');
+  send({ jsonrpc: '2.0', id: 90, method: 'ping' });
+  await waitFor(8 + malformed.length);
   child.stdin.end();
   const msgs = lines.map((l) => { try { return JSON.parse(l); } catch { return { bad: l }; } });
   const by = (id) => msgs.find((m) => m.id === id);
@@ -339,6 +348,10 @@ async function mcpSuite() {
   check('harness_progress set then get round-trips', by(3) && /ship it/.test(by(3).result.content[0].text) && by(4) && /ship it/.test(by(4).result.content[0].text), { happened: JSON.stringify([by(3), by(4)]).slice(0, 300), why: 'The handoff note is the model\'s memory across compaction; a broken round-trip loses it.', fix: 'callTool harness_progress must write next.md and rebuild the note.' });
   check('unknown tool returns isError, not a crash', by(5) && by(5).result && by(5).result.isError === true, { happened: JSON.stringify(by(5)), why: 'A thrown error would kill the server for the whole session.', fix: 'Catch in tools/call and return isError true.' });
   check('unknown method returns JSON-RPC -32601', by(6) && by(6).error && by(6).error.code === -32601, { happened: JSON.stringify(by(6)), why: 'Hosts probe optional methods; a wrong error code can be read as a protocol failure.', fix: 'Return code -32601 for unknown methods with an id.' });
+  check('valid JSON with an invalid request shape returns an error for every frame', msgs.filter(m => m.id === null && m.error?.code === -32600).length === malformed.length + 1,
+    { happened: JSON.stringify(msgs.filter(m => m.id === null)), why: 'null is valid JSON, but dereferencing it in both handling and error handling crashes the server.', fix: 'Validate object, method and request-ID shapes before dispatch.' });
+  check('a valid request still works after malformed frames on the same connection', by(90)?.result && Object.keys(by(90).result).length === 0,
+    { happened: JSON.stringify(by(90)), why: 'One bad frame must not disconnect every harness tool.', fix: 'Return a structured error and continue reading requests.' });
   check('server exits cleanly when stdin closes', await new Promise((res) => { const t = setTimeout(() => res(false), 5000); child.on('exit', (c) => { clearTimeout(t); res(c === 0); }); }), { happened: 'server did not exit within 5 s of stdin end', why: 'Orphaned servers pile up across sessions.', fix: 'process.stdin.on("end") must exit.' });
 }
 await mcpSuite();
@@ -807,11 +820,20 @@ suite('engine handshake expert', 'engine handshake', () => {
   let calls = 0;
   const failFirst = (cmd, args) => { calls++; return calls === 1 ? { status: 1, stdout: '', stderr: 'invalid session id', error: null } : { status: 0, stdout: 'recovered', stderr: '', error: null }; };
   const out = agentMod.claudeTurn(state, 'hello', { run: failFirst });
-  check('a first turn that is refused falls back instead of giving up', out === 'recovered' && calls === 2, { happened: 'result ' + JSON.stringify(out) + ' after ' + calls + ' call(s)', why: 'The old code only retried on turns after the first, so the one failure a new user would actually hit was the one with no recovery.', fix: 'Retry without pinning a session, whether or not the turn is the first.' });
+  check('a refused first turn remains unstarted and does not create an unbound conversation', /claude failed/.test(out) && calls === 1 && state.started === false, { happened: 'result ' + JSON.stringify(out) + ' after ' + calls + ' call(s)', why: 'An anonymous fallback cannot be resumed by the pinned UUID on the next turn.', fix: 'Report the pinned launch failure without an unbound retry.' });
   let always = 0;
   const alwaysFail = () => { always++; return { status: 1, stdout: '', stderr: 'nope', error: null }; };
   const bad = agentMod.claudeTurn(agentMod.newState(PROJECT, 'claude'), 'hello', { run: alwaysFail });
-  check('an engine that will not answer says so plainly and stops', /claude failed/.test(bad) && always === 2, { happened: bad + ' after ' + always + ' call(s)', why: 'Two attempts is a fallback; more would be a loop the user pays for.', fix: 'Return the failure after the single retry.' });
+  check('an engine that will not answer says so plainly and stops', /claude failed/.test(bad) && always === 1, { happened: bad + ' after ' + always + ' call(s)', why: 'An unbound retry can choose another conversation and spend another model call.', fix: 'Return the exact session failure without retrying another session.' });
+  const resumedCalls = [];
+  state.started = true;
+  const resumedFailure = agentMod.claudeTurn(state, 'follow-up', { run: (cmd, args) => { resumedCalls.push(args); return { status: 1, stderr: 'session unavailable' }; } });
+  check('a failed resume retains its exact UUID and never uses the most recent conversation', /claude failed/.test(resumedFailure) && resumedCalls.length === 1 && resumedCalls[0].includes(state.hostSid) && resumedCalls[0].includes('--resume') && !resumedCalls[0].includes('--continue') && state.started,
+    { happened: JSON.stringify(resumedCalls), why: 'Another native session can be more recent in the same project.', fix: 'Keep the pinned resume arguments and return its failure.' });
+  const fresh = agentMod.newState(PROJECT, 'claude'); const successCalls = [];
+  for (const prompt of ['original', 'follow-up']) agentMod.claudeTurn(fresh, prompt, { run: (cmd, args) => { successCalls.push(args); return { status: 0, stdout: 'ok' }; } });
+  check('successful turns still pin and then resume the same native conversation', fresh.started && successCalls.length === 2 && successCalls[0].includes('--session-id') && successCalls[1].includes('--resume') && successCalls.every(args => args.includes(fresh.hostSid)),
+    { happened: JSON.stringify(successCalls), why: 'Removing an unsafe fallback must preserve ordinary follow-up continuity.', fix: 'Set started only after a successful pinned turn.' });
   const shimDir = 'C:\\tools\\npm';
   const shims = {
     [path.win32.join(shimDir, 'tool.cmd')]: '@ECHO off\r\nSETLOCAL\r\nCALL :find_dp0\r\n"%dp0%\\node_modules\\tool\\bin\\tool.exe"   %*\r\n',
