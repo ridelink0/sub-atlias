@@ -168,6 +168,15 @@ export default async function authorityEfficiencySuites({ suite, asyncSuite, che
     const outcomes = [await through({ enabled: true, skillListing: true }), await through({ enabled: true }), await through({ skillListing: true }), await through({}), await through({ enabled: true, skillListing: true }, { ...listingEvent, origin: { kind: 'plugin', event: 'prompt.submit' } })];
     check('the listing is cut only with both switches on, and only the engine\'s own listing', outcomes[0] === brief && outcomes.slice(1).every((text) => text === listed),
       { happened: outcomes.map((text) => text.length), why: 'Each cut is its own switch under the master switch, and another plugin\'s text is not this mod\'s to shorten.', fix: 'Gate on enabled, skillListing and origin.kind === engine.' });
+    const engineGlob = { tool: 'Glob', provider: { plugin: 'engine' }, description: 'Fast file pattern matching.' };
+    const engineSearch = { tool: 'ToolSearch', provider: { plugin: 'engine' }, description: 'Fetches deferred tools.' };
+    const keptGlob = mod.placement(engineGlob, { description: engineGlob.description }, true, true, ['Glob']);
+    const keptSearch = mod.placement(engineSearch, { description: engineSearch.description }, true, true, ['Glob']);
+    check('hotGlob leaves Glob visible and unannounced; without it Glob is deferred and announced', keptGlob.isDeferred === undefined
+      && !/\bGlob\b/.test(keptSearch.description) && /\bGrep\b/.test(keptSearch.description)
+      && mod.placement(engineGlob, { description: engineGlob.description }, true, true).isDeferred === true
+      && /\bGlob\b/.test(mod.placement(engineSearch, { description: engineSearch.description }, true, true).description),
+      { happened: JSON.stringify({ keptGlob, keptSearch }), why: 'The transaction mod cannot undo a deferral this mod makes; both must keep Glob visible (native-lean-r3).', fix: 'placement takes keep and noteFor drops kept names.' });
     const names = mod.namesListing(listed, true);
     const nameLines = names.slice(0, -mod.NAMES_NOTE.length).split('\n');
     check('a names-only listing keeps every skill name whole and in order, with no description', names.endsWith(mod.NAMES_NOTE)

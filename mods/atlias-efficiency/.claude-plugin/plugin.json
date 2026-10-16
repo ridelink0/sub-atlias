@@ -18,6 +18,12 @@
       "description": "Cut each skill's description in the listing to one line. Skill names and a skill's own instructions are never changed. Needs Atlias efficiency on.",
       "default": false
     },
+    "hotGlob": {
+      "type": "boolean",
+      "title": "Keep Glob visible",
+      "description": "Leave Glob natively visible instead of deferring it, and do not name it as deferred. Set the transaction mod's hotGlob too when both mods are loaded. Needs Atlias efficiency on.",
+      "default": false
+    },
     "skillNamesOnly": {
       "type": "boolean",
       "title": "Skill names only",

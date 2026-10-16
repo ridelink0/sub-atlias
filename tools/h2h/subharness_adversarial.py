@@ -29,8 +29,8 @@ cases = [
     ("instruction tail cut", "lib/loop.mjs", "!exact && text.length > room", "text.length > room"),
     ("repeated authority erased", "lib/loop.mjs", "if (exact) {\n    // Only the retained", "if (false) {\n    // Only the retained"),
     ("off mode changes placement", "mods/atlias-efficiency/hooks/register.mjs", "if (!enabled || !compatible", "if (!compatible"),
-    ("moved tools not named", "mods/atlias-efficiency/hooks/register.mjs", "return { ...result, description: result.description + NOTE };", "return result;"),
-    ("note replaces ToolSearch text", "mods/atlias-efficiency/hooks/register.mjs", "description: result.description + NOTE", "description: NOTE"),
+    ("moved tools not named", "mods/atlias-efficiency/hooks/register.mjs", "return { ...result, description: result.description + (keep.length ? noteFor(keep) : NOTE) };", "return result;"),
+    ("note replaces ToolSearch text", "mods/atlias-efficiency/hooks/register.mjs", "description: result.description + (keep.length ? noteFor(keep) : NOTE)", "description: (keep.length ? noteFor(keep) : NOTE)"),
     ("listing cut without its own switch", "mods/atlias-efficiency/hooks/register.mjs", "const listing = enabled && options.skillListing === true;", "const listing = enabled;"),
     ("long skill name cut", "mods/atlias-efficiency/hooks/register.mjs", "Math.max(colon + 1, line.lastIndexOf(' ', LISTING_CAP))", "line.lastIndexOf(' ', LISTING_CAP)"),
     ("another plugin's listing cut", "mods/atlias-efficiency/hooks/register.mjs", "e?.origin?.kind !== 'engine' || ", ""),
@@ -331,6 +331,8 @@ cases += [
 ]
 EFFICIENCY_SUITE = ['node', 'test/run.mjs', 'efficiency: native placement preserves']
 cases += [
+    ('efficiency hotGlob still defers Glob', 'mods/atlias-efficiency/hooks/register.mjs', "if (!DEFER.includes(event.tool) || keep.includes(event.tool)) return result;", "if (!DEFER.includes(event.tool)) return result;", EFFICIENCY_SUITE),
+    ('efficiency hotGlob still announces Glob', 'mods/atlias-efficiency/hooks/register.mjs', "ANNOUNCE.filter((n) => !keep.includes(n)).join(', ')", "ANNOUNCE.join(', ')", EFFICIENCY_SUITE),
     ('names only: descriptions kept', 'mods/atlias-efficiency/hooks/register.mjs', 'out.push(line.slice(0, colon));', 'out.push(line);', EFFICIENCY_SUITE),
     ('names only: ignores the master switch', 'mods/atlias-efficiency/hooks/register.mjs', 'const namesOnly = enabled && options.skillNamesOnly === true;', 'const namesOnly = options.skillNamesOnly === true;', EFFICIENCY_SUITE),
     ('names only: loses to the brief listing', 'mods/atlias-efficiency/hooks/register.mjs', 'text: namesOnly ? namesListing(result.text, true) : briefListing(result.text, listing)', 'text: listing ? briefListing(result.text, listing) : namesListing(result.text, true)', EFFICIENCY_SUITE),

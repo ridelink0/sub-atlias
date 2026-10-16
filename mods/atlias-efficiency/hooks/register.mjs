@@ -9,11 +9,17 @@ export const DEFER = ['Agent', 'CronCreate', 'CronDelete', 'CronList', 'EnterWor
 export const ANNOUNCE = ['Agent', 'Glob', 'Grep', 'ListAgents', 'ReportFindings', 'ScheduleWakeup', 'Skill', 'Workflow'];
 export const NOTE = `\n\nAlso deferred, by the atlias-efficiency mod; load one with "select:<name>" before calling it: ${ANNOUNCE.join(', ')}`;
 
-export function placement(event, result, enabled, compatible) {
+// `keep` (hotGlob: ['Glob']; Gev 2026-10-16) names tools this mod leaves visible and does not announce.
+// The transaction mod's hotGlob cannot undo a deferral made here, so both mods take the option
+// (native-lean-r3: with it set on the transaction mod alone, Glob stayed deferred).
+export function placement(event, result, enabled, compatible, keep = []) {
   if (!enabled || !compatible || event?.provider?.plugin !== 'engine') return result;
-  if (event.tool === 'ToolSearch') return { ...result, description: result.description + NOTE };
-  if (!DEFER.includes(event.tool)) return result;
+  if (event.tool === 'ToolSearch') return { ...result, description: result.description + (keep.length ? noteFor(keep) : NOTE) };
+  if (!DEFER.includes(event.tool) || keep.includes(event.tool)) return result;
   return { ...result, isDeferred: true };
+}
+export function noteFor(keep) {
+  return `\n\nAlso deferred, by the atlias-efficiency mod; load one with "select:<name>" before calling it: ${ANNOUNCE.filter((n) => !keep.includes(n)).join(', ')}`;
 }
 
 // RESEARCH-FIRST 0d and 0f: the skill listing is re-sent on every call and was 5,961 characters of
@@ -102,6 +108,7 @@ export function register(on, options = {}) {
   const namesOnly = enabled && options.skillNamesOnly === true;
   const noMemory = enabled && options.omitMemorySection === true;
   const compact = enabled && options.compactToolText === true;
+  const keep = enabled && options.hotGlob === true ? ['Glob'] : [];
   on('prompt.section', { name: 'memory' }, async ($, e, next) => section(e, await next(e), noMemory)).catch(async ($, e, next) => next(e));
   on('prompt.attachment', { type: 'skill_listing' }, async ($, e, next) => {
     const result = await next(e);
@@ -113,6 +120,6 @@ export function register(on, options = {}) {
     if (!enabled) return result;
     // Explicit opt-in is also necessary on custom endpoints; do not infer compatibility.
     const compatible = (await $.env.get('ENABLE_TOOL_SEARCH')) === 'true';
-    return placement(e, compactText(e, result, compact), enabled, compatible);
+    return placement(e, compactText(e, result, compact), enabled, compatible, keep);
   }).catch(async ($, e, next) => next(e));
 }
