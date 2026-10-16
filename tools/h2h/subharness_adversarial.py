@@ -189,13 +189,17 @@ cases += [
     ('non-string ToolSearch text is edited', TX, "    if (e.tool === 'ToolSearch' && typeof result.description !== 'string') return result;\n", '', SHAPES),
 ]
 UNCHANGED = ['node', 'test/run.mjs', 'unchanged-file Read notice']
-NOTICE_HEAD = "typeof result.text !== 'string' || Object.keys(result).some(k => !['result', 'text'].includes(k))) return null;\n  const body = result.result;\n  if (!body || Array.isArray(body) || body.type !== 'file_unchanged'"
 cases += [
     ('unchanged notice ignores its switch', TX, 'textReadResult(result) || (unchangedReads ? unchangedReadResult(result) : null)', 'textReadResult(result) || unchangedReadResult(result)', UNCHANGED),
     ('unchanged switch accepts non-true values', TX, 'const unchangedReads = enabled && options.unchangedReads === true;', 'const unchangedReads = enabled && !!options.unchangedReads;', UNCHANGED),
-    ('unchanged notice accepts extra file fields', TX, 'Object.keys(file).length !== 1 || ', '', UNCHANGED),
-    ('unchanged notice accepts other types', TX, "body.type !== 'file_unchanged' || Object.keys(body)", 'Object.keys(body)', UNCHANGED),
-    ('unchanged notice accepts extra top-level fields', TX, NOTICE_HEAD, NOTICE_HEAD.replace(" || Object.keys(result).some(k => !['result', 'text'].includes(k))", ''), UNCHANGED),
+    ('unchanged notice accepts extra file fields', TX, "if (!exactFields(file, ['filePath'])", 'if (!plainRecord(file)', UNCHANGED),
+    ('unchanged notice accepts other types', TX, " || body.type !== 'file_unchanged') return null;", ') return null;', UNCHANGED),
+    ('unchanged notice accepts extra top-level fields', TX, "if (!exactFields(result, ['result', 'text'])", 'if (!plainRecord(result)', UNCHANGED),
+    ('unchanged notice accepts inherited fields', TX, "Object.hasOwn(value, name) && 'value' in Object.getOwnPropertyDescriptor(value, name)\n      && Object.getOwnPropertyDescriptor(value, name).enumerable", 'name in value', UNCHANGED),
+    ('unchanged notice accepts non-enumerable fields', TX, "\n      && Object.getOwnPropertyDescriptor(value, name).enumerable", '', UNCHANGED),
+    ('unchanged notice accepts accessor fields', TX, " && 'value' in Object.getOwnPropertyDescriptor(value, name)", '', UNCHANGED),
+    ('unchanged notice accepts class payloads', TX, " && [Object.prototype, null].includes(Object.getPrototypeOf(value));\n}\n\nfunction exactFields", ';\n}\n\nfunction exactFields', UNCHANGED),
+    ('unchanged notice accepts an empty path', TX, " || !file.filePath.length) return null;", ') return null;', UNCHANGED),
 ]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']

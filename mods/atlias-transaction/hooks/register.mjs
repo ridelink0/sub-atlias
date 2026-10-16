@@ -66,14 +66,26 @@ export function textReadResult(result) {
 }
 
 // Native answer to a re-read of an unchanged file (measured on 2.1.301):
-// {result:{type:'file_unchanged',file:{filePath}},text}. Exact shape only; an
-// error marker or any other key fails the key check.
+// {result:{type:'file_unchanged',file:{filePath}},text}. Exact shape only: plain
+// objects whose keys are exactly these own enumerable data properties, so an
+// error marker, an inherited, accessor or hidden field (which JSON would drop),
+// a callable or class payload, or any other key fails (Codex review of a6ee835).
+function plainRecord(value) {
+  return value !== null && typeof value === 'object' && [Object.prototype, null].includes(Object.getPrototypeOf(value));
+}
+
+function exactFields(value, names) {
+  return plainRecord(value) && Reflect.ownKeys(value).length === names.length
+    && names.every(name => Object.hasOwn(value, name) && 'value' in Object.getOwnPropertyDescriptor(value, name)
+      && Object.getOwnPropertyDescriptor(value, name).enumerable);
+}
+
 export function unchangedReadResult(result) {
-  if (!result || Array.isArray(result) || typeof result.text !== 'string' || Object.keys(result).some(k => !['result', 'text'].includes(k))) return null;
+  if (!exactFields(result, ['result', 'text']) || typeof result.text !== 'string') return null;
   const body = result.result;
-  if (!body || Array.isArray(body) || body.type !== 'file_unchanged' || Object.keys(body).some(k => !['type', 'file'].includes(k))) return null;
+  if (!exactFields(body, ['type', 'file']) || body.type !== 'file_unchanged') return null;
   const file = body.file;
-  if (!file || Array.isArray(file) || Object.keys(file).length !== 1 || typeof file.filePath !== 'string') return null;
+  if (!exactFields(file, ['filePath']) || typeof file.filePath !== 'string' || !file.filePath.length) return null;
   return result;
 }
 

@@ -256,7 +256,21 @@ export default async function transactionSuites({ asyncSuite, check }) {
       'other type': v => { v.result.type = 'file_unchanged_v2'; },
       'array file': v => { v.result.file = ['/fixture.txt']; },
       'error marker': v => { v.isError = true; },
+      'empty path': v => { v.result.file.filePath = ''; },
+      'inherited path with opaque own key': v => { v.result.file = Object.assign(Object.create({ filePath: '/fixture.txt' }), { opaque: 'OPAQUE_SENTINEL' }); },
+      'callable file payload': v => { v.result.file = Object.assign(() => 'OPAQUE_SENTINEL', { filePath: '/fixture.txt' }); },
+      'class file payload': v => { v.result.file = new (class File { constructor() { this.filePath = '/fixture.txt'; } })(); },
+      'accessor path': v => { v.result.file = Object.defineProperty({}, 'filePath', { get: () => '/fixture.txt', enumerable: true }); },
+      'symbol key': v => { v.result.file[Symbol('opaque')] = 'OPAQUE_SENTINEL'; },
+      'non-enumerable extra key': v => { Object.defineProperty(v.result.file, 'data', { value: 'OPAQUE_SENTINEL' }); },
+      'non-enumerable path': v => { v.result.file = Object.defineProperty({}, 'filePath', { value: '/fixture.txt' }); },
+      'non-enumerable text': v => { Object.defineProperty(v, 'text', { enumerable: false }); },
+      'non-enumerable body type': v => { Object.defineProperty(v.result, 'type', { enumerable: false }); },
+      'inherited body type': v => { v.result = Object.assign(Object.create({ type: 'file_unchanged' }), { file: v.result.file, other: 1 }); },
     };
+    const nullProto = notice();
+    nullProto.result.file = Object.assign(Object.create(null), { filePath: '/fixture.txt' });
+    check('a null-prototype native record is still exact', unchangedReadResult(nullProto) === nullProto, info);
     for (const [name, mutate] of Object.entries(variants)) {
       const value = notice();
       mutate(value);
