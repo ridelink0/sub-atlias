@@ -312,11 +312,15 @@ def retain(root, manifest, trial, result, outcome="measured"):
     return receipt
 
 
+BASE_RUNNER_FILES = ("tools/h2h/base_harness_runner.py", "tools/h2h/owned_process.py", "tools/h2h/mini_swe_runner.py")
+
+
 def base_identity(manifest, tasks, host, task_id):
     """Everything a bare-client base run depends on (Gev 2026-10-16, faster benchmarks): the client
     binary, the model and endpoint, the host's window, output cap, budget and timeouts, the base arm's
-    tool search and the task itself. Atlias's source, config, mods and settings are not in it, because
-    the base arm never loads them. A control trial's second arm is bare too, so control is in it."""
+    tool search and the task itself, and the frozen files that run, meter and grade it (the runner,
+    its process owner and its shims and case counts). Atlias's own source, config, mods and settings
+    are not in it, because the base arm never loads them."""
     spec = manifest["spec"]
     h = next(x for x in spec["hosts"] if x["host"] == host)
     search = spec.get("toolSearch", False)
@@ -324,7 +328,8 @@ def base_identity(manifest, tasks, host, task_id):
     return digest({"client": manifest["clientHashes"][host], "model": spec["model"],
                    "apiBase": spec.get("apiBase", "http://127.0.0.1:11435"),
                    "host": {k: h.get(k) for k in ("host", "numCtx", "numPredict", "budget", "taskTimeout", "startTimeout")},
-                   "toolSearch": search, "task": digest(tasks[task_id]) if task_id in tasks else None})
+                   "toolSearch": search, "task": digest(tasks[task_id]) if task_id in tasks else None,
+                   "runner": {f: manifest.get("sourceFiles", {}).get(f) for f in BASE_RUNNER_FILES}})
 
 
 def reusable_base(manifest, tasks, prior_manifest, prior_tasks, prior_attempts, done):
@@ -1133,7 +1138,8 @@ def selftest_cases():
     for label, change in (("model", lambda m, t: m["spec"].update(model="other")), ("client", lambda m, t: m["clientHashes"].update(claude="other")),
                           ("window", lambda m, t: m["spec"]["hosts"][0].update(numCtx=99)), ("output cap", lambda m, t: m["spec"]["hosts"][0].update(numPredict=51)),
                           ("base tool search", lambda m, t: m["spec"].update(toolSearch={"base": True, "atlias": True})), ("endpoint", lambda m, t: m["spec"].update(apiBase="http://127.0.0.1:1")),
-                          ("task", lambda m, t: t["a"].update(prompt="changed"))):
+                          ("task", lambda m, t: t["a"].update(prompt="changed")),
+                          ("runner", lambda m, t: m.update(sourceFiles={"tools/h2h/base_harness_runner.py": "other"}))):
         m2, t2 = copy.deepcopy(old), copy.deepcopy(task_set)
         change(m2, t2)
         check(f"a different {label} changes the base identity", base_identity(m2, t2, "claude", "a") != base_identity(rm, task_set, "claude", "a"))
@@ -1207,6 +1213,7 @@ def selftest(receipt_path):
                 ("reused base is not labelled", 'result["reusedFrom"] = {', 'result["unlabelled"] = {'),
                 ("base identity ignores the task", '"task": digest(tasks[task_id]) if task_id in tasks else None', '"task": None'),
                 ("base identity ignores the client", '{"client": manifest["clientHashes"][host],', '{"client": None,'),
+                ("base identity ignores the runner", '"runner": {f: manifest.get("sourceFiles", {}).get(f) for f in BASE_RUNNER_FILES}', '"runner": None'),
                 ("smoke fail-fast calls a half-run pair lost", 'passed.get((repeat, task_id, "atlias")) is False', 'not passed.get((repeat, task_id, "atlias"))'),
                 ("smoke fail-fast ignores incomplete runs", 'elif a["result"].get("nativeCompleted") is not True:', 'elif False:')]
     source = pathlib.Path(__file__).read_text(encoding="utf-8")
