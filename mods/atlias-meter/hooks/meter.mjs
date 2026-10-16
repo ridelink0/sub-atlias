@@ -3,7 +3,7 @@
 const NL = String.fromCharCode(10);
 
 export function newTally() {
-  return { kinds: {}, requests: 0, subagentRequests: 0, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, ledger: [], resultErrors: {} };
+  return { kinds: {}, requests: 0, subagentRequests: 0, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, incomplete: 0, ledger: [], resultErrors: {} };
 }
 // One more piece of a kind: how many there have been, and how many characters.
 export function addChars(tally, kind, chars) {
@@ -16,8 +16,15 @@ export function add(tally, kind, text) {
   return addChars(tally, kind, typeof text === 'string' ? text.length : 0);
 }
 // One request's usage, as the API reported it.
+// A missing usage or a count that is not a whole non-negative number is added as 0 here, so
+// tally.incomplete counts those requests and the table then calls the sums a lower bound.
 export function addUsage(tally, usage, agentId) {
-  if (!usage || typeof usage !== 'object') return tally;
+  const whole = (v) => Number.isInteger(v) && v >= 0;
+  if (!usage || typeof usage !== 'object') {
+    tally.incomplete = (tally.incomplete || 0) + 1;
+    return tally;
+  }
+  if (![usage.input_tokens, usage.output_tokens, usage.cache_read_input_tokens, usage.cache_creation_input_tokens].every(whole)) tally.incomplete = (tally.incomplete || 0) + 1;
   const n = (v) => (Number.isFinite(v) && v > 0 ? v : 0);
   tally.requests += 1;
   if (agentId) tally.subagentRequests += 1;
@@ -133,6 +140,7 @@ export function table(tally, top = 25) {
   const u = tally.usage;
   const lines = ['atlias-meter: what has been carried since the mod loaded. Characters are exact; nothing was changed.'];
   lines.push(`requests ${tally.requests} (${tally.subagentRequests} by subagents); tokens as the API reported them: input ${u.input}, cache read ${u.cacheRead}, cache written ${u.cacheWrite}, output ${u.output}`);
+  if (tally.incomplete) lines.push(`INCOMPLETE: ${tally.incomplete} request${tally.incomplete === 1 ? '' : 's'} had no usage or a count that was not a whole number, so the sums above are a lower bound, not a total; the exact ledger below says unknown instead`);
   const fam = Object.entries(families(tally)).sort((a, b) => b[1].chars - a[1].chars || a[0].localeCompare(b[0]));
   if (!fam.length) lines.push('nothing counted yet');
   for (const [name, t] of fam) lines.push(`${name}: ${t.chars} characters in ${t.count} piece${t.count === 1 ? '' : 's'}`);

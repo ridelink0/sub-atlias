@@ -33,6 +33,13 @@ export default async function meterSuites({ suite, asyncSuite, check, fs, path, 
       { happened: String(meter.resultChars(message)), why: 'The row also holds blocks that are not results.', fix: 'resultChars.' });
     const text = meter.table(t);
     const fam = meter.families(t);
+    check('a missing usage and a request with a count that is not whole are both marked incomplete, and the table calls the sums a lower bound', t.incomplete === 2 && text.includes('INCOMPLETE: 2 requests had no usage or a count that was not a whole number, so the sums above are a lower bound, not a total'),
+      { happened: JSON.stringify({ incomplete: t.incomplete }), why: 'The summed line read a missing count as 0 and so showed a lower bound as if it were the total (Codex whole-audit, fa3f7eb).', fix: 'addUsage and table in mods/atlias-meter/hooks/meter.mjs.' });
+    const clean = meter.newTally();
+    meter.addUsage(clean, { input_tokens: 1, output_tokens: 2, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 });
+    meter.addUsage(clean, { input_tokens: 1, output_tokens: 2 });
+    check('a request with all four whole counts is complete, a missing cache count is not, and a complete meter prints no warning', clean.incomplete === 1 && !meter.table(meter.newTally()).includes('INCOMPLETE') && meter.table(clean).includes('INCOMPLETE: 1 request had'),
+      { happened: JSON.stringify({ incomplete: clean.incomplete }), why: 'A warning on every table would be ignored; none at all hides a lower bound.', fix: 'addUsage and table.' });
     check('the table gives the request count, the four token counts, each family and the largest pieces first', text.includes('requests 2 (1 by subagents)') && text.includes('input 11, cache read 90, cache written 7, output 5') && fam.result.chars === 40 && fam.attachment.count === 2 && text.indexOf('result: 40 characters in 2 pieces') < text.indexOf('attachment: 7 characters in 2 pieces') && text.includes('  result:Bash: 40 characters, 2 times') && text.includes('nothing was changed'),
       { happened: text, why: 'The next cut is chosen from this table.', fix: 'table, rows and families.' });
     const many = meter.newTally();

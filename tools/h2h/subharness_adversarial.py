@@ -216,6 +216,9 @@ cases += [
     ('a truthy is_error string counts as an error', METER_FILE, "block.type === 'tool_result' && block.is_error === true", "block.type === 'tool_result' && block.is_error", LEDGER),
     ('subagent requests are counted as main', METER_FILE, "role: agentId ? 'subagent' : 'main'", "role: 'main'", LEDGER),
     ('a meter failure breaks the step', METER_HOOKS, '    } catch { /* the result goes on as the engine streamed it */ }', '    } catch (err) { throw err; }', LEDGER),
+    ('the summed line hides that it is a lower bound', METER_FILE, '  if (tally.incomplete) lines.push(', '  if (false) lines.push(', ['node', 'test/run.mjs', 'meter: counting is exact']),
+    ('a missing usage is not marked incomplete', METER_FILE, '    tally.incomplete = (tally.incomplete || 0) + 1;\n    return tally;', '    return tally;', ['node', 'test/run.mjs', 'meter: counting is exact']),
+    ('a count that is not whole is complete', METER_FILE, '.every(whole)) tally.incomplete', '.every(() => true)) tally.incomplete', ['node', 'test/run.mjs', 'meter: counting is exact']),
     ('the table prints zero for an unknown total', METER_FILE, "const show = (v) => (v === null ? 'unknown' : String(v));", 'const show = (v) => String(v || 0);', LEDGER),
 ]
 if os.name != 'nt':
