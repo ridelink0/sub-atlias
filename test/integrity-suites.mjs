@@ -218,6 +218,9 @@ export default async function integritySuites({ suite, check, core, gate, track,
     const grepNoMatch = {};
     integrity.findUnwired(repo, [{ file: 'x', line: 1, name: 'anything' }], { run: failed(1) }, grepNoMatch);
     check('a git diff, ls-files or grep that failed marks its check unfinished, while grep finding nothing does not', diffFailed && diffFailed.incomplete === true && listFailed && listFailed.incomplete === true && grepFailed.incomplete === true && !grepNoMatch.incomplete, { happened: JSON.stringify({ diff: diffFailed && diffFailed.incomplete, list: listFailed && listFailed.incomplete, grep: grepFailed, noMatch: grepNoMatch }), why: 'A failed git call read as an empty diff, so placeholders and weakened tests in it were never looked at, and the reply passed as if checked.', fix: 'diffFor and findUnwired: any status other than 0 (or 1 for grep) is incomplete.' });
+    const listsGhost = (cmd, args, opts) => (args.includes('ls-files') ? { status: 0, stdout: 'ghost-file-that-cannot-be-read.js\n', stderr: '', error: null } : core.run(cmd, args, opts));
+    const ghost = integrity.diffFor(repo, [app, spec, extra], { run: listsGhost });
+    check('a new file git lists but nobody can read leaves the diff unfinished', ghost && ghost.incomplete === true, { happened: JSON.stringify(ghost && { incomplete: ghost.incomplete, added: ghost.added.length }), why: 'Skipping an unreadable new file in silence reported a diff that never looked at it as complete (Codex review 03:11Z).', fix: 'diffFor: an unreadable listed file sets incomplete.' });
     const fresh = fs.mkdtempSync(path.join(TMP, 'no-commit-'));
     core.run('git', ['init', '-q'], { cwd: fresh });
     const staged = path.join(fresh, 'calc.py');

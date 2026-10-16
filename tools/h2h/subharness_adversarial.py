@@ -232,8 +232,17 @@ cases += [
 # Whole-audit A5: a failed git call must leave the integrity check unfinished, not clean.
 INTEGRITY_E2E = ['node', 'test/run.mjs', 'the gate on a real repository']
 cases += [
-    ('a failed git diff reads as a clean diff', 'lib/integrity.mjs', 'incomplete: d.status !== 0 || u.status !== 0 }', 'incomplete: d.status === null || u.status === null }', INTEGRITY_E2E),
+    ('a failed git diff reads as a clean diff', 'lib/integrity.mjs', 'incomplete: d.status !== 0 || u.status !== 0 || unread }', 'incomplete: d.status === null || u.status === null || unread }', INTEGRITY_E2E),
+    ('an unreadable new file is skipped as checked', 'lib/integrity.mjs', '} catch { unread = true; continue; }', '} catch { continue; }', INTEGRITY_E2E),
     ('a failed git grep reads as no references', 'lib/integrity.mjs', 'if (r.status !== 0 && r.status !== 1) { status.incomplete = true; continue; }', 'if (r.status !== 0 && r.status !== 1) continue;', INTEGRITY_E2E),
+]
+# Whole-audit A7: a sandbox worktree that could not be read is kept, and an unknown git status refuses.
+SANDBOX_DECISION = ['node', 'test/run.mjs', 'take it or drop it']
+cases += [
+    ('an unreadable worktree is removed as unchanged', 'lib/sandbox.mjs', '  if (unread && exists(box.dir)) return', '  if (false && exists(box.dir)) return', SANDBOX_DECISION),
+    ('a failed git diff in the sandbox reads as an empty patch', 'lib/sandbox.mjs', 'error: failed ? oops(failed) : null }', 'error: null }', SANDBOX_DECISION),
+    ('a failed git status reads as a clean tree', 'lib/sandbox.mjs', '.filter(Boolean) : null;', '.filter(Boolean) : [];', SANDBOX_DECISION),
+    ('an unknown tree status is not refused', 'lib/sandbox.mjs', '  if (dirty === null) return', '  if (false) return', SANDBOX_DECISION),
 ]
 if os.name != 'nt':
     cases = [c for c in cases if c[0] != 'Windows filesystem tick loses shell edits']

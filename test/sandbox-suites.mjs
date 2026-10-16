@@ -131,6 +131,17 @@ export default async function sandboxSuites({ suite, asyncSuite, check, core, ag
     const lost = await sandbox.finish(boxD, { ask: async () => 'y' });
     check('a worktree that disappeared is still cleaned out of git', lost.ok === true && worktrees(rootD).length === 1, { happened: `${lost.why}; ${lost.closed}; ${worktrees(rootD).join(' | ')}`, why: 'Never leave a worktree behind on failure means the registry too: a stale entry makes every later git worktree command complain.', fix: 'close() prunes whatever remove said, and finish() closes outside its try.' });
 
+    // Audit A7: a git call that fails while reading the worktree is not "nothing changed".
+    const rootF = committed();
+    const boxF = sandbox.begin(rootF);
+    fs.writeFileSync(path.join(boxF.dir, 'a.js'), 'export const a = 12; // AGENT_WORK_SENTINEL' + NL);
+    const lockedDiff = (cmd, args, opts) => (args.includes('--binary') ? { status: 128, stdout: '', stderr: 'fatal: Unable to create index.lock', error: null } : core.run(cmd, args, opts));
+    const unread = await sandbox.finish(boxF, { ask: async () => 'y', say: () => {} }, { run: lockedDiff });
+    check('a worktree whose changes could not be read is kept, not removed as unchanged', unread.ok === false && unread.taken === false && /reading the worktree failed/.test(unread.why) && !/nothing changed/.test(unread.why) && fs.existsSync(boxF.dir) && fs.readFileSync(path.join(boxF.dir, 'a.js'), 'utf8').includes('AGENT_WORK_SENTINEL') && /kept the worktree/.test(unread.closed) && fs.readFileSync(path.join(rootF, 'a.js'), 'utf8').includes('a = 1'), { happened: `${unread.why} | ${unread.closed}`, why: 'A failed git diff read as an empty patch: the user was told nothing changed and the worktree holding the only copy of the work was force-removed.', fix: 'changes() reports a failed git call; finish() keeps an existing worktree it could not read.' });
+    sandbox.close(boxF);
+    const unknownStatus = sandbox.inspect(rootF, { run: (cmd, args, opts) => (args.includes('status') ? { status: 128, stdout: '', stderr: 'fatal: index file corrupt', error: null } : core.run(cmd, args, opts)) });
+    check('a git status that failed refuses the sandbox instead of calling the tree clean', unknownStatus.ok === false && unknownStatus.fatal === true && unknownStatus.kind === 'unknown-status' && sandbox.dirtyFiles(rootF, { run: () => ({ status: 128, stdout: '' }) }) === null, { happened: JSON.stringify({ kind: unknownStatus.kind, fatal: unknownStatus.fatal }), why: 'An empty list from a failed git status let the sandbox start on a tree whose uncommitted work it could not see.', fix: 'dirtyFiles returns null on failure and inspect refuses on null.' });
+
     // Taking something that cannot be applied must not half-change the project.
     const rootE = committed();
     const boxE = sandbox.begin(rootE);
