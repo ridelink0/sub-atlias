@@ -90,6 +90,11 @@ export default async function visibleCheckSuites({ asyncSuite, suite, check, cor
       /run the smallest real check/.test(offPrompt) && !/run the smallest real check/.test(onPrompt) && /could not be checked here/.test(onPrompt)
         && /Never say something works unless a check/.test(onPrompt) && onChecked === offChecked,
       { happened: JSON.stringify({ off: offPrompt.length, on: onPrompt.length, checkedSame: onChecked === offChecked }), why: 'Asked for a check it cannot have, a 9B writes its own (CanItEdit: 4 to 12 calls on harness-n2c); the honesty rule must stay.', fix: 'lib/loop.mjs systemPrompt behind quietNoCheckHere.' });
+    const here = await withQuiet(true, async () => [loop.quietNoCheckHere(bare), loop.quietNoCheckHere(checked)]);
+    const hereOff = await withQuiet(false, async () => loop.quietNoCheckHere(bare));
+    check('quietNoCheckHere is true only with the flag on and no check atlias can name',
+      here[0] === true && here[1] === false && hereOff === false,
+      { happened: JSON.stringify({ here, hereOff }), why: 'The prompt and the nudge both rest on this one answer.', fix: 'lib/loop.mjs quietNoCheckHere.' });
     const runQuiet = (on) => withQuiet(on, async () => {
       const d = dir(BARE);
       const script = [fix, 'Done: two() returns 2; no check could be run here.', 'Done.'];
