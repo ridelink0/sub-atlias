@@ -10,6 +10,7 @@
 import * as loop from '../lib/loop.mjs';
 import * as core from '../lib/core.mjs';
 import * as settings from '../lib/settings.mjs';
+import { newState as agentState } from '../lib/agent.mjs';
 
 export default async function samplingSuites({ asyncSuite, check, TMP, fs, path }) {
   const W = path.join(TMP, 'sampling-work');
@@ -105,6 +106,17 @@ export default async function samplingSuites({ asyncSuite, check, TMP, fs, path 
         && efforts.join() === 'none,none,low,medium,high' && badEffort.every((b) => b === false)
         && effortSetting[0].value === 'none' && effortSetting[1].error && (settings.DESCRIPTIONS['agent.openaiReasoningEffort'] || '').length > 40,
       say({ oaBase, oaModel, efforts, badEffort, effortSetting }));
+    // checked: none only where atlias can name a check for the run's directory, and runLoop says which directory that is.
+    const withCheck = path.join(W, 'effort-checked'), noCheck = path.join(W, 'effort-bare');
+    fs.mkdirSync(withCheck, { recursive: true }); fs.mkdirSync(noCheck, { recursive: true });
+    fs.writeFileSync(path.join(withCheck, 'package.json'), JSON.stringify({ scripts: { test: 'node t.js' } }));
+    const sentAt = async (at) => { const bodies = []; await loop.openaiChat({ openaiUrl: 'http://127.0.0.1:1/v1', openaiModel: 'm', openaiReasoningEffort: 'checked' }, {}, { post: async (url, body) => { bodies.push(body); return { status: 200, json: { choices: [{ message: { role: 'assistant', content: 'done' } }] } }; } })([{ role: 'user', content: 'x' }], null, at); return bodies[0]; };
+    const checkedRows = [await sentAt({ cwd: withCheck }), await sentAt({ cwd: noCheck }), await sentAt(undefined), await sentAt({ cwd: 7 })].map((b) => b.reasoning_effort ?? null);
+    const seenAt = [];
+    await loop.runLoop(agentState(noCheck), 'say hi', { chat: async (m, t, at) => { seenAt.push(at); return { content: 'hi' }; }, say: () => {}, ask: async () => true, limits: { maxToolRounds: 2 } });
+    check('checked sends none only for a directory with a check atlias can name, nothing without one or with no directory, and the loop passes the run directory to chat',
+      checkedRows.join() === 'none,,,' && core.parseSetting('agent', 'openaiReasoningEffort', 'checked').value === 'checked' && seenAt.length >= 1 && seenAt.every((a) => a && a.cwd === noCheck),
+      say({ checkedRows, seenAt }));
 
     const withIt = prompt({ implied: true }), without = prompt({ implied: false });
     check('off, the prompt is exactly the prompt without the paragraph', withIt.split('\n').filter((l) => l !== loop.IMPLIED_CHANGES).join('\n') === without && withIt.split('\n').filter((l) => l === loop.IMPLIED_CHANGES).length === 1, say({ on: withIt.length, off: without.length }));
