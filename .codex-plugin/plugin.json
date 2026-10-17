@@ -1,6 +1,6 @@
 {
   "name": "atlias",
-  "version": "3.8.1",
+  "version": "4.0.0",
   "description": "A harness for AI coding agents, built so that done means done: a sub-harness inside Codex, Claude Code and sixteen more, or an agent of its own in any terminal.",
   "author": {
     "name": "Gev",

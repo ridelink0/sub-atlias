@@ -116,7 +116,9 @@ export default async function briefNoCheckSuites({ suite, check, core, TMP, fs, 
       codexBlock: norm(hosts.instructionBlock('codex')),
     };
     const firstDiff = (a, b) => { let i = 0; while (i < a.length && a[i] === b[i]) i++; return i; };
-    const differ = Object.keys(golden).filter((k) => now[k] !== golden[k]);
+    // The version number in the brief's first words changes with every release; the words around it are what stored runs saw.
+    const unversioned = (s) => String(s).replace(/\batlias \d+\.\d+\.\d+/g, 'atlias N');
+    const differ = Object.keys(golden).filter((k) => unversioned(now[k]) !== unversioned(golden[k]));
     const detail = differ.length ? (() => { const at = firstDiff(now[differ[0]], golden[differ[0]]); return differ.join(', ') + ' differ; first at character ' + at + ': now "' + now[differ[0]].slice(at, at + 90) + '" against "' + golden[differ[0]].slice(at, at + 90) + '"'; })() : 'all three equal';
     check('with every flag off, the Claude brief, the Codex brief and the Codex block match commit 0499c78 byte for byte', differ.length === 0, { happened: detail, why: 'Stored runs were measured with the old words. A change that is not behind a flag moves every measured arm at once.', fix: 'Find the change in lib/brief.mjs or lib/hosts.mjs that is not behind its flag. The fixture is test/fixtures/brief-0499c78.json.' });
   });

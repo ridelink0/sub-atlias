@@ -1,5 +1,14 @@
 # Changelog
 
+## 4.0.0
+
+- Atlias's own agent from the 2026-10-16/17 harness work: against plain Claude Code on the same local model (qwen3.5:9b), nine 120-run screens averaged 19.5x fewer total tokens (best trial 23.4x, with a 5.4x smaller largest prompt), solving as many tasks or more in eight of nine. The best trial's settings (flags.preloadFiles, visibleCheck, finishOnGreen, quietNoCheck, stallStop, greenFailShown and the rest) are switches, off by default.
+- Permission modes beside workspace, ask and read-only: auto-accept, plan, auto and max (never asks; refuses and logs catastrophic actions; full action log). /permissions [mode|next|log].
+- One slash-command registry with /help, /model, /usage, /cost, /config, /clear, /resume, /export, /init, /memory, /import, custom commands from .atlias/commands/*.md, and /deep-research.
+- A customizable usage display (ui.usageEnabled, usagePosition, usageColor including rainbow, usageAnimation).
+- atlias import and a first-run offer: sessions, memory, instructions, skills, commands and MCP definitions from Claude Code, Codex, Gemini CLI and Antigravity; credentials never read; reversible with --undo.
+- The version is read from package.json, so a release cannot show an old number.
+
 ## Unreleased
 
 - In Claude Code, before the gate says no check ran after the last edit, it reads the tail of the session transcript. Under the load of the 3.8.1 study Claude Code cancelled 80 atlias hook calls in 22 of 34 runs, and a cancelled PostToolUse left a check that ran unrecorded, so the gate held a reply that had checked its work. A check the transcript shows after the turn's last edit, by the same rules the hooks use (`track.isCheck`), is recorded and counted with its result: a failing one is still reported as failing. Only a result stamped after the last edit the log recorded counts, so an edit a subagent made after the check (it is in the log, not in the main transcript) still needs one. A transcript that is missing, does not parse, is cut mid-line, has lost an edit the log has, or comes from another host changes nothing. Not yet measured in a study.
