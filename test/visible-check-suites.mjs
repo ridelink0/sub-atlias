@@ -165,6 +165,34 @@ export default async function visibleCheckSuites({ asyncSuite, suite, check, cor
       { happened: JSON.stringify({ on, drift, off }), why: 'Rung two replaces its whole span: matched by its ends, an edit could delete code the model never named (HAC-1, loop.mjs looseMatch).', fix: 'lib/loop.mjs looseMatch behind flags.looseKeepsLines.' });
   });
 
+  // flags.stallLastLine (HAC-1 item 8): a traceback that changes above the same last line still stalls.
+  await asyncSuite('visible check', 'with stallLastLine, a failure whose output changes but whose last line does not stops the run; raw stallStop does not', async () => {
+    const ENV = ['ATLIAS_FLAG_STALL_STOP', 'ATLIAS_FLAG_STALL_LAST_LINE'];
+    const edit = (a, b) => blk({ tool: 'edit_file', path: 'sum.py', old_string: `return ${a}`, new_string: `return ${b}` });
+    const ASSERTING = 'from sum import two' + NL + 'print("got", two())' + NL + 'assert two() == 2' + NL;
+    const CHANGING = 'import sys' + NL + 'from sum import two' + NL + 'print("got " + "x" * two())' + NL + 'sys.exit(0 if two() == 2 else 1)' + NL;
+    const lastRun = (lastLine, checkText = ASSERTING) => withFlags(['ATLIAS_FLAG_VISIBLE_CHECK', 'ATLIAS_FLAG_FINISH_ON_GREEN'], async () => {
+      const before = ENV.map((k) => process.env[k]);
+      process.env[ENV[0]] = '1';
+      if (lastLine) process.env[ENV[1]] = '1'; else delete process.env[ENV[1]];
+      try {
+        const d = dir({ ...PROJECT, 'check.py': checkText });
+        const script = [edit(1, 3), edit(3, 4), edit(4, 5), edit(5, 6), edit(6, 7), 'Done.'];
+        let calls = 0;
+        const chat = async () => { calls++; const r = script.shift(); return { content: r === undefined ? 'out of script' : r, calls: [] }; };
+        const st = agentMod.newState(d, 'ollama');
+        await loop.runLoop(st, 'make two() return 2', { chat, say: () => {}, ask: async () => true, limits: { maxToolRounds: 8, maxBadReplies: 3 } });
+        return { calls, stop: st.stop };
+      } finally { ENV.forEach((k, i) => { if (before[i] == null) delete process.env[k]; else process.env[k] = before[i]; }); }
+    });
+    const on = await lastRun(true), raw = await lastRun(false), moving = await lastRun(true, CHANGING);
+    check('on, three edits ending in the same AssertionError stop the run as check-stalled although the printed value changes; raw stallStop goes on; a last line that changes does not stall',
+      on.calls === 3 && on.stop && on.stop.reason === 'check-stalled' && raw.calls > 3 && raw.stop.reason !== 'check-stalled'
+        && moving.calls > 3 && moving.stop.reason !== 'check-stalled'
+        && core.DEFAULTS.flags.stallLastLine === false && (settings.DESCRIPTIONS['flags.stallLastLine'] || '').length > 40,
+      { happened: JSON.stringify({ on, raw }), why: 'harness-n8: stallStop never fired, because a traceback changes with every edit even when the failure does not.', fix: 'lib/loop.mjs, the stall block, behind flags.stallLastLine.' });
+  });
+
   // flags.quietNoCheck: a project with no check atlias can name is not asked for one.
   const QUIET = 'ATLIAS_FLAG_QUIET_NO_CHECK';
   const withQuiet = async (on, fn) => {
