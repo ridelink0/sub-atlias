@@ -193,6 +193,29 @@ export default async function visibleCheckSuites({ asyncSuite, suite, check, cor
       { happened: JSON.stringify({ on, raw }), why: 'harness-n8: stallStop never fired, because a traceback changes with every edit even when the failure does not.', fix: 'lib/loop.mjs, the stall block, behind flags.stallLastLine.' });
   });
 
+  // flags.strayNameArgs (HAC-1 item 9): the {"name", "arguments"} shape written as text is read as a call.
+  await asyncSuite('visible check', 'with strayNameArgs, a whole-reply name and arguments object is a tool call; plain JSON data is still an answer', async () => {
+    const ENV = 'ATLIAS_FLAG_STRAY_NAME_ARGS';
+    const shellObj = JSON.stringify({ name: 'run_shell', arguments: { command: 'python check.py' } });
+    const strArgs = JSON.stringify({ name: 'read_file', arguments: JSON.stringify({ path: 'a.py' }) });
+    const fenced = FENCE + 'json' + NL + JSON.stringify({ name: 'read_file', parameters: { path: 'b.py' } }) + NL + FENCE;
+    const unknown = JSON.stringify({ name: 'teleport', arguments: {} });
+    const data = JSON.stringify({ name: 'Alice', age: 3 });
+    const before = process.env[ENV];
+    let on, off;
+    try {
+      process.env[ENV] = '1';
+      on = [shellObj, strArgs, fenced, unknown, data].map((t) => loop.strayToolCall(t));
+      delete process.env[ENV];
+      off = [shellObj, strArgs, data].map((t) => loop.strayToolCall(t));
+    } finally { if (before == null) delete process.env[ENV]; else process.env[ENV] = before; }
+    check('on, run_shell becomes shell with its command, string arguments and a fenced parameters form are read, an unknown name is answered as broken, and plain JSON data stays an answer; off, none of them is a call',
+      on[0] && on[0].tool === 'shell' && on[0].command === 'python check.py' && on[1] && on[1].tool === 'read_file' && on[1].path === 'a.py'
+        && on[2] && on[2].tool === 'read_file' && on[2].path === 'b.py' && on[3] && on[3].broken === true && /teleport/.test(on[3].why) && on[4] === null
+        && off.every((v) => v === null) && core.DEFAULTS.flags.strayNameArgs === false && (settings.DESCRIPTIONS['flags.strayNameArgs'] || '').length > 40,
+      { happened: JSON.stringify({ on, off }), why: 'A reply that is a tool call atlias cannot read is taken as the final answer (RESEARCH-FIRST 0b, H3); HAC-1 found the name and arguments shape uncovered.', fix: 'lib/loop.mjs strayToolCall behind flags.strayNameArgs.' });
+  });
+
   // flags.quietNoCheck: a project with no check atlias can name is not asked for one.
   const QUIET = 'ATLIAS_FLAG_QUIET_NO_CHECK';
   const withQuiet = async (on, fn) => {
