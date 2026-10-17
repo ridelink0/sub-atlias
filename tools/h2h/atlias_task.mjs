@@ -9,7 +9,7 @@
 // Usage: node atlias_task.mjs [--rounds N]   with the prompt on stdin
 // Environment: ATLIAS_HOME (its config.json is Atlias's configuration for the arm),
 //              ATLIAS_TASK_URL (the door's OpenAI base, ending in /v1), ATLIAS_TASK_MODEL.
-// Prints one JSON line: { stop, rounds }. Nothing it started is ended here by process id: the runner
+// Prints one JSON line: { stop, rounds, tools, greenChecks }. Nothing it started is ended here by process id: the runner
 // owns the whole process tree as one job and ends it as a whole.
 import * as loop from '../../lib/loop.mjs';
 import * as evals from '../../lib/eval.mjs';
@@ -40,5 +40,7 @@ try {
   error = e && e.message ? e.message : String(e);
 }
 const stop = error ? { reason: 'crashed', detail: String(error).slice(0, 300) } : st.stop || { reason: 'unknown', detail: '' };
-process.stdout.write(JSON.stringify({ stop, rounds: (st.messages || []).filter((m) => m.role === 'assistant').length }) + '\n');
+// tools: the tool names in order (no task text); greenChecks: how often finishOnGreen ran the check.
+process.stdout.write(JSON.stringify({ stop, rounds: (st.messages || []).filter((m) => m.role === 'assistant').length,
+  tools: evals.toolTrace(st.messages).slice(0, 200), greenChecks: st.greenChecks || 0 }) + '\n');
 process.exit(error ? 1 : 0);

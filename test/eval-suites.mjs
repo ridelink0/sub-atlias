@@ -628,6 +628,26 @@ export default async function register({ asyncSuite, check, TMP }) {
       { happened: text.split(NL).filter((l) => /engine tokens|handed/.test(l)).join(' | '), why: 'The head-to-head is judged on the cost of a solve, and the mini-swe-agent runner keeps only per-round lists.', fix: 'Check costOf tok() in compare.' });
   });
 
+  // Gev 2026-10-17: the native-arm driver reports which tools a run used, by name only.
+  await asyncSuite('eval expert', 'toolTrace lists the tools a run used by name, in order, and nothing else', async () => {
+    const msgs = [
+      { role: 'user', content: 'the task text, which must never appear' },
+      { role: 'assistant', content: 'reading' },
+      { role: 'user', content: 'Tool result for read_file:\nsecret file body' },
+      { role: 'user', content: 'Tool result for edit_file:\nedited' },
+      { role: 'user', content: "atlias ran the project's check after your edits (python check.py):\nexit 1" },
+      { role: 'assistant', content: '', tool_calls: [{ id: 'c1', type: 'function', function: { name: 'shell', arguments: '{}' } }] },
+      { role: 'tool', tool_call_id: 'c1', content: 'native result body' },
+      { role: 'tool', tool_call_id: 'unknown', content: 'no name' },
+      { role: 'user', content: 'Tool result for a name that is far too long to be a tool name at all:\nx' },
+      null, 'stray',
+    ];
+    const trace = evals.toolTrace(msgs);
+    check('the trace is the tool names in order, the check atlias ran, and no text from any message',
+      JSON.stringify(trace) === JSON.stringify(['read_file', 'edit_file', 'atlias-check', 'shell']) && evals.toolTrace(undefined).length === 0 && !/secret|task text|body/.test(JSON.stringify(trace)),
+      { happened: JSON.stringify(trace), why: 'A long run must be readable without opening its workspace, and the trace must carry names only.', fix: 'lib/eval.mjs toolTrace.' });
+  });
+
   // Gev 2026-10-16, the real harness for 20x: the base-harness runner's atlias harness starts a task from
   // the same state runTask does, so a task there runs as it does in Atlias's own benchmark.
   await asyncSuite('eval expert', 'taskState gives every task a fresh state of its own in its own folder', async () => {
