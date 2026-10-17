@@ -71,6 +71,33 @@ export default async function visibleCheckSuites({ asyncSuite, suite, check, cor
       { happened: JSON.stringify({ calls: red.calls, stop: red.st.stop }), why: 'A failure the model never sees cannot be fixed; one it must run itself costs a call.', fix: 'The loop runs checkCommand after an edit and adds its result.' });
   });
 
+  // flags.stallStop: the same check failure after three edits in a row ends the run.
+  await asyncSuite('visible check', 'with stallStop, the same check failure after three edits in a row stops the run; changing failures and the flag off do not', async () => {
+    const STALL = 'ATLIAS_FLAG_STALL_STOP';
+    const edit = (a, b) => blk({ tool: 'edit_file', path: 'sum.py', old_string: `return ${a}`, new_string: `return ${b}` });
+    const edits = [edit(1, 3), edit(3, 4), edit(4, 5), edit(5, 6), edit(6, 7), 'Done.'];
+    const stallRun = (stall, files) => withFlags(['ATLIAS_FLAG_VISIBLE_CHECK', 'ATLIAS_FLAG_FINISH_ON_GREEN'], async () => {
+      const before = process.env[STALL];
+      if (stall) process.env[STALL] = '1'; else delete process.env[STALL];
+      try {
+        const d = dir(files);
+        const script = [...edits];
+        let calls = 0;
+        const chat = async () => { calls++; const r = script.shift(); return { content: r === undefined ? 'out of script' : r, calls: [] }; };
+        const st = agentMod.newState(d, 'ollama');
+        await loop.runLoop(st, 'make two() return 2', { chat, say: () => {}, ask: async () => true, limits: { maxToolRounds: 8, maxBadReplies: 3 } });
+        return { calls, stop: st.stop };
+      } finally { if (before == null) delete process.env[STALL]; else process.env[STALL] = before; }
+    });
+    const PRINTING = { ...PROJECT, 'check.py': 'import sys' + NL + 'from sum import two' + NL + 'print(two())' + NL + 'sys.exit(0 if two() == 2 else 1)' + NL };
+    const same = await stallRun(true, PROJECT), off = await stallRun(false, PROJECT), changing = await stallRun(true, PRINTING);
+    check('on, three edits that leave the check failing the same way end the run as check-stalled after the third; off, and with a failure that changes each time, the run goes on',
+      same.calls === 3 && same.stop && same.stop.reason === 'check-stalled' && loop.STOP_REASONS.includes('check-stalled') && loop.STALL_REPEATS === 3
+        && off.calls > 3 && off.stop.reason !== 'check-stalled' && changing.calls > 3 && changing.stop.reason !== 'check-stalled'
+        && core.DEFAULTS.flags.stallStop === false && (settings.DESCRIPTIONS['flags.stallStop'] || '').length > 40,
+      { happened: JSON.stringify({ same, off, changing }), why: 'On harness-n3 to n6 the runs that ran out of rounds held a third of Atlias tokens and passed 1 of 25; a run whose edits do not change the failure is not converging, but one whose failure changes may be.', fix: 'lib/loop.mjs, the finishOnGreen block, behind flags.stallStop.' });
+  });
+
   // flags.quietNoCheck: a project with no check atlias can name is not asked for one.
   const QUIET = 'ATLIAS_FLAG_QUIET_NO_CHECK';
   const withQuiet = async (on, fn) => {
