@@ -5,6 +5,7 @@
 import * as loop from '../lib/loop.mjs';
 import * as gate from '../lib/gate.mjs';
 import * as settings from '../lib/settings.mjs';
+import * as evals from '../lib/eval.mjs';
 
 export default async function visibleCheckSuites({ asyncSuite, suite, check, core, agentMod, TMP, fs, path }) {
   const NL = String.fromCharCode(10);
@@ -96,6 +97,30 @@ export default async function visibleCheckSuites({ asyncSuite, suite, check, cor
         && off.calls > 3 && off.stop.reason !== 'check-stalled' && changing.calls > 3 && changing.stop.reason !== 'check-stalled'
         && core.DEFAULTS.flags.stallStop === false && (settings.DESCRIPTIONS['flags.stallStop'] || '').length > 40,
       { happened: JSON.stringify({ same, off, changing }), why: 'On harness-n3 to n6 the runs that ran out of rounds held a third of Atlias tokens and passed 1 of 25; a run whose edits do not change the failure is not converging, but one whose failure changes may be.', fix: 'lib/loop.mjs, the finishOnGreen block, behind flags.stallStop.' });
+  });
+
+  // flags.greenFailShown: a failure of the check atlias runs after an edit reaches the model.
+  await asyncSuite('visible check', 'with greenFailShown, a failing check after an edit reaches the model in its next request; off, it does not', async () => {
+    const SHOWN = 'ATLIAS_FLAG_GREEN_FAIL_SHOWN';
+    const shownRun = (shown) => withFlags(['ATLIAS_FLAG_VISIBLE_CHECK', 'ATLIAS_FLAG_FINISH_ON_GREEN'], async () => {
+      const before = process.env[SHOWN];
+      if (shown) process.env[SHOWN] = '1'; else delete process.env[SHOWN];
+      try {
+        const d = dir({ ...PROJECT, 'check.py': 'import sys' + NL + 'from sum import two' + NL + 'print("got", two())' + NL + 'sys.exit(0 if two() == 2 else 1)' + NL });
+        const script = [blk({ tool: 'edit_file', path: 'sum.py', old_string: 'return 1', new_string: 'return 3' }), blk({ tool: 'edit_file', path: 'sum.py', old_string: 'return 3', new_string: 'return 2' }), 'Done.'];
+        const seen = [];
+        const chat = async (messages) => { seen.push(JSON.stringify(messages)); const r = script.shift(); return { content: r === undefined ? 'out of script' : r, calls: [] }; };
+        const st = agentMod.newState(d, 'ollama');
+        await loop.runLoop(st, 'make two() return 2', { chat, say: () => {}, ask: async () => true, limits: { maxToolRounds: 6, maxBadReplies: 3 } });
+        return { calls: seen.length, second: seen[1] || '', stop: st.stop, trace: evals.toolTrace(st.messages) };
+      } finally { if (before == null) delete process.env[SHOWN]; else process.env[SHOWN] = before; }
+    });
+    const on = await shownRun(true), off = await shownRun(false);
+    check('on, the second request carries the failed check and its output and the run ends on the passing check; off, the second request has neither',
+      /atlias ran the project's check after your edit/.test(on.second) && /got 3/.test(on.second) && on.calls === 2 && on.stop && /check passed/.test(on.stop.detail) && on.trace.includes('atlias-check')
+        && !/got 3/.test(off.second) && !/check after your edit/.test(off.second) && off.calls === 2
+        && core.DEFAULTS.flags.greenFailShown === false && (settings.DESCRIPTIONS['flags.greenFailShown'] || '').length > 40,
+      { happened: JSON.stringify({ on: { calls: on.calls, stop: on.stop, trace: on.trace }, off: { calls: off.calls, stop: off.stop } }), why: 'harness-n9: the model ran the check itself after nearly every edit, a call each time, because the failure atlias saw was kept from it.', fix: 'lib/loop.mjs, the finishOnGreen block, behind flags.greenFailShown.' });
   });
 
   // flags.quietNoCheck: a project with no check atlias can name is not asked for one.
