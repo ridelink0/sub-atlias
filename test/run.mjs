@@ -1087,6 +1087,7 @@ await (await import('./oracle-ledger-suites.mjs')).default({ asyncSuite, check, 
 await (await import('./finishgreen-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./preload-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./visible-check-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
+await (await import('./slash-command-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./standalone-suites.mjs')).default({ asyncSuite, check, TMP });
 await (await import('./sampling-suites.mjs')).default({ asyncSuite, check, TMP, fs, path });
 await (await import('./transaction-suites.mjs')).default({ asyncSuite, check });
