@@ -192,7 +192,7 @@ export default async function permissionSuites({ asyncSuite, suite, check, core,
       && refused.some((r) => r.cls === 'credentials') && refused.some((r) => r.cls === 'money') && refused.some((r) => r.cls === 'publish') && refused.some((r) => r.cls === 'system') && refused.some((r) => r.cls === 'outside') && refused.some((r) => r.cls === 'destructive'),
       { happened: `rows ${rows.length}, refused ${refused.length}, ran ${ran.length}`, why: 'Gev reads the log when he comes back.', fix: 'permissions.logAction in the max wrapper.' });
     check('the log is a file under the Atlias home', permissions.logPath(st.sid).startsWith(core.STATE_DIR) && fs.existsSync(permissions.logPath(st.sid)), { happened: permissions.logPath(st.sid), why: 'It must survive the run.', fix: 'logPath.' });
-    check('/permissions log shows them', /refused \[destructive\]/.test(permissions.command('log', { current: 'max', set: () => ({ ok: true, text: '' }), sid: st.sid })), { happened: 'missing', why: 'The user needs a way to read it.', fix: 'permissions.command.' });
+    check('/permissions log shows them', /refused \[(destructive|publish|money|credentials|system|outside|declined)\]/.test(permissions.command('log', { current: 'max', set: () => ({ ok: true, text: '' }), sid: st.sid })), { happened: 'missing', why: 'The user needs a way to read it.', fix: 'permissions.command.' });
 
     // Undo still works for what max wrote.
     const u = agentMod.newState(d, 'openai');
