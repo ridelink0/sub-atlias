@@ -91,6 +91,21 @@ export default async function samplingSuites({ asyncSuite, check, TMP, fs, path 
     const refused = [core.parseSetting('agent', 'ollamaThink', 'maybe'), core.parseSetting('agent', 'ollamaTemperature', 'hot'), core.parseSetting('agent', 'ollamaPresencePenalty', '')];
     check('the settings command refuses a value it cannot type', refused.every((r) => r.error && r.value === undefined), say(refused));
 
+    // agent.openaiReasoningEffort: the OpenAI-compatible path, which `atlias eval` and the native-arm driver use.
+    const oaBodies = [];
+    const oaFirst = async (over) => { const n = oaBodies.length; await loop.openaiChat({ openaiUrl: 'http://127.0.0.1:1/v1', openaiModel: 'm', ...over }, {}, { post: async (url, body) => { oaBodies.push(body); return { status: 200, json: { choices: [{ message: { role: 'assistant', content: 'done' } }] } }; } })([{ role: 'user', content: 'x' }], null); return oaBodies[n]; };
+    const oaBase = JSON.stringify(await oaFirst({})), oaModel = JSON.stringify(await oaFirst({ openaiReasoningEffort: core.DEFAULTS.agent.openaiReasoningEffort }));
+    const efforts = [];
+    for (const v of ['none', ' NONE ', 'low', 'medium', 'high']) efforts.push((await oaFirst({ openaiReasoningEffort: v })).reasoning_effort);
+    const badEffort = [];
+    for (const v of ['model', 'off', 'maybe', '', null, undefined, true, 0, 'constructor', ['none']]) badEffort.push('reasoning_effort' in (await oaFirst({ openaiReasoningEffort: v })));
+    const effortSetting = [core.parseSetting('agent', 'openaiReasoningEffort', 'NONE'), core.parseSetting('agent', 'openaiReasoningEffort', 'maybe')];
+    check('the OpenAI reasoning effort is off by default (the request as before), sent only as one of none, low, medium, high, and typed by the settings command',
+      oaBase === JSON.stringify({ model: 'm', messages: [{ role: 'user', content: 'x' }], temperature: 0.2 }) && oaModel === oaBase && core.DEFAULTS.agent.openaiReasoningEffort === 'model'
+        && efforts.join() === 'none,none,low,medium,high' && badEffort.every((b) => b === false)
+        && effortSetting[0].value === 'none' && effortSetting[1].error && (settings.DESCRIPTIONS['agent.openaiReasoningEffort'] || '').length > 40,
+      say({ oaBase, oaModel, efforts, badEffort, effortSetting }));
+
     const withIt = prompt({ implied: true }), without = prompt({ implied: false });
     check('off, the prompt is exactly the prompt without the paragraph', withIt.split('\n').filter((l) => l !== loop.IMPLIED_CHANGES).join('\n') === without && withIt.split('\n').filter((l) => l === loop.IMPLIED_CHANGES).length === 1, say({ on: withIt.length, off: without.length }));
 
