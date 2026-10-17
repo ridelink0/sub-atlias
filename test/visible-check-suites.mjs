@@ -123,6 +123,27 @@ export default async function visibleCheckSuites({ asyncSuite, suite, check, cor
       { happened: JSON.stringify({ on: { calls: on.calls, stop: on.stop, trace: on.trace }, off: { calls: off.calls, stop: off.stop } }), why: 'harness-n9: the model ran the check itself after nearly every edit, a call each time, because the failure atlias saw was kept from it.', fix: 'lib/loop.mjs, the finishOnGreen block, behind flags.greenFailShown.' });
   });
 
+  // flags.verifyStrict (HAC-1 item 2): a check word must stand as a whole token.
+  await asyncSuite('visible check', 'with verifyStrict, cat tsconfig.json and node dist/latest.js are not checks; real checks still are; off, the older match stands', async () => {
+    const STRICT = 'ATLIAS_FLAG_VERIFY_STRICT';
+    const q = String.fromCharCode(34), bs = String.fromCharCode(92);
+    const winNode = q + 'C:' + bs + 'Program Files' + bs + 'nodejs' + bs + 'node.exe' + q + ' --check x.js';
+    const notChecks = ['cat tsconfig.json', 'cat .eslintrc.json', 'node dist/latest.js', 'type tsconfig.json'];
+    const checks = ['npx tsc --noEmit', 'node --check a.js', 'python -m pytest -q', 'node test/run.mjs', 'npm test', 'go test ./...', 'make test', 'eslint .', winNode, 'node tools/sweeps/run.mjs', 'python check.py', 'node ./test/x.mjs'];
+    const before = process.env[STRICT];
+    let on, off;
+    try {
+      process.env[STRICT] = '1';
+      on = { no: notChecks.map((c) => core.looksLikeVerification(c)), yes: checks.map((c) => core.looksLikeVerification(c)) };
+      delete process.env[STRICT];
+      off = notChecks.map((c) => core.looksLikeVerification(c));
+    } finally { if (before == null) delete process.env[STRICT]; else process.env[STRICT] = before; }
+    check('on, none of the look-alikes is a check and every real check still is; off, the look-alikes match as before',
+      on.no.every((v) => v === false) && on.yes.every((v) => v === true) && off.every((v) => v === true)
+        && core.DEFAULTS.flags.verifyStrict === false && (settings.DESCRIPTIONS['flags.verifyStrict'] || '').length > 40,
+      { happened: JSON.stringify({ on, off }), why: 'A look-alike counted as a passing check lets a failing run be answered and silences the red-check nudge (HAC-1, core.mjs VERIFY_RE).', fix: 'lib/core.mjs looksLikeVerification behind flags.verifyStrict.' });
+  });
+
   // flags.quietNoCheck: a project with no check atlias can name is not asked for one.
   const QUIET = 'ATLIAS_FLAG_QUIET_NO_CHECK';
   const withQuiet = async (on, fn) => {
