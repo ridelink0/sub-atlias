@@ -144,6 +144,27 @@ export default async function visibleCheckSuites({ asyncSuite, suite, check, cor
       { happened: JSON.stringify({ on, off }), why: 'A look-alike counted as a passing check lets a failing run be answered and silences the red-check nudge (HAC-1, core.mjs VERIFY_RE).', fix: 'lib/core.mjs looksLikeVerification behind flags.verifyStrict.' });
   });
 
+  // flags.looseKeepsLines (HAC-1 item 3): a loose span may not hide lines the model never named.
+  await asyncSuite('visible check', 'with looseKeepsLines, a loose match whose span holds unnamed lines is refused; a drifted line is still accepted', async () => {
+    const KEEP = 'ATLIAS_FLAG_LOOSE_KEEPS_LINES';
+    const file = ['def a():', '    y = 2', '    z = 3', '    return x'].join(NL);
+    const old = ['def a():', '    x = 1', '    return x'].join(NL);
+    const drifted = ['def a():', '    x = 1  # note', '    return x'].join(NL);
+    const before = process.env[KEEP];
+    let on, off, drift;
+    try {
+      process.env[KEEP] = '1';
+      on = loop.looseMatch(file, old);
+      drift = loop.looseMatch(drifted, old);
+      delete process.env[KEEP];
+      off = loop.looseMatch(file, old);
+    } finally { if (before == null) delete process.env[KEEP]; else process.env[KEEP] = before; }
+    check('on, the span holding y and z (never named) is refused and a one-line drift still matches; off, the span is matched whole as before',
+      on === null && drift && drift.start === 0 && !drift.many && off && off.start === 0 && /first and last line/.test(off.how)
+        && core.DEFAULTS.flags.looseKeepsLines === false && (settings.DESCRIPTIONS['flags.looseKeepsLines'] || '').length > 40,
+      { happened: JSON.stringify({ on, drift, off }), why: 'Rung two replaces its whole span: matched by its ends, an edit could delete code the model never named (HAC-1, loop.mjs looseMatch).', fix: 'lib/loop.mjs looseMatch behind flags.looseKeepsLines.' });
+  });
+
   // flags.quietNoCheck: a project with no check atlias can name is not asked for one.
   const QUIET = 'ATLIAS_FLAG_QUIET_NO_CHECK';
   const withQuiet = async (on, fn) => {
