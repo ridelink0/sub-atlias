@@ -77,6 +77,7 @@ const HELP = {
   refactorbench: ['usage: atlias refactorbench <path to refactor-benchmark/refactor-benchmark> [--out <dir>] [--limit N] [--only name,name] [--max-bytes 40960] [--rounds 16]'],
   agent: ['usage: atlias agent [--engine claude|codex|openai|ollama|echo] [--once "<prompt>"] [--resume [id]] [--sandbox]'],
   exec: ['usage: atlias exec "<prompt>" [--engine claude|codex|openai|ollama|echo] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)'],
+  import: ['usage: atlias import [--dry-run] [--from claude|codex|gemini|antigravity] [--sessions] [--yes] [--undo]', 'Brings instructions, memory, skills, slash commands and MCP definitions (and with --sessions the saved sessions) from your other tools into the Atlias home. --dry-run prints the plan only. Nothing is copied without a yes; credentials are never read; --undo removes exactly what an import made.'],
   resume: ['usage: atlias resume [id] [--engine e] [--sandbox]   carry on the last agent session in this folder'],
   install: ['usage: atlias install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--extras [ids]|--companions|--shortcut]'],
   uninstall: ['usage: atlias uninstall [--all|--codex|--antigravity|--gemini|--extras|--shortcut]'],
@@ -346,6 +347,17 @@ else switch (cmd) {
     process.exitCode = await agent.repl({ engine: after('--engine'), once: after('--once'), resume: flag('--resume') ? (r && !r.startsWith('--') ? r : 'last') : null, sandbox: sandboxFlag() });
     break;
   }
+  case 'import': {
+    const importer = await import('../lib/import.mjs');
+    const o = importer.parseArgs(argv.slice(1));
+    let rl = null;
+    const ask = process.stdin.isTTY ? (q) => { rl = rl || readlineMod.createInterface({ input: process.stdin, output: process.stdout }); return rl.question(q); } : null;
+    const readlineMod = await import('node:readline/promises');
+    const r = await importer.runImport(o, { ask, out: say });
+    if (rl) rl.close();
+    process.exitCode = r.code;
+    break;
+  }
   case 'resume': process.exitCode = await agent.repl({ engine: after('--engine'), resume: argv[1] && !argv[1].startsWith('--') ? argv[1] : 'last', sandbox: sandboxFlag() }); break;
   case 'exec': {
     // The prompt is every word that is not a flag or a flag's value; - or a
@@ -471,5 +483,5 @@ else switch (cmd) {
     break;
   }
   default:
-    say([logo(), '', 'atlias                             by mode: ask (both), status (sub), the agent (standalone)', 'agent [--engine claude|codex|openai|ollama|echo] [--once "<prompt>"] [--resume [id]] [--sandbox]', 'exec "<prompt>" [--engine e] [--resume [id]] [--sandbox] [--json]   one prompt, no questions; - or a pipe reads stdin', '  --sandbox                        work in a throwaway git worktree, show the diff at the end, and change the project only if you take it', 'resume [id]                        carry on the last agent session in this folder', 'mode [both|sub|standalone]         what atlias is on this machine', 'settings [list]                    every option, with what it does', 'install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--extras [ids]|--companions|--shortcut]', 'uninstall [--all|--codex|--antigravity|--gemini|--extras|--shortcut]', 'shortcut [install|uninstall|status]  the atlias command in any terminal', 'tiers                              the benchmark tiers, which are on this machine, and how to get the rest', 'eval [--tier smoke|main|big] [--sample N [--seed s]] [--engine e] [--repeat k] [--save f]   score tasks; the check decides', 'compare <a.json> <b.json>          two saved runs, paired, with what the corpus could never have shown', 'doctor | status | brief [--host codex] | test | bench [question...] | version | logo', 'skills [name]                      the skills installed here, or one of them in full', 'recall <query> | remember <name> <type> <description> -- <body>', 'progress [set <next step>] | dream [ack|distil <session>] | graph query|affected|explain|update <arg>', 'config [set <section.key> <value>]']);
+    say([logo(), '', 'atlias                             by mode: ask (both), status (sub), the agent (standalone)', 'agent [--engine claude|codex|openai|ollama|echo] [--once "<prompt>"] [--resume [id]] [--sandbox]', 'exec "<prompt>" [--engine e] [--resume [id]] [--sandbox] [--json]   one prompt, no questions; - or a pipe reads stdin', '  --sandbox                        work in a throwaway git worktree, show the diff at the end, and change the project only if you take it', 'resume [id]                        carry on the last agent session in this folder', 'import [--dry-run] [--from tool] [--sessions] [--undo]   bring memory, skills, commands and sessions over from Claude Code, Codex, Gemini CLI, Antigravity', 'mode [both|sub|standalone]         what atlias is on this machine', 'settings [list]                    every option, with what it does', 'install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--extras [ids]|--companions|--shortcut]', 'uninstall [--all|--codex|--antigravity|--gemini|--extras|--shortcut]', 'shortcut [install|uninstall|status]  the atlias command in any terminal', 'tiers                              the benchmark tiers, which are on this machine, and how to get the rest', 'eval [--tier smoke|main|big] [--sample N [--seed s]] [--engine e] [--repeat k] [--save f]   score tasks; the check decides', 'compare <a.json> <b.json>          two saved runs, paired, with what the corpus could never have shown', 'doctor | status | brief [--host codex] | test | bench [question...] | version | logo', 'skills [name]                      the skills installed here, or one of them in full', 'recall <query> | remember <name> <type> <description> -- <body>', 'progress [set <next step>] | dream [ack|distil <session>] | graph query|affected|explain|update <arg>', 'config [set <section.key> <value>]']);
 }

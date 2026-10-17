@@ -1,7 +1,7 @@
 // Tool implementations shared by the MCP server and the CLI.
 import fs from 'node:fs';
 import path from 'node:path';
-import { claudeMemoryDir, readText, writeText, readLines, exists, clip, config, ensureDir } from '../lib/core.mjs';
+import { STATE_DIR, slug, claudeMemoryDir, readText, writeText, readLines, exists, clip, config, ensureDir } from '../lib/core.mjs';
 import * as graph from '../lib/graph.mjs';
 import * as dream from '../lib/dream.mjs';
 import * as progress from '../lib/progress.mjs';
@@ -33,13 +33,18 @@ export function recall(cwd, query, limit = 8) {
     return true;
   };
   const memDir = claudeMemoryDir(cwd);
-  if (exists(memDir)) {
+  // Notes brought in by `atlias import` live in the Atlias home: this project's, and the ones from Codex.
+  const importedDirs = [path.join(STATE_DIR, 'projects', slug(cwd), 'memory'), path.join(STATE_DIR, 'memory', 'codex')].filter((d) => d !== memDir && exists(d));
+  if (exists(memDir) || importedDirs.length) {
     const hits = [];
-    for (const f of fs.readdirSync(memDir)) {
-      if (!f.endsWith('.md') || f === 'MEMORY.md') continue;
-      const text = readText(path.join(memDir, f)) || '';
-      const s = score(text);
-      if (s) hits.push({ f, s, text });
+    for (const dir of [memDir, ...importedDirs]) {
+      if (!exists(dir)) continue;
+      for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.md') || f === 'MEMORY.md') continue;
+        const text = readText(path.join(dir, f)) || '';
+        const s = score(text);
+        if (s) hits.push({ f, s, text });
+      }
     }
     hits.sort((a, b) => b.s - a.s);
     for (const h of hits.slice(0, limit)) add(`### memory ${h.f}\n${clip(h.text.replace(/^---[\s\S]*?---\s*/, '').trim(), cfg.bodyChars)}`);
