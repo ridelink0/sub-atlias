@@ -8,6 +8,9 @@
 - A customizable usage display (ui.usageEnabled, usagePosition, usageColor including rainbow, usageAnimation).
 - atlias import and a first-run offer: sessions, memory, instructions, skills, commands and MCP definitions from Claude Code, Codex, Gemini CLI and Antigravity; credentials never read; reversible with --undo.
 - The version is read from package.json, so a release cannot show an old number.
+- `atlias update [--check]` and `/update`: fast-forward a git checkout of Atlias from its update source (`update.source`; empty means the upstream of the current branch). It refuses when tracked files are changed, HEAD is detached, no source is set or the history has diverged, and it never resets, merges, rebases or pushes; it prints the commits it pulled. `atlias --version` shows the version and, in a checkout, the commit and branch.
+- Update offer: when the agent starts in a terminal and the source has new commits, it asks "Installed, Wanna Update?" with "Never ask me again (you can run update to update)", "Maybe Later" and "Lets Do It!". Maybe Later asks again after a day; Never sets `update.autoPrompt` to false (settable back with `atlias config` or `/settings`). The check is capped at four seconds, is silent on any failure, and never runs in `exec`, `eval`, `--once` or without a terminal.
+- `@file` mentions in the agent (inside the project only, symlinks followed, `.git` never, 20,000 bytes a file, 8 files a message), `/context`, `/rename <name>` with `/resume <name>`, `/release-notes [version]`, and `agent.notifyAfterSeconds` (terminal bell and desktop notification after a long turn; 0, the default, is off). The benchmark path (`runLoop`, `openaiChat`, `eval`, `tools/h2h`) is untouched.
 
 ## Unreleased
 
