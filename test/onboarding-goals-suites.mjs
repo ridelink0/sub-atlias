@@ -207,6 +207,14 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
     check('readCopyOnSelect honors an explicit false and status explains host-wide scope',
       copy.readCopyOnSelect(initial).configured && copy.readCopyOnSelect(initial).value === false && before.supported && before.value === false && /every Windows Terminal profile/.test(before.text),
       { happened: before.text, why: 'An explicit false is a user preference and must not be treated as missing.', fix: 'Read the root boolean and report its scope.' });
+    const configOutput = [];
+    const configCtx = { ask: async () => 'no', out: (line) => configOutput.push(String(line)), api: { copyOnSelectOptions: { platform: 'win32', env } } };
+    await commands.dispatch('/config ui.copyOnSelect', configCtx);
+    await commands.dispatch('/config all', configCtx);
+    check('/config and /config all expose the live terminal setting without persisting an Atlias boolean',
+      configOutput.length === 2 && configOutput.every((line) => /ui\.copyOnSelect/.test(line) && /every Windows Terminal profile/.test(line))
+        && !Object.hasOwn(core.config().ui, 'copyOnSelect'),
+      { happened: JSON.stringify({ configOutput, ui: core.config().ui }), why: 'The setting must be discoverable and backed by the real terminal preference, not an inert Atlias toggle.', fix: 'Render host status from the selection-copy adapter.' });
     const changedText = copy.setCopyOnSelectText(initial, true);
     check('setCopyOnSelectText changes only the requested root boolean and preserves JSONC comments and other settings',
       copy.readCopyOnSelect(changedText).value === true && changedText.includes('// keep this host comment') && changedText.includes('"copyFormatting": "none"') && changedText.includes('"fontFace": "Cascadia Code"') && changedText.includes('\r\n'),
@@ -236,14 +244,48 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
     await commands.dispatch('/copy-on-select on', ctx);
     check('the slash command shows the global scope before changing anything and honors opt-out', /every profile/.test(askText) && /right-click pastes/.test(askText) && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === false,
       { happened: JSON.stringify({ askText, file: fs.readFileSync(file, 'utf8') }), why: 'The host-wide effect must be clear before the user confirms a change.', fix: 'Ask and require yes before writing.' });
+    const virtualDenied = { ...ctx, ask: async (prompt) => { askText = prompt; return 'no'; } };
+    await commands.dispatch('/config ui.copyOnSelect true', virtualDenied);
+    const cancelOutput = [];
+    await commands.dispatch('/config ui.copyOnSelect true', { ...ctx, ask: async () => '', out: (line) => cancelOutput.push(String(line)) });
+    const invalidBefore = fs.readFileSync(file, 'utf8');
+    let invalidAsked = false;
+    await commands.dispatch('/config ui.copyOnSelect definitely', { ...ctx, ask: async () => { invalidAsked = true; return 'yes'; } });
+    check('/config host toggle requires a strict boolean and a positive confirmation',
+      /every profile/.test(askText) && cancelOutput.some((line) => /unchanged/.test(line)) && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === false && !invalidAsked && fs.readFileSync(file, 'utf8') === invalidBefore,
+      { happened: JSON.stringify({ askText, cancelOutput, invalidAsked, file: fs.readFileSync(file, 'utf8') }), why: 'Typos, a declined confirmation, and an empty/cancelled answer must not change the host terminal.', fix: 'Validate true/false and require an affirmative answer before using the host adapter.' });
     const accepted = { ...ctx, ask: async (prompt) => { askText = prompt; return 'yes'; } };
+    await commands.dispatch('/config ui.copyOnSelect true', accepted);
+    check('/config host toggle changes only the synthetic terminal file after explicit opt-in', /every profile/.test(askText) && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === true && fs.readFileSync(file, 'utf8').includes('"copyFormatting": "none"') && !Object.hasOwn(core.config().ui, 'copyOnSelect'),
+      { happened: JSON.stringify({ askText, file: fs.readFileSync(file, 'utf8'), ui: core.config().ui }), why: 'The integrated config route must change the actual host setting only after confirmation, without storing a duplicate app value.', fix: 'Share the existing explicit host adapter.' });
+    let readOnlyAsked = false;
+    settings.set('agent.permissions', 'read-only');
+    await commands.dispatch('/config ui.copyOnSelect false', { ...accepted, ask: async () => { readOnlyAsked = true; return 'yes'; } });
+    check('read-only permissions block the virtual host setting without asking or writing', !readOnlyAsked && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === true,
+      { happened: JSON.stringify({ readOnlyAsked, file: fs.readFileSync(file, 'utf8') }), why: 'A host config file is still a write and must respect the configured permission mode.', fix: 'Apply the same permission gate as the original command.' });
+    settings.set('agent.permissions', 'workspace');
+    await commands.dispatch('/config reset ui.copyOnSelect', accepted);
+    check('reset uses the same confirmed host route and restores Windows Terminal copy-off', /Set it off/.test(askText) && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === false,
+      { happened: JSON.stringify({ askText, file: fs.readFileSync(file, 'utf8') }), why: 'Reset must not create an unrelated Atlias default; it restores the host default through the same confirmation.', fix: 'Delegate reset to the false host setting.' });
     await commands.dispatch('/copy-on-select on', accepted);
-    check('the slash command changes only the synthetic host file after explicit opt-in', /every profile/.test(askText) && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === true && fs.readFileSync(file, 'utf8').includes('"copyFormatting": "none"'),
-      { happened: JSON.stringify({ askText, file: fs.readFileSync(file, 'utf8') }), why: 'The integrated command must apply the requested host setting only after confirmation.', fix: 'Keep the write behind the affirmative answer.' });
+    check('the original copy-on-select command still shares the host adapter', /Set it on/.test(askText) && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === true,
+      { happened: JSON.stringify({ askText, file: fs.readFileSync(file, 'utf8') }), why: 'The config alias must not replace the existing command path.', fix: 'Delegate both command forms to setCopyOnSelect.' });
+    let malformedResetAsked = false;
+    await commands.dispatch('/config reset ui.copyOnSelect false', { ...accepted, ask: async () => { malformedResetAsked = true; return 'yes'; } });
+    check('reset rejects trailing arguments before asking or touching the host file', !malformedResetAsked && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === true,
+      { happened: JSON.stringify({ malformedResetAsked, file: fs.readFileSync(file, 'utf8') }), why: 'A malformed reset must not silently perform a different host change.', fix: 'Require exact reset syntax.' });
     let unsupportedAsked = false;
     await commands.dispatch('/copy-on-select on', { ...ctx, ask: async () => { unsupportedAsked = true; return 'yes'; }, api: { copyOnSelectOptions: { platform: 'win32', env: {} } } });
     check('an unsupported host never asks for confirmation or changes any profile', !unsupportedAsked && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === true,
       { happened: JSON.stringify({ unsupportedAsked, file: fs.readFileSync(file, 'utf8') }), why: 'A portable terminal has no safe host setting to modify.', fix: 'Report the unsupported terminal before asking.' });
+    let configUnsupportedAsked = false;
+    const unsupportedConfigOutput = [];
+    const unsupportedConfigCtx = { ...ctx, out: (line) => unsupportedConfigOutput.push(String(line)), ask: async () => { configUnsupportedAsked = true; return 'yes'; }, api: { copyOnSelectOptions: { platform: 'win32', env: {} } } };
+    await commands.dispatch('/config ui.copyOnSelect', unsupportedConfigCtx);
+    await commands.dispatch('/config ui.copyOnSelect true', unsupportedConfigCtx);
+    check('the config alias reports unsupported hosts and never asks or changes another terminal',
+      /unsupported/.test(unsupportedConfigOutput[0]) && !configUnsupportedAsked && copy.readCopyOnSelect(fs.readFileSync(file, 'utf8')).value === true,
+      { happened: JSON.stringify({ unsupportedConfigOutput, configUnsupportedAsked, file: fs.readFileSync(file, 'utf8') }), why: 'The virtual setting must not claim ANSI terminals have a controllable selection option.', fix: 'Use the host adapter status and stop before confirmation when unsupported.' });
     settings.set('agent.permissions', previousPermissions);
   });
 
