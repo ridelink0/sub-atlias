@@ -21,7 +21,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
   };
 
   suite('terminal palette expert', 'terminal composer matching, width and exact unknown usage', () => {
-    check('the new UI defaults off and is described', core.DEFAULTS.ui.terminalEnabled === false && fs.readFileSync(path.join(ROOT, 'lib/settings.mjs'), 'utf8').includes("'ui.terminalEnabled'"), detail());
+    check('the terminal composer defaults on and describes the explicit opt-out', core.DEFAULTS.ui.terminalEnabled === true && fs.readFileSync(path.join(ROOT, 'lib/settings.mjs'), 'utf8').includes('On by default; set false to opt out.'), detail());
     check('slash lists visible commands once and hidden commands stay hidden', ui.commandMatches('/', rows).length === 4 && !ui.commandMatches('/', rows).some((x) => x.name === 'hidden'), detail());
     check('prefix ranks above fuzzy and exact ranks first', ui.commandMatches('/h', rows)[0].name === 'help' && ui.commandMatches('/hosts', rows)[0].rank === 0, detail());
     check('case and subsequences match custom commands', ui.commandMatches('/PJC', rows)[0].name === 'project:check', detail());

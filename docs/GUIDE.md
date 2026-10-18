@@ -14,6 +14,13 @@ atlias mode standalone   # agent only; the hooks stay silent in other harnesses
 
 ## The agent
 
+The interactive agent opens the terminal composer by default, with the start
+screen, prompt box, live slash palette and session footer. Type `/` to list
+commands, use the arrows to select, Tab to complete and Enter to send. Set
+`atlias config set ui.terminalEnabled false` to opt out, or reset the setting
+to restore the default. Restart Atlias after changing it. Non-TTY input and
+terminals without supported raw input use line mode.
+
 ```
 atlias                          # choose, then fly
 atlias agent [--engine claude|codex|openai|ollama|echo]
