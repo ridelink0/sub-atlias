@@ -1,3 +1,17 @@
+# Gev: terminal launcher resolution, 2026-10-18
+
+Current human scope verified from the actual Claude transcript: Gev ended benchmark tuning on October 17 at 23:02Z and asked to finish and install Atlias. The earlier subharness priority is closed. Basis: RESEARCH-FIRST 0g (normal harness), H7 (bounded mechanisms), and sections 3/9 (preserve requests and evidence).
+
+Own branch: codex/terminal-resolution-1017, base fce33211870de982ae15c05e81878dad53ceca00. Parent Claude and all three HC-UI agents hit their quota at 00:15Z; original WIP preserved. No duplicate Claude, model, GPU or benchmark launched.
+
+Reproduced: generated CLI chose plugin cache3.8.1 before a recorded standalone4.0.0. Before fix, six controls passed and four desired cases failed (terminal exit1). New resolver compares live release versions; recorded app wins release ties, explicit ATLIAS_ROOT still takes priority, deleted roots fall through. Only CLI launcher and its tests changed. All five sampled model-request/loop files are unchanged.
+
+Functional focused:26/26 in4suites, actualexit0. Adversarial:three regression plants caught with nonzero exits, no timeouts, source bytes restored. Full regression r1 retained exit1:2740/2741 (the recall fixture ordinary word term matched terminal in the owned TEMP path). Replaced only its negative query with a distinctive absent token, then caught a planted removal of the real empty-result branch and restored production bytes. Focused r2:30/30/5suites actual0; four total source plants caught/restored. Full regression r2 TERMINAL exit0 at2026-10-18T00:43:24Z:2741/2741 in340suites,9explicit PID/publisher omissions. No runtime/source changes after that pass. Empty-root candidate concern was a false alarm: pure probe refused with exit1, no CWD copy executed.
+
+Next: commit this qualified patch locally and coordinate clean fast-forwards of the implementation/app branches; verify the installed CLI exit/version. Do not overwrite builder WIP. TUI not built or claimed complete; two helper additions in protected claude/tui-1017 remain unqualified. Terminal-Bench preparation only; no new trials, paid APIs, credentials copying or foreign relay changes.
+
+--- Previous checkpoint preserved ---
+
 # Gev checkpoint 2026-10-15T06:10Z (Claude visible session bbb3db9f)
 
 Haiku implementation council 1015 done and root-reviewed; commit a3c5830 (local, not pushed). Five default-off lanes: mods/atlias-pipeline (reviewed contract/runner/wire + collect-only native Mod), lib/local-pipeline.mjs facade, lib/local-transport.mjs metered no-redirect chat transport (provider chat scoped to helper; host launch protocols unchanged), codexTurn exact ledger authority under flags.authorityLedger, Door X-Atlias-Role byRole (invalid role = Door error). Root fixed 5 defects (host chat acceptance, codex authorityMissing on resume, invalid role not an error, Node18 isWellFormed, config() dropping localPipeline). Actual: node suite exit0 1937/1937 (9 no-PID omissions), Door selftest exit0 52/52, claude plugin validate --strict exit0. Review: D:/harness-work/atlias-luna-council-1013/scratch/haiku-impl-1015/ROOT-REVIEW.md, manifest MANIFEST-a3c5830.json there.

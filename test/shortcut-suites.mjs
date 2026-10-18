@@ -61,6 +61,53 @@ export default async function shortcutSuites({ suite, check, TMP, ROOT, spawnSyn
     check('with nothing on PATH the lookup says nothing answers', shortcut.whichAtlias({ PATH: path.join(home, 'empty-dir') }, platform) === null, { happened: 'it found something', why: 'A doctor that reports a command that is not there sends the user looking in the wrong place.', fix: 'Return null when no PATH entry holds an atlias.' });
   });
 
+  suite('shortcut resolution expert', 'the terminal command follows current installs without a stale plugin downgrade', () => {
+    const base = path.join(TMP, 'shortcut-resolution');
+    const state = path.join(base, 'state');
+    const claude = path.join(base, 'claude');
+    const cache = path.join(claude, 'plugins', 'cache', 'atlias', 'atlias');
+    const launcher = path.join(base, 'cli.mjs');
+    fs.mkdirSync(state, { recursive: true });
+    fs.writeFileSync(launcher, shortcut.CLI_LAUNCHER_SOURCE);
+    const copy = (root, version, tag) => {
+      fs.mkdirSync(path.join(root, 'bin'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ type: 'module', version }));
+      fs.writeFileSync(path.join(root, 'bin', 'atlias.mjs'), `console.log(${JSON.stringify(tag)});`);
+      return root;
+    };
+    const old = copy(path.join(cache, '3.8.1'), '3.8.1', 'old-plugin');
+    const app = copy(path.join(base, 'standalone app'), '4.0.0', 'new-app');
+    const record = (root) => fs.writeFileSync(path.join(state, 'root.json'), JSON.stringify({ root }));
+    const resolve = (extra = {}) => spawnSync(process.execPath, [launcher], {
+      env: { ...process.env, ATLIAS_HOME: state, CLAUDE_CONFIG_DIR: claude, ATLIAS_ROOT: '', ...extra },
+      encoding: 'utf8', timeout: 10000,
+    });
+    const expect = (name, tag, extra = {}) => {
+      const r = resolve(extra);
+      check(name, r.status === 0 && !r.error && r.stdout.trim() === tag, { happened: JSON.stringify({ status: r.status, out: r.stdout, err: r.stderr }), why: 'Gev: installing or updating the app must not reopen an older plugin.', fix: 'Resolve the newest usable CLI, preserving the explicit override and recorded app on ties.' });
+    };
+    record(app);
+    expect('an older cached plugin cannot hide a newer recorded app', 'new-app');
+    const newer = copy(path.join(cache, '4.1.0'), '4.1.0', 'newer-plugin');
+    expect('a newer installed plugin is picked up without rewriting the shim', 'newer-plugin');
+    fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ type: 'module', version: '4.1.0' }));
+    expect('equal release versions preserve the explicitly installed standalone app', 'new-app');
+    expect('ATLIAS_ROOT still selects an older explicit copy', 'old-plugin', { ATLIAS_ROOT: old });
+    expect('a removed explicit copy falls through to a usable install', 'new-app', { ATLIAS_ROOT: path.join(base, 'removed') });
+    record(path.join(base, 'missing app'));
+    expect('a deleted recorded app falls through to the newest plugin', 'newer-plugin');
+    record(app);
+    fs.writeFileSync(path.join(app, 'package.json'), JSON.stringify({ type: 'module', version: '4.2.0' }));
+    expect('an in-place update is detected from the live package version', 'new-app');
+    fs.writeFileSync(path.join(state, 'root.json'), '{bad json');
+    expect('a damaged root record does not prevent a valid plugin from launching', 'newer-plugin');
+    fs.writeFileSync(path.join(newer, 'package.json'), '{bad json');
+    expect('a cache folder version remains usable if its manifest cannot be read', 'newer-plugin');
+    fs.rmSync(cache, { recursive: true, force: true });
+    const empty = resolve();
+    check('no usable install is a diagnostic nonzero exit', empty.status === 1 && /no installed copy found/.test(empty.stderr), { happened: JSON.stringify({ status: empty.status, stderr: empty.stderr }), why: 'A missing install must not pretend to have launched.', fix: 'Keep the launcher error path.' });
+  });
+
   suite('terminal command expert', 'typing atlias actually runs atlias', () => {
     const platform = process.platform;
     const env = platform === 'win32' ? winEnv(true) : posixEnv(true);

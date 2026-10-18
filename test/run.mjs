@@ -603,7 +603,8 @@ suite('recall budget expert', 'recall budget', () => {
   check('recall stays inside its budget', text.length < 3200, { happened: text.length + ' characters', why: 'A tool whose point is to be the cheap way to a fact must not cost more than reading the file would have.', fix: 'Check the budget accounting in recall().' });
   check('what it left out is counted, not dropped silently', /further match\(es\) left out/.test(text), { happened: text.slice(-200), why: 'Silent truncation reads as "that is everything there is", which is how a model stops looking.', fix: 'Keep the omitted tail line in recall().' });
   check('it still returns the matches it kept', /budget-note-/.test(text), { happened: text.slice(0, 160), why: 'A budget that returns nothing is not a budget, it is a failure.', fix: 'Add the highest scoring entries first.' });
-  check('a query with no match still says so plainly', /nothing matched/.test(tools.recall(PROJECT, 'zzzz unrelated nonsense term')), { happened: tools.recall(PROJECT, 'zzzz unrelated nonsense term'), why: 'An empty answer must not look like an error.', fix: 'Keep the nothing matched branch.' });
+  // Use a unique absent token: ordinary words such as term match a terminal-named temp path in the handoff.
+  check('a query with no match still says so plainly', /nothing matched/.test(tools.recall(PROJECT, 'qzxvabsentrecallfixture')), { happened: tools.recall(PROJECT, 'qzxvabsentrecallfixture'), why: 'An empty answer must not look like an error.', fix: 'Keep the nothing matched branch.' });
 });
 
 suite('live count expert', 'live interventions', () => {
