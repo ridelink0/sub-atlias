@@ -1,3 +1,15 @@
+# Okay Gev - clean quota/resource handoff, Oct18 03:55Z
+
+Runtime WIP commit b939a8d57fc61b970a47bb5833829e39732fed79 is saved and source pins matched. This is NOT accepted/integrated UI. Last app meter86%fivehour used,29%weekly; remaining full verification and integration held, latest physicalRAM1.116GiB below2GiB reserve. Newest behavior edits remain UNTESTED; syntax0 is not functional acceptance. Earlier49/137functional0 and7/8plants exit1 remain immutable. Read codex-tui-1018/FINAL-WIP-REVIEW.md and CHECKPOINT-r1.json for findings/source pins. All request-path files inspected remain unchanged; flags defaultoff. Original Claude builder WIP and installed/source ef0446d preserved by this work.
+
+Own continuation saved via app for measuredreset1792311478+420seconds=1792311898,2026-10-18T08:24:58Z,03:24:58America/Chicago. Actual saved TOML rule FREQ=DAILY;BYHOUR=3;BYMINUTE=24;BYSECOND=58 read back and verified. At wake re-meter and inspect native owners/jobs/resources; restore20-minute useful cadence only once checked. Preserve separate21:20/foreign/global relays. This is never a model/benchmark schedule. Closed only my temporary IAB reference tab; no foreign app closure or RAM-savings claim. Fresh nativeClaude13dd busy reviewing current work at actual Gev request, no duplicate session.
+
+Next: current focused functional and coverage, corrected paste/other plants then restored tests, isolated echo-only PTY/manual frame sweep/full suite, source-bound final review before local integration. Start no further heavy QA/native/model job while resource or ownership guard holds. No new model/GPU/benchmark, Terminal-Bench prep only. No paid API/credits/reset redemption/PIDkill/mainmerge/push.
+
+Pass1: prior137 selected checks0; latest syntax0, newest behavior unverified. Pass2:7/8mutants caught; paste oracle/tiny-width/encoding/cleanup findings corrected but pending functional/adversarial requalification.
+
+---
+
 # Okay Gev - final current TUI WIP review, Oct18
 
 Second read of all seven runtime/test files found an unintended BOM-literal encoding change in commands.mjs and a dropped final digest message after closing the composer. Restored the exact inherited BOM parser line and switched output back to the plain writer after cleanup. Latest syntax/diff checks actualexit0; behavior remains UNVERIFIED after these and the compact/paste-oracle edits.
