@@ -19,7 +19,6 @@ import * as loop from '../lib/loop.mjs';
 import * as settings from '../lib/settings.mjs';
 import * as shortcut from '../lib/shortcut.mjs';
 import * as track from '../lib/track.mjs';
-import * as usage from '../lib/usage.mjs';
 
 export default async function unitSuites({ suite, asyncSuite, check, PROJECT, TMP, fs, path }) {
   const U = path.join(TMP, 'unit');
@@ -154,7 +153,7 @@ export default async function unitSuites({ suite, asyncSuite, check, PROJECT, TM
     fs.writeFileSync(settingsPath, JSON.stringify({ enabledPlugins: { 'usage-limits@x': true, 'ultimate-frontend-skills@y': false } }));
     const c = brief.companions();
     if (before === null) fs.unlinkSync(settingsPath); else fs.writeFileSync(settingsPath, before);
-    check('companions reads which companion plugins are enabled', c.usageLimits === true && c.ufs === false, { happened: JSON.stringify(c), why: 'The brief only points at companions that are really on.', fix: 'Check companions.' });
+    check('Atlias does not read plugin account-usage state', !Object.hasOwn(c, 'usageLimits') && c.ufs === false, { happened: JSON.stringify(c), why: 'Atlias provider usage belongs to Atlias; it does not inspect another plugin’s account limits.', fix: 'Keep companion discovery separate from account usage.' });
     const out = brief.sessionStart({ session_id: 'unit-brief', cwd: PROJECT, source: 'startup' }, 'claude');
     check('sessionStart returns the brief and records the session', out && out.hookSpecificOutput && out.hookSpecificOutput.additionalContext.length > 0 && core.sessionMeta('unit-brief').host === 'claude', { happened: JSON.stringify(out).slice(0, 160), why: 'This is the first thing every session sees.', fix: 'Check sessionStart.' });
   });
@@ -303,30 +302,6 @@ export default async function unitSuites({ suite, asyncSuite, check, PROJECT, TM
     const listed = settings.format(settings.rows());
     check('format numbers every setting and says what it does', /^ 1  verify\.syntax/.test(listed) && listed.includes('hold a reply whose edited files do not parse'), { happened: listed.slice(0, 120), why: 'The menu and settings list print it.', fix: 'Check format.' });
     check('describeMode marks the current mode', /\* sub/.test(settings.describeMode({ agent: { mode: 'sub' } })), { happened: settings.describeMode({ agent: { mode: 'sub' } }), why: 'The user needs to see which one is on.', fix: 'Check describeMode.' });
-  });
-
-  suite('usage expert', 'usage, told calmly', () => {
-    const file = path.join(process.env.CLAUDE_CONFIG_DIR, 'usage-limits-live.json');
-    const now = Date.now();
-    const iso = (ms) => new Date(ms).toISOString();
-    fs.writeFileSync(file, JSON.stringify({ fetchedAtMs: now - 5 * 60000, utilization: { five_hour: { utilization: 57, resets_at: iso(now + 130 * 60000) }, seven_day: { utilization: 83.4, resets_at: iso(now + 5 * 86400000) } } }));
-    try {
-      const r = usage.reading();
-      check('the usage-limits reading is read, not fetched', r && r.fiveHour.percent === 57 && r.weekly.percent === 83, { happened: JSON.stringify(r), why: 'atlias must cost nothing here and never add a network call.', fix: 'Check reading().' });
-      const l = usage.line(r, now);
-      check('the line says both windows, when they reset, and how old the reading is', /5-hour window 57% used, resets in 2h 10m/.test(l) && /weekly 83% used, resets in 5 days/.test(l) && /read by usage-limits 5 minutes ago/.test(l), { happened: l, why: 'The model needs the facts, not a feeling.', fix: 'Check line().' });
-      const sec = usage.section('claude');
-      check('the brief section is information with the user in charge', /## Usage/.test(sec) && /not a brake/.test(sec) && /full quality and full scope/.test(sec) && /their words decide/.test(sec), { happened: sec, why: 'Gev asked for a model that knows the limits without being stressed by them, and that always follows what the user says.', fix: 'Check STANCE.' });
-      check('only Claude Code gets it, since the numbers are that account\'s', usage.section('codex') === '' && usage.section('gemini') === '', { happened: usage.section('codex'), why: 'In another host they would describe somebody else\'s limits.', fix: 'Check the host test in section().' });
-      check('it can be switched off', usage.section('claude', { usage: { show: false } }) === '', { happened: 'still shown', why: 'Every part of atlias can be turned off.', fix: 'Check usage.show.' });
-      check('the Claude Code brief carries it once, and the companion line no longer calls a plugin the authority', /## Usage/.test(brief.build({ session_id: 'usage-brief', cwd: PROJECT, source: 'startup' }, 'claude')) && !/budget authority/.test(fs.readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')), '..', 'lib', 'brief.mjs'), 'utf8')), { happened: 'missing or old wording', why: 'The brief is read once per session, which is as often as this needs saying.', fix: 'Check brief.build.' });
-      fs.writeFileSync(file, JSON.stringify({ fetchedAtMs: now - 7 * 3600000, utilization: { five_hour: { utilization: 10, resets_at: null } } }));
-      check('an old reading is flagged as possibly out of date', /7 hours ago; it may be out of date/.test(usage.line(usage.reading(), now)), { happened: usage.line(usage.reading(), now), why: 'A six-hour-old number is not the current state.', fix: 'Check the stale test.' });
-      check('reset times and ages read sensibly at the edges', usage.resets(iso(now - 1000), now) === 'resets any moment' && usage.resets('', now) === '' && usage.ago(NaN) === 'at an unknown time' && usage.ago(60000) === 'just now', { happened: [usage.resets(iso(now - 1000), now), usage.ago(NaN)].join(' | '), why: 'Edge values must not print nonsense.', fix: 'Check resets and ago.' });
-    } finally {
-      fs.unlinkSync(file);
-    }
-    check('with no reading there is no section at all', usage.reading() === null && usage.section('claude') === '', { happened: usage.section('claude'), why: 'No numbers means nothing to say.', fix: 'Return empty.' });
   });
 
   suite('shortcut path expert', 'the terminal command paths', () => {

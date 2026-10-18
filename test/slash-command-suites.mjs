@@ -27,7 +27,8 @@ export default async function slashCommandSuites({ suite, asyncSuite, check, cor
   const ctxFor = (cwd, { engine = 'echo', replies = [], home, detect } = {}) => {
     const out = [];
     const asked = [];
-    const api = { ...agentMod.slashApi, detectEngines: detect || (() => ({ claude: false, codex: false, openai: false, ollama: false, echo: true })), turn: async (st, text) => { asked.push(text); const r = replies.shift(); return r === undefined ? 'out of script' : r; } };
+    const engines = detect || (() => ({ claude: false, codex: false, openai: false, ollama: false, echo: true }));
+    const api = { ...agentMod.slashApi, detectEngines: engines, pickEngine: (name) => engines()[name] ? name : null, turn: async (st, text) => { asked.push(text); const r = replies.shift(); return r === undefined ? 'out of script' : r; } };
     const state = agentMod.newState(cwd, engine);
     return { ctx: { state, cwd, out: (s) => out.push(String(s)), ask: async () => 'n', api, home: home || homeDir() }, out, asked, state };
   };
@@ -41,9 +42,10 @@ export default async function slashCommandSuites({ suite, asyncSuite, check, cor
     const help = commands.helpText(project(), homeDir());
     const missing = B.filter((b) => !b.hidden && !help.includes(b.usage));
     check('/help lists every registered command, taken from the registry', missing.length === 0, { happened: 'missing from /help: ' + missing.map((b) => b.name).join(','), why: 'Gev asked for /help to list every command from the one table that runs them.', fix: 'helpText must map over BUILTINS.' });
-    for (const want of ['help', 'engine', 'model', 'status', 'usage', 'cost', 'permissions', 'config', 'diff', 'review', 'undo', 'compact', 'clear', 'sessions', 'resume', 'export', 'plan', 'init', 'memory', 'graph', 'skills', 'recall', 'progress', 'deep-research', 'settings', 'hosts', 'doctor', 'exit']) {
+    for (const want of ['help', 'engine', 'model', 'status', 'cost', 'permissions', 'config', 'diff', 'review', 'undo', 'compact', 'clear', 'sessions', 'resume', 'export', 'plan', 'init', 'memory', 'graph', 'skills', 'recall', 'progress', 'deep-research', 'settings', 'hosts', 'doctor', 'exit']) {
       check(`/${want} is registered`, names.includes(want), { happened: names.join(','), why: 'It is on the list Gev asked for or already existed.', fix: 'Add it to BUILTINS.' });
     }
+    check('/usage is not an Atlias command; provider-account usage stays in the provider', !names.includes('usage'), { happened: names.join(','), why: 'Atlias no longer reads the Usage Limits plugin or presents its account data as Atlias usage.', fix: 'Keep only Atlias-owned token metrics.' });
     const p = commands.parseLine;
     check('a slash line splits into a name and its arguments', JSON.stringify(p('/engine ollama')) === '{"name":"engine","args":"ollama"}' && JSON.stringify(p('  /help  ')) === '{"name":"help","args":""}' && p('/a:b x y').name === 'a:b', { happened: JSON.stringify([p('/engine ollama'), p('/help')]), why: 'Everything else rests on it.', fix: 'Check LINE_RE.' });
     check('a path or a sentence is not a command', p('/usr/bin/node why does this fail') === null && p('hello /help') === null && p('/') === null && p('/ x') === null, { happened: JSON.stringify([p('/usr/bin/node why'), p('hello /help')]), why: 'A person pasting a path must not get "unknown command".', fix: 'LINE_RE stops at a second slash.' });
@@ -108,10 +110,9 @@ export default async function slashCommandSuites({ suite, asyncSuite, check, cor
       check('/config sets one setting, shows it, lists changed ones, names an unknown id, and resets', core.config().agent.maxToolRounds === 25 && /agent\.maxToolRounds = 9/.test(text(r.out)) && /no setting named nope\.nothing/.test(text(r.out)) && changed.handled, { happened: text(r.out).slice(0, 400), why: 'A menu is not scriptable and not testable.', fix: 'Check the config entry.' });
     } finally { settings.reset('agent.maxToolRounds'); }
 
-    // /usage and /cost
+    // /cost keeps Atlias own-provider token accounting; plan limits belong to the provider.
     r = ctxFor(cwd);
-    await commands.dispatch('/usage', r.ctx);
-    check('/usage reads the usage-limits plugin or says there is no reading', /^usage/.test(text(r.out)), { happened: text(r.out), why: 'It must not invent a number.', fix: 'Check the usage entry.' });
+    check('there is no /usage command that reads another plugin account', !commands.builtinNames().has('usage'), { happened: [...commands.builtinNames()].filter((name) => /usage/.test(name)).join(', '), why: 'Atlias never reads the Usage Limits plugin or presents its account limits as Atlias limits.', fix: 'Remove the plugin-backed command.' });
     r = ctxFor(cwd, { engine: 'ollama' });
     await commands.dispatch('/cost', r.ctx);
     r.state.cache = { calls: 3, reported: 2, silent: 1, prompt: 1500, cached: 900, source: 'ollama' };
