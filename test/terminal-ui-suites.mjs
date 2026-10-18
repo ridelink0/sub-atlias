@@ -15,7 +15,8 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     output.isTTY = true; output.columns = opts.columns || 80; output.rows = opts.rows || 24; output.text = '';
     output.write = (s) => { output.text += s; };
     let fallbackCalls = 0, fallbackClosed = 0;
-    const terminal = (opts.impl || ui).createTerminalUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, getCommands: () => opts.rows || rows,
+    const createUI = opts.impl ? opts.impl.createTerminalUI : ui.createTerminalUI;
+    const terminal = createUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, getCommands: () => opts.rows || rows,
       getInfo: () => ({ engine: 'echo', permission: 'workspace', tokens: 'tokens not recorded' }),
       fallbackQuestion: async () => { fallbackCalls++; return 'plain answer'; }, closeFallback: () => fallbackClosed++ });
     const start = (q) => (q === undefined ? terminal.prompt() : terminal.question(q)).then((text) => ({ text }), (error) => ({ error: error.message }));
