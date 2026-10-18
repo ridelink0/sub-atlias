@@ -3,15 +3,17 @@ import fs from 'node:fs';
 import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
-import * as agent from '../lib/agent.mjs';
-import * as loop from '../lib/loop.mjs';
-import { responsesChat, anthropicChat, geminiChat, responsesBody } from '../lib/direct-transports.mjs';
 
 const stateHome = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-direct-transport-'));
 process.env.ATLIAS_HOME = stateHome;
 process.env.OPENAI_API_KEY = 'environment-secret-for-test';
 process.env.ANTHROPIC_API_KEY = 'environment-secret-for-test';
 process.env.GEMINI_API_KEY = 'environment-secret-for-test';
+const agent = await import('../lib/agent.mjs');
+const loop = await import('../lib/loop.mjs');
+const { responsesChat, anthropicChat, geminiChat, responsesBody } = await import('../lib/direct-transports.mjs');
+const { STATE_DIR } = await import('../lib/core.mjs');
+assert.equal(STATE_DIR, stateHome, 'all session records must stay inside this check’s temporary home');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-direct-project-'));
 const toolSchema = [{ type: 'function', function: { name: 'write_file', description: 'Write a file', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } }];
 const replies = {
