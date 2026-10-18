@@ -206,6 +206,38 @@ try {
   assert.ok(!maliciousFinish.protocolError.includes('private-prompt-text'));
   assert.equal(maliciousFinish.calls, undefined);
 
+  for (const [chat, model, response, usagePath] of [
+    [responsesChat, 'gpt-test', { status: 'completed', output: [] }, 'usage'],
+    [anthropicChat, 'claude-test', { stop_reason: 'end_turn', content: [] }, 'usage'],
+    [geminiChat, 'gemini-test', { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'done' }] } }] }, 'usageMetadata'],
+  ]) {
+    const badUsage = usagePath === 'usage'
+      ? (model.startsWith('gpt') ? { input_tokens: Number.MAX_SAFE_INTEGER, output_tokens: 1, input_tokens_details: { cached_tokens: Number.MAX_SAFE_INTEGER } }
+        : { input_tokens: 5, output_tokens: 1, cache_read_input_tokens: -1, cache_creation_input_tokens: 0 })
+      : { promptTokenCount: 7, cachedContentTokenCount: 8, candidatesTokenCount: Number.MAX_SAFE_INTEGER, thoughtsTokenCount: 1 };
+    response[usagePath] = badUsage;
+    const malformedUsage = await chat([], { model, baseURL, key: '', request: async () => ({ status: 200, json: response }) });
+    assert.equal(malformedUsage.usage._atliasProtocol, model.startsWith('gpt') ? 'responses' : model.startsWith('claude') ? 'anthropic' : 'gemini');
+    assert.ok(!('prompt_tokens' in malformedUsage.usage), `${model} malformed usage must not produce a canonical prompt count`);
+    assert.ok(!('completion_tokens' in malformedUsage.usage), `${model} malformed usage must not produce a canonical completion count`);
+    assert.ok(!('prompt_tokens_details' in malformedUsage.usage), `${model} malformed cache usage must not produce canonical cache counts`);
+  }
+
+  const cacheExceedsInput = await responsesChat([], {
+    model: 'gpt-test', baseURL, key: '',
+    request: async () => ({ status: 200, json: { status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'done' }] }], usage: { input_tokens: 7, output_tokens: 2, input_tokens_details: { cached_tokens: 8 } } } }),
+  });
+  assert.equal(cacheExceedsInput.usage.prompt_tokens, 7);
+  assert.ok(!('prompt_tokens_details' in cacheExceedsInput.usage), 'Responses cached tokens greater than prompt tokens must remain unknown');
+
+  const nestedReserved = await responsesChat([], {
+    model: 'gpt-test', baseURL, key: '',
+    request: async () => ({ status: 200, json: { status: 'completed', output: [{ type: 'function_call', call_id: 'nested-reserved', name: 'write_file', arguments: '{"outer":{"constructor":{"prototype":{"polluted":true}}}}' }] } }),
+  });
+  assert.match(nestedReserved.protocolError, /malformed tool call/);
+  assert.equal(nestedReserved.calls, undefined);
+  assert.equal({}.polluted, undefined);
+
   const unknownCache = await geminiChat([], {
     model: 'gemini-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'done' }] } }], usageMetadata: { promptTokenCount: 7, candidatesTokenCount: 1, totalTokenCount: 8 } } }),
