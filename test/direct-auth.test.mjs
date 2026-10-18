@@ -3,6 +3,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 const home = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-auth-check-'));
 process.env.ATLIAS_HOME = home;
@@ -92,4 +94,20 @@ test('unexpected provider errors do not leak response bodies', async () => {
   await auth.authCommand('chatgpt status', { engine: { session: async () => { throw Error('unexpected synthetic-secret-body'); } }, out: line => lines.push(line) });
   assert.ok(!lines.join('\n').includes('synthetic-secret-body'));
   assert.match(lines.join('\n'), /failed/);
+});
+
+test('installed setup command names the actual script and CLI auth reaches the native adapter', () => {
+  const cliPath = fileURLToPath(new URL('../bin/atlias.mjs', import.meta.url));
+  const setupScript = fileURLToPath(new URL('../scripts/setup-chatgpt-personal.mjs', import.meta.url));
+  assert.equal(chatgpt.PREPARE_COMMAND, `"${process.execPath}" "${setupScript}" --personal`);
+  const bin = path.join(home, 'fixture-bin'); fs.mkdirSync(bin);
+  fs.writeFileSync(path.join(bin, 'fixture-cli.mjs'), `if (process.argv.includes('--version')) console.log('synthetic CLI'); else if (process.argv.slice(2).join(' ') === 'auth status --json') console.log(JSON.stringify({loggedIn:true,authMethod:'claude.ai'})); else process.exitCode=1;`);
+  if (process.platform === 'win32') fs.writeFileSync(path.join(bin, 'claude.cmd'), '"%dp0%\\fixture-cli.mjs" %*');
+  else fs.writeFileSync(path.join(bin, 'claude'), `#!${process.execPath}\nimport './fixture-cli.mjs';`, { mode: 0o755 });
+  const env = { ...process.env, ATLIAS_HOME: home, PATH: bin };
+  delete env.Path;
+  const result = spawnSync(process.execPath, [cliPath, 'auth', 'claude', 'status'], { cwd: home, env, encoding: 'utf8', windowsHide: true });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /claude: authenticated; subscription sign-in reported/);
+  assert.ok(!/unavailable/.test(result.stdout));
 });

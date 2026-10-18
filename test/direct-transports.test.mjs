@@ -154,7 +154,7 @@ try {
   });
   assert.match(malformed.protocolError, /malformed tool call/);
   assert.equal(malformed.calls, undefined);
-  assert.equal(malformed.usage.input_tokens, 2);
+  assert.equal(malformed.usage.providerUsage.input_tokens, 2);
 
   const anthroMismatch = await transports.anthropicChat([], {
     model: 'claude-test', baseURL, key: '',

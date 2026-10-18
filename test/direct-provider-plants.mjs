@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 
@@ -10,7 +10,9 @@ const root = path.resolve(import.meta.dirname, '..');
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-provider-plants-'));
 function absoluteImports(code, origin) {
   return code.replace(/from '(\.[^']+)'/g, (_, relative) => `from '${new URL(relative, origin).href}'`)
-    .replace(/import\('(\.[^']+)'\)/g, (_, relative) => `import('${new URL(relative, origin).href}')`);
+    .replace(/import\('(\.[^']+)'\)/g, (_, relative) => `import('${new URL(relative, origin).href}')`)
+    .replace(/new URL\('(\.[^']+)', import.meta.url\)/g, (_, relative) => `new URL('${new URL(relative, origin).href}')`)
+    .replaceAll('import.meta.dirname', JSON.stringify(path.dirname(fileURLToPath(origin))));
 }
 const receipt = { checkedAt: new Date().toISOString(), plants: [] };
 const childEnv = { ...process.env };
@@ -29,6 +31,8 @@ try {
       anchor: "if (platform !== 'win32')", replacement: 'if (false)' },
     { name: 'failed-install-publication', directory: 'scripts', module: 'setup-chatgpt-personal.mjs', test: 'personal-setup.test.mjs',
       anchor: "if (r.status !== 0) throw Error('Personal SDK dependencies were not installed.');", replacement: '/* planted missing dependency failure guard */' },
+    { name: 'native-cli-auth-wiring', directory: 'bin', module: 'atlias.mjs', test: 'direct-auth.test.mjs',
+      anchor: ', api: agent.slashApi', replacement: '' },
   ]) {
     const modulePath = path.join(root, plant.directory || 'lib', plant.module);
     const original = fs.readFileSync(modulePath, 'utf8');
@@ -39,6 +43,10 @@ try {
     assert.equal(syntax.status, 0, plant.name + ' remains valid code');
     const testPath = path.join(root, 'test', plant.test);
     const testSource = absoluteImports(fs.readFileSync(testPath, 'utf8'), pathToFileURL(testPath));
+    const baselineTest = path.join(scratch, 'baseline-' + plant.name + '.mjs');
+    fs.writeFileSync(baselineTest, testSource);
+    const baseline = spawnSync(process.execPath, ['--test', baselineTest], { env: childEnv, encoding: 'utf8', windowsHide: true, maxBuffer: 4 * 1024 * 1024 });
+    assert.equal(baseline.status, 0, plant.name + ' relocated unmodified check must pass: ' + baseline.stdout + baseline.stderr);
     const originalURL = pathToFileURL(modulePath).href;
     assert.ok(testSource.includes(originalURL), plant.name + ' test imports the module');
     const mutantTest = path.join(scratch, 'check-' + plant.name + '.mjs');
@@ -46,7 +54,7 @@ try {
     const result = spawnSync(process.execPath, ['--test', mutantTest], { env: childEnv, encoding: 'utf8', windowsHide: true, maxBuffer: 4 * 1024 * 1024 });
     assert.equal(result.status, 1, plant.name + ' regression must fail');
     assert.match(result.stderr + result.stdout, /ERR_ASSERTION|AssertionError/, plant.name + ' fails an assertion, not setup');
-    receipt.plants.push({ name: plant.name, sourceSHA256: createHash('sha256').update(original).digest('hex'), syntaxExitCode: syntax.status, testExitCode: result.status, caught: true });
+    receipt.plants.push({ name: plant.name, sourceSHA256: createHash('sha256').update(original).digest('hex'), baselineExitCode: baseline.status, syntaxExitCode: syntax.status, testExitCode: result.status, caught: true });
   }
   console.log(JSON.stringify(receipt, null, 2));
 } finally {
