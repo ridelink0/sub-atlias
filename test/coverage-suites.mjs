@@ -36,7 +36,6 @@ const calledBare = (name, mod) => new RegExp('import [{][^}]*(^|[^A-Za-z0-9_$])'
 // Functions that cannot run under a test, each with the reason and where the
 // behaviour is exercised instead. Anything else must be named by a test.
 export const EXEMPT = {
-  'lib/agent.mjs repl': 'the interactive terminal loop; its parts (turn, pickEngine, the tool loop) are tested directly',
   'lib/agent.mjs chooser': 'reads a keypress from a real terminal; the settings menu it opens is tested through settings.menu',
   'lib/agent.mjs ollamaAlive': 'probes a live Ollama server; detectEngines is tested and reports it',
   'lib/agent.mjs ollamaTurn': 'a one-line wrapper around loop.runLoop and loop.ollamaChat, both tested',

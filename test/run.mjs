@@ -1108,6 +1108,7 @@ await (await import('./usage-display-suites.mjs')).default({ suite, check, core,
 await (await import('./import-suites.mjs')).default({ suite, asyncSuite, check, skip, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./qol-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./terminal-ui-suites.mjs')).default({ suite, asyncSuite, check, core, fs, path, ROOT });
+await (await import('./direct-contract-suites.mjs')).default({ asyncSuite, check, ROOT, path, spawnSync });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
 
 let failed = 0;

@@ -11,8 +11,9 @@ process.env.ANTHROPIC_API_KEY = 'environment-secret-for-test';
 process.env.GEMINI_API_KEY = 'environment-secret-for-test';
 const agent = await import('../lib/agent.mjs');
 const loop = await import('../lib/loop.mjs');
-const { responsesChat, anthropicChat, geminiChat, responsesBody } = await import('../lib/direct-transports.mjs');
-const { STATE_DIR } = await import('../lib/core.mjs');
+const transports = await import('../lib/direct-transports.mjs');
+const core = await import('../lib/core.mjs');
+const { STATE_DIR } = core;
 assert.equal(STATE_DIR, stateHome, 'all session records must stay inside this check’s temporary home');
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-direct-project-'));
 const toolSchema = [{ type: 'function', function: { name: 'write_file', description: 'Write a file', parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } }, required: ['path', 'content'] } } }];
@@ -51,9 +52,9 @@ const baseURL = `http://127.0.0.1:${server.address().port}/v1`;
 
 try {
   for (const [name, chat, opts, filename] of [
-    ['responses', responsesChat, { model: 'gpt-test', reasoning: 'xhigh', key: '', baseURL }, 'responses.mjs'],
-    ['anthropic', anthropicChat, { model: 'claude-test', key: '', baseURL, maxTokens: 100 }, 'anthropic.mjs'],
-    ['gemini', geminiChat, { model: 'gemini-test', key: '', baseURL, reasoning: 'high' }, 'gemini.mjs'],
+    ['responses', transports.responsesChat, { model: 'gpt-test', reasoning: 'xhigh', key: '', baseURL }, 'responses.mjs'],
+    ['anthropic', transports.anthropicChat, { model: 'claude-test', key: '', baseURL, maxTokens: 100 }, 'anthropic.mjs'],
+    ['gemini', transports.geminiChat, { model: 'gemini-test', key: '', baseURL, reasoning: 'high' }, 'gemini.mjs'],
   ]) {
     const state = agent.newState(root, name);
     runStates[name] = state;
@@ -112,28 +113,28 @@ try {
   assert.deepEqual(runStates.gemini.cacheLog, [5, 10, 12]);
   assert.deepEqual(runStates.gemini.outLog, [9, 6, 4]);
 
-  const responseSampling = responsesBody([{ role: 'user', content: 'hello' }], { model: 'gpt-test', reasoning: 'xhigh', temperature: 0.2, topP: 0.8 });
+  const responseSampling = transports.responsesBody([{ role: 'user', content: 'hello' }], { model: 'gpt-test', reasoning: 'xhigh', temperature: 0.2, topP: 0.8 });
   assert.equal(responseSampling.reasoning.effort, 'xhigh');
   assert.ok(!('temperature' in responseSampling) && !('top_p' in responseSampling));
-  const modelReasoning = responsesBody([], { model: 'gpt-test', reasoning: 'model', temperature: 0.2, topP: 0.8 });
+  const modelReasoning = transports.responsesBody([], { model: 'gpt-test', reasoning: 'model', temperature: 0.2, topP: 0.8 });
   assert.ok(!('reasoning' in modelReasoning) && !('temperature' in modelReasoning) && !('top_p' in modelReasoning));
-  assert.throws(() => responsesBody([], { model: 'gpt-test', reasoning: 'ultra' }), /unsupported Responses reasoning effort/);
-  assert.throws(() => responsesBody([], { model: 'gpt-6.1-sol', reasoning: 'minimal' }), /does not support minimal/);
-  assert.throws(() => responsesBody([], { model: 'gpt-6.1-sol', reasoning: 'none' }), /does not support none/);
+  assert.throws(() => transports.responsesBody([], { model: 'gpt-test', reasoning: 'ultra' }), /unsupported Responses reasoning effort/);
+  assert.throws(() => transports.responsesBody([], { model: 'gpt-6.1-sol', reasoning: 'minimal' }), /does not support minimal/);
+  assert.throws(() => transports.responsesBody([], { model: 'gpt-6.1-sol', reasoning: 'none' }), /does not support none/);
 
-  const requestFailure = await responsesChat([], { model: 'gpt-test', baseURL, key: '', request: async () => ({ status: 401, json: { error: { message: 'Invalid API key sk-secretvalue12345678' } } }) });
+  const requestFailure = await transports.responsesChat([], { model: 'gpt-test', baseURL, key: '', request: async () => ({ status: 401, json: { error: { message: 'Invalid API key sk-secretvalue12345678' } } }) });
   assert.match(requestFailure.error, /HTTP 401/);
   assert.ok(!requestFailure.error.includes('sk-secretvalue12345678'));
   assert.equal(requestFailure.requestUsages.length, 1);
   assert.equal(requestFailure.requestUsages[0], null);
-  const invalidJson = await responsesChat([], { model: 'gpt-test', baseURL, key: '', request: async () => ({ status: 200, json: null, text: 'private response body' }) });
+  const invalidJson = await transports.responsesChat([], { model: 'gpt-test', baseURL, key: '', request: async () => ({ status: 200, json: null, text: 'private response body' }) });
   assert.match(invalidJson.error, /invalid JSON response/);
   assert.ok(!invalidJson.error.includes('private response body'));
 
   for (const [chat, model, provider, statuses] of [
-    [responsesChat, 'gpt-test', 'OpenAI Responses API', [401, 403, 429, 500, 503]],
-    [anthropicChat, 'claude-test', 'Anthropic Messages API', [401, 403, 429, 500, 503]],
-    [geminiChat, 'gemini-test', 'Gemini API', [401, 403, 429, 500, 503]],
+    [transports.responsesChat, 'gpt-test', 'OpenAI Responses API', [401, 403, 429, 500, 503]],
+    [transports.anthropicChat, 'claude-test', 'Anthropic Messages API', [401, 403, 429, 500, 503]],
+    [transports.geminiChat, 'gemini-test', 'Gemini API', [401, 403, 429, 500, 503]],
   ]) {
     for (const status of statuses) {
       let attempts = 0;
@@ -144,7 +145,7 @@ try {
     }
   }
 
-  const malformed = await anthropicChat([], {
+  const malformed = await transports.anthropicChat([], {
     model: 'claude-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { stop_reason: 'tool_use', content: [
       { type: 'tool_use', id: 'duplicate', name: 'write_file', input: { path: 'x' } },
@@ -155,14 +156,14 @@ try {
   assert.equal(malformed.calls, undefined);
   assert.equal(malformed.usage.input_tokens, 2);
 
-  const anthroMismatch = await anthropicChat([], {
+  const anthroMismatch = await transports.anthropicChat([], {
     model: 'claude-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { stop_reason: 'end_turn', content: [{ type: 'text', text: 'Finished.' }, { type: 'tool_use', id: 'must-not-run', name: 'write_file', input: {} }] } }),
   });
   assert.match(anthroMismatch.protocolError, /without a tool-use stop reason/);
   assert.equal(anthroMismatch.calls, undefined);
 
-  const failedResponse = await responsesChat([], {
+  const failedResponse = await transports.responsesChat([], {
     model: 'gpt-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { status: 'failed', output: [{ type: 'function_call', call_id: 'must-not-run', name: 'write_file', arguments: '{}' }], usage: { input_tokens: 3, output_tokens: 1 } } }),
   });
@@ -170,7 +171,7 @@ try {
   assert.equal(failedResponse.calls, undefined);
   assert.equal(failedResponse.usage.prompt_tokens, 3);
 
-  const cut = await responsesChat([], {
+  const cut = await transports.responsesChat([], {
     model: 'gpt-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' }, output: [{ type: 'function_call', call_id: 'cut-call', name: 'write_file', arguments: '{"path":"cut"' }], usage: { input_tokens: 1, output_tokens: 2 } } }),
   });
@@ -179,27 +180,27 @@ try {
   assert.equal(cut.calls.length, 0);
   assert.equal(loop.isTruncated(cut.finish), false); // the explicit boolean carries Responses' incomplete status.
 
-  const empty = await geminiChat([], {
+  const empty = await transports.geminiChat([], {
     model: 'gemini-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { candidates: [{ content: { parts: [] }, finishReason: 'STOP' }], usageMetadata: { promptTokenCount: 4, candidatesTokenCount: 0, totalTokenCount: 4 } } }),
   });
   assert.match(empty.protocolError, /empty candidate/);
 
-  const refusal = await geminiChat([], {
+  const refusal = await transports.geminiChat([], {
     model: 'gemini-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { candidates: [{ finishReason: 'SAFETY', content: { parts: [{ functionCall: { name: 'write_file', args: { path: 'unsafe', content: 'must not run' } } }] } }], usageMetadata: { promptTokenCount: 7, candidatesTokenCount: 1, totalTokenCount: 8 } } }),
   });
   assert.match(refusal.protocolError, /refused/);
   assert.equal(refusal.calls, undefined);
 
-  const unknownFinish = await geminiChat([], {
+  const unknownFinish = await transports.geminiChat([], {
     model: 'gemini-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { candidates: [{ finishReason: 'OTHER', content: { parts: [{ functionCall: { name: 'write_file', args: { path: 'unsafe', content: 'must not run' } } }] } }] } }),
   });
   assert.match(unknownFinish.protocolError, /unsupported finish reason/);
   assert.equal(unknownFinish.calls, undefined);
 
-  const maliciousFinish = await geminiChat([], {
+  const maliciousFinish = await transports.geminiChat([], {
     model: 'gemini-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { candidates: [{ finishReason: 'private-prompt-text', content: { parts: [{ functionCall: { name: 'write_file', args: { path: 'unsafe', content: 'must not run' } } }] } }] } }),
   });
@@ -207,9 +208,9 @@ try {
   assert.equal(maliciousFinish.calls, undefined);
 
   for (const [chat, model, response, usagePath] of [
-    [responsesChat, 'gpt-test', { status: 'completed', output: [] }, 'usage'],
-    [anthropicChat, 'claude-test', { stop_reason: 'end_turn', content: [] }, 'usage'],
-    [geminiChat, 'gemini-test', { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'done' }] } }] }, 'usageMetadata'],
+    [transports.responsesChat, 'gpt-test', { status: 'completed', output: [] }, 'usage'],
+    [transports.anthropicChat, 'claude-test', { stop_reason: 'end_turn', content: [] }, 'usage'],
+    [transports.geminiChat, 'gemini-test', { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'done' }] } }] }, 'usageMetadata'],
   ]) {
     const badUsage = usagePath === 'usage'
       ? (model.startsWith('gpt') ? { input_tokens: Number.MAX_SAFE_INTEGER, output_tokens: 1, input_tokens_details: { cached_tokens: Number.MAX_SAFE_INTEGER } }
@@ -223,14 +224,14 @@ try {
     assert.ok(!('prompt_tokens_details' in malformedUsage.usage), `${model} malformed cache usage must not produce canonical cache counts`);
   }
 
-  const cacheExceedsInput = await responsesChat([], {
+  const cacheExceedsInput = await transports.responsesChat([], {
     model: 'gpt-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: 'done' }] }], usage: { input_tokens: 7, output_tokens: 2, input_tokens_details: { cached_tokens: 8 } } } }),
   });
   assert.equal(cacheExceedsInput.usage.prompt_tokens, 7);
   assert.ok(!('prompt_tokens_details' in cacheExceedsInput.usage), 'Responses cached tokens greater than prompt tokens must remain unknown');
 
-  const nestedReserved = await responsesChat([], {
+  const nestedReserved = await transports.responsesChat([], {
     model: 'gpt-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { status: 'completed', output: [{ type: 'function_call', call_id: 'nested-reserved', name: 'write_file', arguments: '{"outer":{"constructor":{"prototype":{"polluted":true}}}}' }] } }),
   });
@@ -238,7 +239,7 @@ try {
   assert.equal(nestedReserved.calls, undefined);
   assert.equal({}.polluted, undefined);
 
-  const unknownCache = await geminiChat([], {
+  const unknownCache = await transports.geminiChat([], {
     model: 'gemini-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'done' }] } }], usageMetadata: { promptTokenCount: 7, candidatesTokenCount: 1, totalTokenCount: 8 } } }),
   });
@@ -248,14 +249,14 @@ try {
   assert.ok(!('prompt_tokens_details' in unknownCache.usage));
   assert.ok(!('cachedContentTokenCount' in unknownCache.usage.providerUsage));
 
-  const uncorrelated = await geminiChat([{ role: 'user', content: 'call a tool' }], {
+  const uncorrelated = await transports.geminiChat([{ role: 'user', content: 'call a tool' }], {
     model: 'gemini-test', baseURL, key: '',
     request: async () => ({ status: 200, json: { responseId: 'no-id', candidates: [{ finishReason: 'STOP', content: { parts: [{ functionCall: { name: 'write_file', args: { path: 'x', content: 'y' } } }] } }] } }),
   });
   const generatedId = uncorrelated.calls[0].id;
   assert.match(generatedId, /^gemini-/);
   let followupBody;
-  await geminiChat([{ role: 'user', content: 'call a tool' }, uncorrelated.message, { role: 'tool', tool_call_id: generatedId, content: 'done' }], {
+  await transports.geminiChat([{ role: 'user', content: 'call a tool' }, uncorrelated.message, { role: 'tool', tool_call_id: generatedId, content: 'done' }], {
     model: 'gemini-test', baseURL, key: '',
     request: async (_url, body) => { followupBody = body; return { status: 200, json: { candidates: [{ finishReason: 'STOP', content: { parts: [{ text: 'done' }] } }] } }; },
   });
@@ -266,7 +267,7 @@ try {
   const cutState = agent.newState(root, 'openai');
   const cutRun = await loop.runLoop(cutState, 'Create this only if the response is complete.', {
     native: true, limits: { maxToolRounds: 2, maxBadReplies: 1, verifyEdits: false },
-    chat: (messages, tools) => responsesChat(messages, { model: 'gpt-test', baseURL, key: '', tools, request: async () => ({ status: 200, json: {
+    chat: (messages, tools) => transports.responsesChat(messages, { model: 'gpt-test', baseURL, key: '', tools, request: async () => ({ status: 200, json: {
       status: 'incomplete', incomplete_details: { reason: 'max_output_tokens' },
       output: [{ type: 'function_call', call_id: 'must-not-run', name: 'write_file', arguments: JSON.stringify({ path: 'must-not-exist.mjs', content: "export const bad = true;" }) }],
       usage: { input_tokens: 11, output_tokens: 5, input_tokens_details: { cached_tokens: 2 } },
@@ -277,6 +278,32 @@ try {
   assert.deepEqual(cutState.promptLog, [11]);
   assert.deepEqual(cutState.cacheLog, [2]);
   assert.match(cutRun, /cut off at the provider's output limit/);
+
+  // Test the exported application boundary too, not only a manually wired loop.
+  const previousKeys = Object.fromEntries(['OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'GEMINI_API_KEY'].map(k => [k, process.env[k]]));
+  try {
+    for (const key of Object.keys(previousKeys)) delete process.env[key];
+    for (const name of ['responses', 'anthropic', 'gemini']) {
+      step[name] = 0; seen[name] = [];
+      const cwd = path.join(root, 'application-' + name); fs.mkdirSync(cwd);
+      core.writeJson(path.join(STATE_DIR, 'config.json'), { usage: { show: false }, agent: {
+        ...core.DEFAULTS.agent, engine: name, maxToolRounds: 3,
+        responsesUrl: baseURL, responsesModel: 'gpt-test', responsesReasoningEffort: 'xhigh',
+        anthropicUrl: baseURL, anthropicModel: 'claude-test', anthropicMaxTokens: 100,
+        geminiUrl: baseURL, geminiModel: 'gemini-test',
+      } });
+      const state = agent.newState(cwd, name);
+      const result = await agent.directTurn(state, 'Create the file and check it.', null, () => {});
+      assert.equal(state.stop?.reason, 'answered', name + ': application boundary completed');
+      assert.equal(seen[name].length, 3, name + ': exactly three model requests');
+      assert.equal(fs.readFileSync(path.join(cwd, name + '.mjs'), 'utf8'), "export const marker = 'made';");
+      assert.match(result, /finished/);
+      const wire = JSON.stringify(seen[name][2].body);
+      assert.match(wire, /exit 0/, name + ': own tool check result reaches provider');
+    }
+  } finally {
+    for (const [key, value] of Object.entries(previousKeys)) { if (value === undefined) delete process.env[key]; else process.env[key] = value; }
+  }
 
   console.log('direct transport tests passed: three native own-loop round trips, opaque history, usage, errors and malformed/cut/empty controls');
 } finally {

@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { chooseEngine, engineLine } from '../lib/engines.mjs';
 const scratch = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-engine-contract-'));
 process.env.ATLIAS_HOME = path.join(scratch, 'state');
-const { createPlanEngine, readPlanResponse, validateSelection } = await import('../lib/chatgpt.mjs');
+const chatgpt = await import('../lib/chatgpt.mjs');
 test.after(() => { assert.ok(path.resolve(scratch).startsWith(path.resolve(os.tmpdir()) + path.sep)); fs.rmSync(scratch, { recursive: true, force: true }); });
 const known = [{ slug: 'gpt-6.1-sol', displayName: 'GPT-6.1 Sol' }];
 test('auto never chooses hosts and never changes an explicit billing source', () => {
@@ -20,23 +20,23 @@ test('auto never chooses hosts and never changes an explicit billing source', ()
   assert.match(engineLine('chatgpt', { chatgptModel: 'gpt-6.1-sol', chatgptReasoningEffort: 'xhigh' }), /xhigh.*direct; Atlias loop.*ChatGPT plan/);
 });
 test('model discovery and documented reasoning capability both gate selection', () => {
-  assert.equal(validateSelection(known, 'gpt-6.1-sol', 'xhigh').effort, 'xhigh');
-  assert.throws(() => validateSelection([], 'gpt-6.1-sol', 'xhigh'), /unavailable/);
-  assert.throws(() => validateSelection(known, 'gpt-6.1-sol', 'none'), /not verified/);
-  assert.throws(() => validateSelection([{ slug: 'other' }], 'other', 'xhigh'), /not verified/);
+  assert.equal(chatgpt.validateSelection(known, 'gpt-6.1-sol', 'xhigh').effort, 'xhigh');
+  assert.throws(() => chatgpt.validateSelection([], 'gpt-6.1-sol', 'xhigh'), /unavailable/);
+  assert.throws(() => chatgpt.validateSelection(known, 'gpt-6.1-sol', 'none'), /not verified/);
+  assert.throws(() => chatgpt.validateSelection([{ slug: 'other' }], 'other', 'xhigh'), /not verified/);
 });
 function sse(events, tail = '') { return new Response(events.map(e => 'data: ' + JSON.stringify(e) + '\r\n\r\n').join('') + tail, { headers: { 'content-type': 'text/event-stream' } }); }
 test('plan SSE requires completed and rejects cut, malformed or late error streams', async () => {
   const raw = { status: 'completed', output: [{ type: 'function_call', call_id: 'call_1', name: 'read_file', arguments: '{"path":"fixture.txt"}' }], usage: { input_tokens: 9, output_tokens: 4 } };
-  assert.deepEqual((await readPlanResponse(sse([{ type: 'response.completed', response: raw }]))).json, raw);
-  await assert.rejects(() => readPlanResponse(sse([{ type: 'response.output_text.delta', delta: 'done' }])), /without a complete/);
-  await assert.rejects(() => readPlanResponse(sse([{ type: 'response.incomplete' }])), /failed/);
-  await assert.rejects(() => readPlanResponse(sse([{ type: 'response.completed', response: raw }, { type: 'error', code: 'subscription_sharing_usage_limit_exceeded' }])), /usage_limit/);
-  await assert.rejects(() => readPlanResponse(sse([], 'data: broken\n\n')), /malformed/);
+  assert.deepEqual((await chatgpt.readPlanResponse(sse([{ type: 'response.completed', response: raw }]))).json, raw);
+  await assert.rejects(() => chatgpt.readPlanResponse(sse([{ type: 'response.output_text.delta', delta: 'done' }])), /without a complete/);
+  await assert.rejects(() => chatgpt.readPlanResponse(sse([{ type: 'response.incomplete' }])), /failed/);
+  await assert.rejects(() => chatgpt.readPlanResponse(sse([{ type: 'response.completed', response: raw }, { type: 'error', code: 'subscription_sharing_usage_limit_exceeded' }])), /usage_limit/);
+  await assert.rejects(() => chatgpt.readPlanResponse(sse([], 'data: broken\n\n')), /malformed/);
 });
 test('identity-only and disconnected profiles cannot discover models or infer', async () => {
   let requests = 0;
-  const engine = createPlanEngine({ getClient: async () => ({ getSession: async () => ({ status: 'connected', sharing: false }), listModels: () => { requests++; }, requestAuthorized: () => { requests++; } }), fetchImpl: () => { requests++; } });
+  const engine = chatgpt.createPlanEngine({ getClient: async () => ({ getSession: async () => ({ status: 'connected', sharing: false }), listModels: () => { requests++; }, requestAuthorized: () => { requests++; } }), fetchImpl: () => { requests++; } });
   await assert.rejects(() => engine.models(), /not authorized/);
   assert.match((await engine.chat([], [], { chatgptModel: 'gpt-6.1-sol', chatgptReasoningEffort: 'xhigh' })).error, /not authorized/);
   assert.equal(requests, 0);
@@ -45,7 +45,7 @@ test('identity-only and disconnected profiles cannot discover models or infer', 
 test('authorized plan route preserves xhigh and sends only dedicated OAuth to public streaming Responses', async () => {
   let posted, authCalls = 0;
   const sdk = { getSession: async () => ({ status: 'connected', sharing: true, profileId: 'synthetic' }), listModels: async () => known, requestAuthorized: async fn => { authCalls++; return fn('synthetic-dedicated-oauth', new AbortController().signal); } };
-  const engine = createPlanEngine({ getClient: async () => sdk,
+  const engine = chatgpt.createPlanEngine({ getClient: async () => sdk,
     responsesAdapter: async (messages, opts) => {
       assert.equal(opts.reasoning, 'xhigh');
       const result = await opts.post('https://api.openai.com/v1/responses', { model: opts.model, input: messages, tools: opts.tools, reasoning: { effort: opts.reasoning } });
@@ -65,9 +65,9 @@ test('old host-preference and missing SSE-terminal mutation plants are detected'
   fs.writeFileSync(mutant, source.replace("const configured = DIRECT_ENGINES.filter(e => have[e]);", "if (have.codex) return 'codex'; const configured = DIRECT_ENGINES.filter(e => have[e]);"));
   const bad = await import(pathToFileURL(mutant).href);
   assert.throws(() => assert.equal(bad.chooseEngine('auto', { codex: true }), null));
-  const good = await readPlanResponse(sse([{ type: 'response.completed', response: { status: 'completed', output: [] } }]));
+  const good = await chatgpt.readPlanResponse(sse([{ type: 'response.completed', response: { status: 'completed', output: [] } }]));
   assert.equal(good.status, 200);
-  await assert.rejects(() => readPlanResponse(sse([{ type: 'response.output_text.delta', delta: 'completion claim without terminal' }])), /without a complete/);
+  await assert.rejects(() => chatgpt.readPlanResponse(sse([{ type: 'response.output_text.delta', delta: 'completion claim without terminal' }])), /without a complete/);
 });
 test('removing the sharing-scope guard is caught by the identity-only expectation', async () => {
   let source = fs.readFileSync(new URL('../lib/chatgpt.mjs', import.meta.url), 'utf8');
