@@ -73,6 +73,8 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     p = r.start(); r.send('/h'); r.output.columns = 32; r.output.rows = 10; r.output.emit('resize'); r.send('\t'); r.send('\r'); answer = await p;
     check('resize retains the draft and palette selection', answer.text === '/help ', detail(JSON.stringify(answer)));
     r.terminal.close(); check('closing removes its own process hook', r.proc.listenerCount('exit') === 0, detail());
+    r = rig(); r.input.paused = false; p = r.start(); r.send('/exit'); r.send('\r'); await p; r.terminal.close();
+    check('closing releases a resumed input handle after the final prompt', r.input.paused && !r.input.isRaw && r.input.listenerCount('data') === 0, detail());
 
     r = rig(); const foreign = () => {}; r.input.on('data', foreign); p = r.start(); r.send('\x04'); answer = await p;
     check('EOF rejects the prompt and preserves foreign listeners', /end of input/.test(answer.error) && !r.input.isRaw && r.input.listeners('data').includes(foreign), detail(JSON.stringify(answer))); r.terminal.close();

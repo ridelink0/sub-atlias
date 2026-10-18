@@ -77,17 +77,21 @@ function omitted(expert, name) {
 function suite(expert, name, fn) {
   if (only.length && !only.some((o) => name.toLowerCase().includes(o.toLowerCase()))) return;
   if (omitted(expert, name)) return;
+  if (process.env.ATLIAS_TEST_TRACE === '1') process.stderr.write('START ' + name + '\n');
   current = { expert, name, passed: 0, failed: [] };
   results.push(current);
   try { fn(); } catch (e) { current.failed.push({ test: '(suite crashed)', happened: String(e && e.stack || e), why: 'A crash means every later check in this suite did not run.', fix: 'Fix the exception first, then re-run this suite alone.' }); }
+  if (process.env.ATLIAS_TEST_TRACE === '1') process.stderr.write('END ' + name + '\n');
 }
 // The same, for a suite whose checks have to await something.
 async function asyncSuite(expert, name, fn) {
   if (only.length && !only.some((o) => name.toLowerCase().includes(o.toLowerCase()))) return;
   if (omitted(expert, name)) return;
+  if (process.env.ATLIAS_TEST_TRACE === '1') process.stderr.write('START ' + name + '\n');
   current = { expert, name, passed: 0, failed: [] };
   results.push(current);
   try { await fn(); } catch (e) { current.failed.push({ test: '(suite crashed)', happened: String(e && e.stack || e), why: 'A crash means every later check in this suite did not run.', fix: 'Fix the exception first, then re-run this suite alone.' }); }
+  if (process.env.ATLIAS_TEST_TRACE === '1') process.stderr.write('END ' + name + '\n');
 }
 // A check that cannot be run on this machine (no Python, no corpus) is skipped
 // by name with the reason, printed, and never counted as passed: a skip that
