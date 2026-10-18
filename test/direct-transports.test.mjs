@@ -236,6 +236,14 @@ try {
     request: async () => ({ status: 200, json: { status: 'completed', output: [{ type: 'function_call', call_id: 'nested-reserved', name: 'write_file', arguments: '{"outer":{"constructor":{"prototype":{"polluted":true}}}}' }] } }),
   });
   assert.match(nestedReserved.protocolError, /malformed tool call/);
+  let deepArgs = { path: 'must-not-run' };
+  for (let depth = 0; depth < 70; depth++) deepArgs = { nested: deepArgs };
+  const deepCall = await transports.responsesChat([], {
+    model: 'gpt-6.1-sol', key: '',
+    request: async () => ({ status: 200, json: { status: 'completed', output: [{ type: 'function_call', call_id: 'too-deep', name: 'write_file', arguments: JSON.stringify(deepArgs) }] } }),
+  });
+  assert.match(deepCall.protocolError, /malformed tool call/);
+  assert.equal(deepCall.calls, undefined);
   assert.equal(nestedReserved.calls, undefined);
   assert.equal({}.polluted, undefined);
 

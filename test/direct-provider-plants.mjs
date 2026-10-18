@@ -19,6 +19,8 @@ try {
   for (const plant of [
     { name: 'failed-response-tools', module: 'direct-transports.mjs', test: 'direct-transports.test.mjs',
       anchor: "if (response.status !== 'completed' && response.status !== 'incomplete')", replacement: 'if (false)' },
+    { name: 'oversized-tool-arguments', module: 'direct-transports.mjs', test: 'direct-transports.test.mjs',
+      anchor: 'if (depth > 64) return false;', replacement: 'if (depth > 64) return true;' },
     { name: 'personal-license-marker', module: 'chatgpt.mjs', test: 'direct-auth.test.mjs',
       anchor: 'm.commit === SDK_PIN && m.personalOnly === true', replacement: 'm.commit === SDK_PIN' },
     { name: 'incomplete-install-readiness', module: 'chatgpt.mjs', test: 'direct-auth.test.mjs',
