@@ -1,4 +1,6 @@
 import { EventEmitter } from 'node:events';
+import os from 'node:os';
+import { pathToFileURL } from 'node:url';
 import * as ui from '../lib/terminal-ui.mjs';
 import * as commands from '../lib/commands.mjs';
 
@@ -13,7 +15,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     output.isTTY = true; output.columns = opts.columns || 80; output.rows = opts.rows || 24; output.text = '';
     output.write = (s) => { output.text += s; };
     let fallbackCalls = 0, fallbackClosed = 0;
-    const terminal = ui.createTerminalUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, getCommands: () => rows,
+    const terminal = (opts.impl || ui).createTerminalUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, getCommands: () => opts.rows || rows,
       getInfo: () => ({ engine: 'echo', permission: 'workspace', tokens: 'tokens not recorded' }),
       fallbackQuestion: async () => { fallbackCalls++; return 'plain answer'; }, closeFallback: () => fallbackClosed++ });
     const start = (q) => (q === undefined ? terminal.prompt() : terminal.question(q)).then((text) => ({ text }), (error) => ({ error: error.message }));
@@ -51,6 +53,27 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('arrows select another command without running it', answer.text === '/history ', detail(JSON.stringify(answer)));
     p = r.start(); r.send('/he'); r.send('\r'); answer = await p;
     check('Enter sends only the typed line, never the highlighted command', answer.text === '/he', detail(JSON.stringify(answer)));
+    const aliasRows = [{ name: 'goal', help: 'singular alias' }, { name: 'goals', help: 'goal manager' }];
+    const coalescedCompletion = async (impl) => {
+      const editor = rig({ impl, rows: aliasRows }), pending = editor.start();
+      editor.send('/go'); // Populate the old frame's candidates, singular first.
+      editor.send('\x15/goals\tstatus'); // Ctrl+U, new prefix, Tab and argument may coalesce.
+      editor.send('\r');
+      const result = await pending; editor.terminal.close(); return result.text;
+    };
+    const currentCompletion = await coalescedCompletion(ui);
+    check('Tab derives completion from the current draft when clear, prefix and Tab arrive together', currentCompletion === '/goals status', detail(JSON.stringify(currentCompletion)));
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-terminal-tab-mutation-'));
+    try {
+      const source = fs.readFileSync(path.join(ROOT, 'lib/terminal-ui.mjs'), 'utf8');
+      const needle = 'const matches = commandMatches(a.text, a.commands);';
+      check('completion mutation has a stable production anchor', source.includes(needle), detail());
+      const mutated = source.replace(needle, 'const matches = a.matches || [];');
+      const mutantPath = path.join(temp, 'terminal-ui-mutant.mjs'); fs.writeFileSync(mutantPath, mutated);
+      const mutant = await import(pathToFileURL(mutantPath).href);
+      const mutantCompletion = await coalescedCompletion(mutant);
+      check('stale-frame mutation is detected by the coalesced-input regression', mutantCompletion === '/goal status' && mutantCompletion !== currentCompletion, detail(JSON.stringify(mutantCompletion)));
+    } finally { fs.rmSync(temp, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); }
     p = r.start('Allow this action? '); r.send('/h');
     check('permission and other questions have no command palette', !r.output.text.slice(r.output.text.lastIndexOf('Allow')).includes('/help'), detail());
     r.send('\r'); answer = await p; check('question answers are ordinary text for the existing handler', answer.text === '/h', detail());
