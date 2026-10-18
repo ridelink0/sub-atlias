@@ -1101,6 +1101,7 @@ await (await import('./pipeline-mod-suites.mjs')).default({ suite, asyncSuite, c
 await (await import('./local-helpers-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./usage-display-suites.mjs')).default({ suite, check, core, ROOT, TMP, fs, path });
 await (await import('./import-suites.mjs')).default({ suite, asyncSuite, check, skip, core, agentMod, TMP, ROOT, fs, path });
+await (await import('./qol-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
 
 let failed = 0;
