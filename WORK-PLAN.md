@@ -1,3 +1,41 @@
+# Okay Gev - final current TUI WIP review, Oct18
+
+Second read of all seven runtime/test files found an unintended BOM-literal encoding change in commands.mjs and a dropped final digest message after closing the composer. Restored the exact inherited BOM parser line and switched output back to the plain writer after cleanup. Latest syntax/diff checks actualexit0; behavior remains UNVERIFIED after these and the compact/paste-oracle edits.
+
+Current RAM1.116GiB physical/18.726GiB commit remains below required2GiB physical. Heavy QA, full suite, native CLI and echo PTY remain held. App/source ef0446d unchanged; this branch is a local WIP checkpoint only. Actual source pins and earlier favorable/unfavorable check details are CHECKPOINT-r1.json. First adversarial run is7/8, not a pass. Next expected focused count52 is NOT a result. Earlier137 selected checks were before latest edits. Native Claude13dd is busy reviewing at Gev's actual request; do not duplicate its session or overwrite its original builder WIP.
+
+Own20-minute continuation was updated through the app and saved-rule reread verified. It checks ownership/resources and never schedules a benchmark. Last Codex app79%fivehour used/28%weekly, no credits or resets redeemed. Fresh-meter before continuation.
+
+Pass 1: earlier49/137 functional checks passed; current syntax checks passed, latest behavior unverified. Pass 2: seven of eight mutants caught; paste-test gap, tiny-terminal edge, encoding drift and cleanup output corrected but not functionally requalified.
+
+---
+
+# Okay Gev - Codex TUI checkpoint, 2026-10-18
+
+Research basis: RESEARCH-FIRST 0g/H7 and sections 3/9; public stream APIs, UI-only default-off switch, required native behavior preserved.
+
+Owned source: D:/harness-work/atlias-tui-finish-1018, branch codex/tui-finish-1018, base ef0446d. Original Claude builder source and its two WIP files remain untouched. Installed app stays ef0446d.
+
+Earlier actual checks: composer 49/49 exit0, selected integration 137/137 exit0. First adversarial run caught 7/8 plants, exit1, original source restored. Paste auto-submit mutant exposed an asynchronous test-oracle gap, now strengthened using synchronous listener/raw state. Also corrected compact rendering for one/two-column terminals and grapheme-safe offsets; footer now honors ui.usageEnabled. These latest edits are UNTESTED.
+
+RAM fell below required 2 GiB physical reserve (latest 1.387 GiB physical / 19.197 GiB available commit). No further heavy QA/full suite/native CLI/echo PTY launched. No model/GPU/benchmark/Terminal-Bench call. Existing adversarial process finished and restored source; there is no current source-mutating test job.
+
+Next: re-meter quota, inspect actual native/Codex owners and fresh memory/model/lease. Once resources meet 2 GiB physical/4 GiB commit and no competing job, run focused current composer tests, real coverage suite ('every feature has a test of its own'), meaningful plants including paste, restored tests, isolated echo-only PTY, manual frame sweep, then full suite. Recheck ownership before local integration. Do not enable/install from this WIP checkpoint. Do not rerun launcher integration or old benchmarks. No claim of completed UI or model savings.
+
+Pass 1: earlier 49/137 functional checks passed on their recorded source; latest edits unverified. Pass 2: 7/8 mutation checks caught; missing paste assertion and tiny-terminal edge corrected, pending verification.
+
+---
+
+# Gev: Codex owns isolated TUI continuation, October18
+
+Codex is implementing in D:/harness-work/atlias-tui-finish-1018, branch codex/tui-finish-1018, from reviewed ef0446d. Do not resume a duplicate builder against its files. Original Claude builder branch/worktree and both WIP files are preserved; no source/app edit until qualification and a clean coordinated boundary. Parent20152/session13dd is idle at the last registry read; inspect fresh ownership before integrating.
+
+Research basis: RESEARCH-FIRST0g (finishing normal harness), H7 and3/9 (no extra model requests and exact authority). User supplied Codelia reference viewed directly; H1/H2 reviewed. UFS and installed frontend-design invoked. Terminal platform conventions take priority over web CSS/scroll effects; no website or benchmark run. A standalone composer uses public Node stream APIs; plain readline stays default, new terminalEnabled switch is off. Enable only Gev's normal app after tests. Render/palette helpers are pure, keyboard input and clipboard paste never execute a command until Enter, and confirmation answers keep their existing handlers.
+
+Acceptance: slash list/filter/arrows/Tab, Enter sends only typed text, multiline/paste, unicode width, unknown tokens, narrow/resize/NO_COLOR/non-TTY, cleanup and raw restore; functional and targeted plants; real echo-engine terminal route; unchanged benchmark request golden; full suite before integration. Original two WIP helpers are not imported wholesale; their invalid-width edge remains unmerged. Source ownership and exact metering preserved.
+
+--- Previous checkpoint preserved ---
+
 # Gev: terminal launcher resolution, 2026-10-18
 
 Current human scope verified from the actual Claude transcript: Gev ended benchmark tuning on October 17 at 23:02Z and asked to finish and install Atlias. The earlier subharness priority is closed. Basis: RESEARCH-FIRST 0g (normal harness), H7 (bounded mechanisms), and sections 3/9 (preserve requests and evidence).
