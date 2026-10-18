@@ -3,11 +3,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 // Real config loading/set/reset in a child process, with an isolated state home.
 // No terminal flag override is injected: the source default must do the work.
-const root=path.resolve(import.meta.dirname,'..');
+const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const scratch=fs.mkdtempSync(path.join(os.tmpdir(),'atlias-terminal-default-'));
 let checks=0;
 function inspect(sourceRoot,home,action='read'){
