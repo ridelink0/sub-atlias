@@ -22,9 +22,10 @@ export default async function usageDisplaySuites({ suite, check, core, ROOT, TMP
   const make = (ui, stream, extra = {}) => { const k = clock(), p = proc(); return { k, p, stream, d: ud.createDisplay({ ui, stream, mode: 'truecolor', getState: () => extra.state || STATE, getExtra: () => ({ windows: WIN }), timers: k, proc: p, ...extra.opts }) }; };
 
   suite('usage display', 'usage display:the keys are registered off, described, checked, and settable', () => {
-    const rows = settings.rows().filter((r) => r.section === 'ui');
+    // ui.terminalEnabled (the terminal composer) shares the section; it is checked in terminal-ui-suites.mjs.
+    const rows = settings.rows().filter((r) => r.section === 'ui' && r.id !== 'ui.terminalEnabled');
     const ids = rows.map((r) => r.id).sort().join(',');
-    check('ui has four keys, each described, with enabled off by default',
+    check('ui has four usage keys, each described, with enabled off by default',
       ids === 'ui.usageAnimation,ui.usageColor,ui.usageEnabled,ui.usagePosition' && rows.every((r) => r.about.length > 40) && core.DEFAULTS.ui.usageEnabled === false && core.DEFAULTS.ui.usageAnimation === 'none',
       { happened: ids, why: 'A setting nobody can see or read about is not a setting; off keeps today\'s output.', fix: 'DEFAULTS.ui in lib/core.mjs and DESCRIPTIONS in lib/settings.mjs.' });
     const a = settings.set('ui.usagePosition', 'sidebar'), b = settings.set('ui.usagePosition', 'left'), c = settings.set('ui.usageAnimation', 'Shimmer'), e = settings.set('ui.usageAnimation', 'spin');
