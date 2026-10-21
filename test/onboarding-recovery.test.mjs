@@ -140,3 +140,25 @@ test('failed native sign-in returns failure and never prints adapter errors', as
     assert.equal(unavailable.ok, false); assert.ok(!lines.join('\n').includes('synthetic-private'));
   }
 });
+
+test('sign-in cancellation absorbs cancellation-adapter failure without an unhandled rejection', async () => {
+  const lines = []; let cancelled = 0;
+  const result = await auth.authCommand('chatgpt login', { out: line => lines.push(line), engine: {
+    login: async () => { process.emit('SIGINT'); await new Promise(resolve => setImmediate(resolve)); throw Object.assign(Error('private-login'), { code: 'cancelled' }); },
+    cancel: async () => { cancelled++; throw Error('private-cancel'); },
+  } });
+  assert.equal(cancelled, 1); assert.equal(result.ok, false);
+  assert.match(lines.at(-1), /cancelled or expired/); assert.ok(!lines.join('\n').includes('private-'));
+});
+
+test('permission refusals return failure for every authentication mutation', async () => {
+  const prior = config().agent.permissions;
+  try {
+    settings.set('agent.permissions', 'read-only');
+    for (const provider of ['chatgpt', 'claude', 'codex']) {
+      const lines = [];
+      const result = await auth.authCommand(`${provider} login`, { out: line => lines.push(line), engine: { login: () => assert.fail('permission refusal cannot start sign-in') }, api: { nativeLogin: () => assert.fail('permission refusal cannot start native sign-in') } });
+      assert.equal(result?.ok, false); assert.match(lines.at(-1), /disabled in this permission mode/);
+    }
+  } finally { settings.set('agent.permissions', prior); }
+});
