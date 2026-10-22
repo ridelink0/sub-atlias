@@ -77,7 +77,7 @@ const HELP = {
   editbench: ['usage: atlias editbench <rows.jsonl> --bench canitedit|humanevalfix [--variant lazy|descriptive] [--lang python|js] [--out <dir>] [--limit N] [--only id,id] [--rounds N]'],
   refactorbench: ['usage: atlias refactorbench <path to refactor-benchmark/refactor-benchmark> [--out <dir>] [--limit N] [--only name,name] [--max-bytes 40960] [--rounds 16]'],
   agent: ['usage: atlias agent [--engine chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--once "<prompt>"] [--resume [id]] [--sandbox]'],
-  exec: ['usage: atlias exec "<prompt>" [--engine chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)'],
+  exec: ['usage: atlias exec "<prompt>" [--engine claude-plan|chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)'],
   update: ['usage: atlias update [--check] [--no-fetch]', 'Fast-forwards this git checkout of atlias from its update source (config update.source; empty means the upstream of the current branch) and prints the commits it pulled. Refuses when tracked files are changed, HEAD is detached, no source is set, or the history has diverged. Never resets, merges, rebases or pushes. --check only reports.'],
   import: ['usage: atlias import [--dry-run] [--from claude|codex|gemini|antigravity] [--sessions] [--yes] [--undo]', 'Brings instructions, memory, skills, slash commands and MCP definitions (and with --sessions the saved sessions) from your other tools into the Atlias home. --dry-run prints the plan only. Nothing is copied without a yes; credentials are never read; --undo removes exactly what an import made.'],
   resume: ['usage: atlias resume [id] [--engine e] [--sandbox]   carry on the last agent session in this folder'],
@@ -358,6 +358,14 @@ else switch (cmd) {
     const r = await importer.runImport(o, { ask, out: say });
     if (rl) rl.close();
     process.exitCode = r.code;
+    break;
+  }
+  case 'setup': {
+    if (argv[1] !== 'claude') { say('usage: atlias setup claude   (installs the Claude Agent SDK, signs you in through Anthropic, then asks for the model and reasoning effort)'); process.exitCode = 2; break; }
+    const onboarding = await import('../lib/onboarding.mjs');
+    const rl = (await import('node:readline/promises')).createInterface({ input: process.stdin, output: process.stdout });
+    try { const row = await onboarding.setupClaudePlan({ ask: (q) => rl.question(q + ' '), out: say, resolve: agent.resolveCommand }); process.exitCode = row.status === 'complete' ? 0 : 1; }
+    finally { rl.close(); }
     break;
   }
   case 'auth': await authCommand(argv.slice(1).join(' '), { out: say, api: agent.slashApi }); break;

@@ -21,15 +21,15 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
       /Sign in with ChatGPT/.test(welcome) && /OpenAI API/.test(welcome) && /Anthropic API/.test(welcome) && /Google Gemini API/.test(welcome) && /OpenAI-compatible API endpoint/.test(welcome) && /I will just use local models using Ollama/.test(welcome) && /Set up later/.test(welcome),
       { happened: welcome, why: 'A first install must show actionable choices without hiding billing differences.', fix: 'Render CHOICES from welcomeText.' });
     check('the first-open route list contains every explicit provider and host choice exactly once',
-      onboarding.CHOICES.length === 10 && new Set(onboarding.CHOICES.map((choice) => choice.method)).size === 10
-        && ['chatgpt', 'responses', 'anthropic', 'gemini', 'openai', 'ollama', 'claude', 'codex', 'antigravity', 'later'].every((method) => onboarding.CHOICES.some((choice) => choice.method === method)),
+      onboarding.CHOICES.length === 11 && new Set(onboarding.CHOICES.map((choice) => choice.method)).size === 11
+        && ['claude-plan', 'chatgpt', 'responses', 'anthropic', 'gemini', 'openai', 'ollama', 'claude', 'codex', 'antigravity', 'later'].every((method) => onboarding.CHOICES.some((choice) => choice.method === method)),
       { happened: JSON.stringify(onboarding.CHOICES.map((choice) => choice.method)), why: 'The visible menu and routed methods must not drift apart.', fix: 'Keep one explicit row for each supported or clearly unsupported route.' });
 
     const localFile = path.join(temp('state'), 'onboarding.json');
     const prompts = ['I will just use local models using Ollama', 'http://127.0.0.1:11434', 'qwen-local:latest'];
     let probes = 0;
     let localInstructions = '';
-    const local = await onboarding.firstOpen({ file: localFile, ask: async () => prompts.shift(), out: (line) => { localInstructions += line + '\n'; }, fetchImpl: async (url, options) => {
+    const local = await onboarding.firstOpen({ detect: false, file: localFile, ask: async () => prompts.shift(), out: (line) => { localInstructions += line + '\n'; }, fetchImpl: async (url, options) => {
       probes++;
       check('Ollama setup gives install, start, pull, select and non-inference connection-check instructions',
         /ollama\.com\/download/.test(localInstructions) && /ollama pull <model>/.test(localInstructions) && /GET \/api\/tags/.test(localInstructions) && /no inference/i.test(localInstructions),
@@ -45,19 +45,19 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
       onboarding.readOnboarding(localFile)?.schema === 'atlias.onboarding.v1' && !/token|secret|api.?key/i.test(fs.readFileSync(localFile, 'utf8')),
       { happened: fs.readFileSync(localFile, 'utf8'), why: 'Provider setup state is not a credential store.', fix: 'Persist only provider name, verification and non-secret configuration.' });
     let askedAgain = false;
-    const repeated = await onboarding.firstOpen({ file: localFile, ask: async () => { askedAgain = true; return ''; }, out: () => {} });
+    const repeated = await onboarding.firstOpen({ detect: false, file: localFile, ask: async () => { askedAgain = true; return ''; }, out: () => {} });
     check('a verified first-open setup persists across starts', repeated.status === 'complete' && repeated.method === 'ollama' && !askedAgain,
       { happened: JSON.stringify({ repeated, askedAgain }), why: 'A configured install should not re-run its first-open wizard.', fix: 'Read the onboarding record before asking.' });
 
     const missingFile = path.join(temp('state'), 'missing-model.json');
-    const missingAnswers = ['6', 'http://127.0.0.1:11434', 'not-installed:latest'];
+    const missingAnswers = ['3', 'http://127.0.0.1:11434', 'not-installed:latest'];
     let missingInstructions = '';
-    const missing = await onboarding.firstOpen({ file: missingFile, ask: async () => missingAnswers.shift(), out: (line) => { missingInstructions += line + '\n'; }, fetchImpl: async () => response({ models: [{ name: 'other:latest' }] }) });
+    const missing = await onboarding.firstOpen({ detect: false, file: missingFile, ask: async () => missingAnswers.shift(), out: (line) => { missingInstructions += line + '\n'; }, fetchImpl: async () => response({ models: [{ name: 'other:latest' }] }) });
     check('a reachable Ollama server without the selected model remains deferred and shows the pull step',
       missing.status === 'deferred' && missing.verification === 'model_not_installed' && /ollama pull not-installed:latest/.test(missingInstructions) && /No inference was run/.test(missingInstructions),
       { happened: JSON.stringify(missing), why: 'Reachability is not model readiness and a failed setup cannot be marked complete.', fix: 'Return deferred and tell the user to pull the exact selected model.' });
     let resumeNotice = '';
-    await onboarding.firstOpen({ file: missingFile, ask: async () => { throw Error('deferred state must not silently restart'); }, out: (line) => { resumeNotice += line; } });
+    await onboarding.firstOpen({ detect: false, file: missingFile, ask: async () => { throw Error('deferred state must not silently restart'); }, out: (line) => { resumeNotice += line; } });
     check('later first opens show the deferred reason and /onboarding recovery path', /remains deferred/.test(resumeNotice) && /\/onboarding/.test(resumeNotice),
       { happened: resumeNotice, why: 'An incomplete setup must remain visible and have a clear recovery command.', fix: 'Print the persisted deferred status and resume path.' });
     let unsafeCalls = 0;
@@ -73,35 +73,35 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
       models: async () => { modelCalls++; return [{ slug: 'gpt-6.1-sol', displayName: 'GPT 6.1 Sol' }]; },
       validate: async (model, effort) => { validated = `${model}/${effort}`; },
     };
-    const chatAnswers = ['1', 'yes'];
-    const chat = await onboarding.firstOpen({ file: chatFile, ask: async () => chatAnswers.shift(), out: () => {}, chatgptEngine: chatEngine, isChatGPTPrepared: () => true });
+    const chatAnswers = ['2', 'yes'];
+    const chat = await onboarding.firstOpen({ detect: false, file: chatFile, ask: async () => chatAnswers.shift(), out: () => {}, chatgptEngine: chatEngine, isChatGPTPrepared: () => true });
     check('ChatGPT first-open calls Atlias Personal sign-in, verifies account and requested model, and does not fall back',
       chat.status === 'complete' && chat.method === 'chatgpt' && chat.verification === 'plan_authorized_model_verified' && modelCalls === 1 && validated === 'gpt-6.1-sol/xhigh' && core.config().agent.engine === 'chatgpt',
       { happened: JSON.stringify({ chat, authCalls, modelCalls, validated }), why: 'The direct ChatGPT engine must be wired to its own SDK and preserve the explicitly requested model and effort.', fix: 'Use the plan engine session/login/models/validate flow with no substitute.' });
 
     const claudeFile = path.join(temp('state'), 'claude-native.json');
     let nativeLogins = 0, nativeChecks = 0, nativeCopy = '';
-    const claudeAnswers = ['7', 'yes'];
-    const claude = await onboarding.firstOpen({ file: claudeFile, ask: async () => claudeAnswers.shift(), out: (line) => { nativeCopy += line; },
+    const claudeAnswers = ['9', 'yes'];
+    const claude = await onboarding.firstOpen({ detect: false, file: claudeFile, ask: async () => claudeAnswers.shift(), out: (line) => { nativeCopy += line; },
       nativeAuthStatus: async (provider) => (++nativeChecks === 1 ? { available: true, authenticated: false, subscription: false } : { available: provider === 'claude', authenticated: true, subscription: true }),
       nativeLogin: async (provider) => { if (provider === 'claude') nativeLogins++; return { started: true, exitCode: 0 }; } });
     check('Claude subscription setup uses only its native CLI status and login and labels billing as native-owned',
       claude.status === 'complete' && claude.method === 'claude' && nativeLogins === 1 && nativeChecks === 2 && /unmodified CLI owns sign-in/.test(nativeCopy) && /did not inspect credentials/.test(nativeCopy),
       { happened: JSON.stringify({ claude, nativeLogins, nativeChecks, nativeCopy }), why: 'The supported subscription path stays inside the actual Claude Code CLI and cannot imply Atlias SDK token relay.', fix: 'Use the native login command and status booleans only.' });
-    const failedAnswers = ['7', 'yes'];
-    const failedClaude = await onboarding.firstOpen({ file: path.join(temp('state'), 'claude-cancel.json'), ask: async () => failedAnswers.shift(), out: () => {},
+    const failedAnswers = ['9', 'yes'];
+    const failedClaude = await onboarding.firstOpen({ detect: false, file: path.join(temp('state'), 'claude-cancel.json'), ask: async () => failedAnswers.shift(), out: () => {},
       nativeAuthStatus: async () => ({ available: true, authenticated: false, subscription: false }), nativeLogin: async () => ({ started: true, exitCode: 1 }) });
     check('a native CLI login that does not authenticate stays deferred', failedClaude.status === 'deferred' && failedClaude.verification === 'native_sign_in_unverified',
       { happened: JSON.stringify(failedClaude), why: 'An unsuccessful sign-in cannot unlock the selected host.', fix: 'Require a verified native auth status before marking setup complete.' });
 
     const unavailableFile = path.join(temp('state'), 'chatgpt-unprepared.json');
     let unexpectedlyLoggedIn = false;
-    const unavailable = await onboarding.firstOpen({ file: unavailableFile, ask: async () => '1', out: () => {}, chatgptEngine: { login: async () => { unexpectedlyLoggedIn = true; } }, isChatGPTPrepared: () => false });
+    const unavailable = await onboarding.firstOpen({ detect: false, file: unavailableFile, ask: async () => '2', out: () => {}, chatgptEngine: { login: async () => { unexpectedlyLoggedIn = true; } }, isChatGPTPrepared: () => false });
     check('an unprepared local ChatGPT runtime stays deferred and never pretends sign-in happened', unavailable.status === 'deferred' && unavailable.verification === 'personal_runtime_missing' && !unexpectedlyLoggedIn,
       { happened: JSON.stringify({ unavailable, unexpectedlyLoggedIn }), why: 'The parent owns SDK installation and no grant can be invented before it exists.', fix: 'Give the local preparation command and keep onboarding deferred.' });
 
     const cancelledFile = path.join(temp('state'), 'cancelled.json');
-    const cancelled = await onboarding.firstOpen({ file: cancelledFile, ask: async () => null, out: () => {} });
+    const cancelled = await onboarding.firstOpen({ detect: false, file: cancelledFile, ask: async () => null, out: () => {} });
     check('cancelled first-open setup persists as deferred rather than complete', cancelled.status === 'deferred' && cancelled.verification === 'cancelled' && onboarding.readOnboarding(cancelledFile).status === 'deferred',
       { happened: JSON.stringify(cancelled), why: 'Escape, EOF or a cancelled prompt cannot certify a provider.', fix: 'Catch explicit cancellation and persist only a deferred record.' });
     check('a deferred or absent marker blocks inherited provider selection while explicit diagnostics remain available',
@@ -118,8 +118,8 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
     process.env.OPENAI_API_KEY = 'fixture-private-key';
     try {
       let request;
-      const apiAnswers = ['2', 'gpt-fixture', 'yes'];
-      const api = await onboarding.firstOpen({ file: keyFile, ask: async () => apiAnswers.shift(), out: (line) => { check('API setup never prints the environment key', !line.includes('fixture-private-key'), { happened: line, why: 'Keys stay out of chat/logs.', fix: 'Sanitize provider output and never print credential values.' }); }, fetchImpl: async (url, options) => { request = { url: String(url), options }; return response({ data: [] }); } });
+      const apiAnswers = ['5', 'gpt-fixture', 'yes'];
+      const api = await onboarding.firstOpen({ detect: false, file: keyFile, ask: async () => apiAnswers.shift(), out: (line) => { check('API setup never prints the environment key', !line.includes('fixture-private-key'), { happened: line, why: 'Keys stay out of chat/logs.', fix: 'Sanitize provider output and never print credential values.' }); }, fetchImpl: async (url, options) => { request = { url: String(url), options }; return response({ data: [] }); } });
       check('OpenAI API setup checks only authenticated GET /models and stores no key',
         api.status === 'complete' && api.method === 'responses' && request.options.method === 'GET' && new URL(request.url).pathname === '/v1/models' && request.options.headers.authorization === 'Bearer fixture-private-key' && !fs.readFileSync(keyFile, 'utf8').includes('fixture-private-key'),
         { happened: JSON.stringify({ api, request: { url: request?.url, method: request?.options?.method }, record: fs.readFileSync(keyFile, 'utf8') }), why: 'API account routing and billing must be explicit while secrets stay local.', fix: 'Read the key from the named environment variable and persist only endpoint/model.' });

@@ -38,6 +38,10 @@ try {
   }
 } catch { /* a sweep that cannot run leaves things as they were */ }
 fs.mkdirSync(process.env.CLAUDE_CONFIG_DIR, { recursive: true });
+// Host harnesses are off by default (agent.hostEngines); the suites that test codex and claude as
+// hosts run with them on. test/claude-plan-suites.mjs checks the default and the refusal itself.
+fs.mkdirSync(process.env.ATLIAS_HOME, { recursive: true });
+fs.writeFileSync(path.join(process.env.ATLIAS_HOME, 'config.json'), JSON.stringify({ agent: { hostEngines: 'on' } }));
 fs.mkdirSync(process.env.CODEX_HOME, { recursive: true });
 const PROJECT = path.join(TMP, 'project');
 fs.mkdirSync(PROJECT, { recursive: true });
@@ -1095,6 +1099,7 @@ await (await import('./visible-check-suites.mjs')).default({ suite, asyncSuite, 
 await (await import('./permission-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./slash-command-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./onboarding-goals-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
+await (await import('./claude-plan-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./last-phase-names-suites.mjs')).default({ asyncSuite, check, TMP, fs, path });
 await (await import('./standalone-suites.mjs')).default({ asyncSuite, check, TMP });
 await (await import('./sampling-suites.mjs')).default({ asyncSuite, check, TMP, fs, path });

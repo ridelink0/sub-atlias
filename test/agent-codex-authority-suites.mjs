@@ -216,7 +216,7 @@ export default async function agentCodexAuthoritySuites({ suite, asyncSuite, che
       const file = path.join(process.env.ATLIAS_HOME, 'config.json');
       const before = fs.existsSync(file) ? fs.readFileSync(file) : null;
       try {
-        fs.writeFileSync(file, JSON.stringify({ localPipeline: { enabled: true, planner: true, reporter: true, baseUrl: 'http://127.0.0.1:18999/v1', model: 'fixture' } }));
+        fs.writeFileSync(file, JSON.stringify({ agent: { hostEngines: 'on' }, localPipeline: { enabled: true, planner: true, reporter: true, baseUrl: 'http://127.0.0.1:18999/v1', model: 'fixture' } }));
         const st = agentMod.newState(work('incomplete-helpers'), 'codex'), seen = [];
         authority.record(st.sid, 'Only the retained follow-up.'); st.authorityMissing = true;
         let calls = 0;
