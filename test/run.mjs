@@ -1100,6 +1100,7 @@ await (await import('./permission-suites.mjs')).default({ suite, asyncSuite, che
 await (await import('./slash-command-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path });
 await (await import('./onboarding-goals-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./claude-plan-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
+await (await import('./loop-subagent-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./last-phase-names-suites.mjs')).default({ asyncSuite, check, TMP, fs, path });
 await (await import('./standalone-suites.mjs')).default({ asyncSuite, check, TMP });
 await (await import('./sampling-suites.mjs')).default({ asyncSuite, check, TMP, fs, path });
