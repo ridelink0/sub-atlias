@@ -101,6 +101,12 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('history down restores the current draft', answer.text === 'draft', detail(JSON.stringify(answer)));
     p = r.start(); r.send('/h'); r.output.columns = 32; r.output.rows = 10; r.output.emit('resize'); r.send('\t'); r.send('\r'); answer = await p;
     check('resize retains the draft and palette selection', answer.text === '/help ', detail(JSON.stringify(answer)));
+    // B2: a 79-cell box line wraps to two rows at 40 columns. The draft's cursor sits on the third
+    // line, so the erase must climb over the top border and the title line, 2 rows each (4 in all).
+    r = rig(); p = r.start(); r.send('draft'); r.output.columns = 40; r.output.emit('resize');
+    const erased = [...r.output.text.matchAll(/\r(?:\x1b\[(\d+)A)?\x1b\[0J/g)].pop();
+    check('after the terminal narrows, the erase climbs over every row the old box now wraps to (B2)', Boolean(erased) && Number(erased[1] || 0) === 4, { happened: `last erase: ${JSON.stringify(erased && erased[0])}`, why: 'B2: the erase counted rows at the old width, so the top of the old box stayed on screen after a narrowing resize.', fix: 'erase() must recount each painted line at the new width when the terminal got narrower.' });
+    r.send('\r'); await p; r.terminal.close();
     r.terminal.close(); check('closing removes its own process hook', r.proc.listenerCount('exit') === 0, detail());
     r = rig(); r.input.paused = false; p = r.start(); r.send('/exit'); r.send('\r'); await p; r.terminal.close();
     check('closing releases a resumed input handle after the final prompt', r.input.paused && !r.input.isRaw && r.input.listenerCount('data') === 0, detail());
