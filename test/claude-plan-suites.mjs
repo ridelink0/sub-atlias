@@ -69,6 +69,11 @@ export default async function claudePlanSuites({ asyncSuite, suite, check, core,
     const done = plan.prepare({ root, npm: { file: 'npm-x', args: ['cli.js'] }, spawn: fakeInstall });
     check('prepare installs the exact pinned SDK into its own folder and then reports ready', done.ok && calls[0].includes(`${plan.SDK_PACKAGE}@${plan.SDK_VERSION}`) && calls[0].includes('--prefix') && plan.prepared({ root }) && plan.binaryPath({ root }),
       { happened: JSON.stringify(calls), why: 'A floating version could change the protocol under Atlias.', fix: 'Install SDK_PACKAGE@SDK_VERSION with --prefix.' });
+    const viaCli = plan.npmCommand({ execPath: 'C:/node/node.exe', env: {}, exists: (p) => /npm-cli\.js$/.test(p) && p.includes('node_modules') });
+    const viaEnv = plan.npmCommand({ execPath: 'N', env: { npm_execpath: 'X/npm-cli.js' }, exists: () => true });
+    const bare = plan.npmCommand({ execPath: 'N', env: {}, exists: () => false, platform: 'win32' });
+    check('npmCommand runs npm-cli.js under this Node (no shell, no .cmd shim), and names npm.cmd only as a last resort', viaCli.file === 'C:/node/node.exe' && /npm-cli\.js$/.test(viaCli.args[0]) && viaEnv.args[0] === 'X/npm-cli.js' && bare.file === 'npm.cmd',
+      { happened: JSON.stringify({ viaCli, viaEnv, bare }), why: 'Node refuses to spawn npm.cmd without a shell, so the one-key install failed on Windows.', fix: 'Prefer npm_execpath, then npm-cli.js beside process.execPath.' });
     const statusCalls = [];
     const st = plan.planStatus({ root, env: { ANTHROPIC_API_KEY: 'k' }, spawn: (file, args, o) => { statusCalls.push({ args, env: o.env }); return { status: 0, stdout: '{"loggedIn":true,"authMethod":"claude.ai"}' }; } });
     check('planStatus asks the SDK\'s own binary, without an API key in its environment', st.plan === true && statusCalls[0].args.join(' ') === 'auth status --json' && !('ANTHROPIC_API_KEY' in statusCalls[0].env),
