@@ -368,7 +368,11 @@ else switch (cmd) {
     finally { rl.close(); }
     break;
   }
-  case 'auth': await authCommand(argv.slice(1).join(' '), { out: say, api: agent.slashApi }); break;
+  case 'auth': {
+    const result = await authCommand(argv.slice(1).join(' '), { out: say, api: agent.slashApi });
+    if (result?.ok === false) process.exitCode = 1;
+    break;
+  }
   case 'resume': process.exitCode = await agent.repl({ engine: after('--engine'), resume: argv[1] && !argv[1].startsWith('--') ? argv[1] : 'last', sandbox: sandboxFlag() }); break;
   case 'exec': {
     // The prompt is every word that is not a flag or a flag's value; - or a
