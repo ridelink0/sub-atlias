@@ -84,6 +84,11 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     r.send('\r'); answer = await p; check('paste preserves exact CRLF text on send', answer.text === 'first\r\nsecond', detail(JSON.stringify(answer)));
     p = r.start(); r.send('one\r\ntwo'); await Promise.resolve(); r.send('\r'); answer = await p;
     check('unbracketed multiline paste also remains one draft', answer.text === 'one\r\ntwo', detail(JSON.stringify(answer)));
+    for (const [chunk, typed] of [['ab\r', 'ab'], ['cd\r\n', 'cd']]) {
+      let early = false; p = r.start(); p.then(() => { early = true; }); r.send(chunk); await new Promise(setImmediate);
+      if (!early) r.send('\r'); answer = await p;
+      check(`a chunk ${JSON.stringify(chunk)} types its text and submits on the trailing Enter`, early && answer.text === typed, { happened: JSON.stringify({ early, ...answer }), why: 'B1: a fast Enter that shares a read with typed text was swallowed and the CR stayed in the message.', fix: 'Only treat a chunk as a paste when CR/LF appears before its single trailing CR or CRLF.' });
+    }
     p = r.start(); r.send('a'); r.send('\n'); r.send('b'); r.send('\r'); answer = await p;
     check('Ctrl+J inserts a newline', answer.text === 'a\nb', detail(JSON.stringify(answer)));
     p = r.start(); r.send('a\\'); r.send('\r'); r.send('b'); r.send('\r'); answer = await p;
