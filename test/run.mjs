@@ -1118,6 +1118,7 @@ await (await import('./terminal-ui-suites.mjs')).default({ suite, asyncSuite, ch
 await (await import('./direct-contract-suites.mjs')).default({ asyncSuite, check, ROOT, path, spawnSync });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
 await (await import('./features-1022-compact-suites.mjs')).default({ asyncSuite, check, TMP, agentMod, commands: await import('../lib/commands.mjs') });
+await (await import('./features-1022-project-settings-suites.mjs')).default({ suite, check, core, TMP, fs, path });
 
 let failed = 0;
 for (const r of results) {
