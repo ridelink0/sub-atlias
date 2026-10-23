@@ -41,7 +41,13 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
       check(`rendered frame is bounded at ${columns}x${height}`, f.width <= 239 && (!Number.isFinite(columns) || f.width <= columns) && f.lines.every((x) => ui.textWidth(x) <= f.width) && f.lines.length <= (Number.isFinite(height) ? height : 24) && Number.isFinite(f.cursor.col) && f.cursor.col < f.width, detail(JSON.stringify(f.cursor)));
     }
     const source = fs.readFileSync(path.join(ROOT, 'lib/terminal-ui.mjs'), 'utf8');
-    // B4: under 30 rows the start screen is three lines with no wordmark and no blank rows; a tall terminal keeps the wordmark.
+    // B5: the footer keeps whole segments; a segment that does not fit is dropped, never cut mid-number.
+  const footerInfo = { engine: 'echo (dry run)', permission: 'workspace', tokens: ['Claude plan', 'session', 'ctx 1,234', 'in 5,678'] };
+  const footerAt = (columns) => ui.renderComposer({ text: 'x', info: footerInfo, columns, rows: 24 }).lines.at(-1);
+  check('a wide footer shows every segment (B5)', footerAt(120) === 'echo (dry run)  |  workspace  |  Claude plan  |  session  |  ctx 1,234  |  in 5,678', detail(JSON.stringify(footerAt(120))));
+  check('a narrow footer drops whole trailing segments, not the middle of a number (B5)', footerAt(40) === 'echo (dry run)  |  workspace' && footerAt(50) === 'echo (dry run)  |  workspace  |  Claude plan' && footerAt(60) === 'echo (dry run)  |  workspace  |  Claude plan  |  session', detail(JSON.stringify([footerAt(40), footerAt(50), footerAt(60)])));
+  check('the token counts follow ui.usageEnabled, which defaults off (B5)', core.DEFAULTS.ui.usageEnabled === false && /config\(\)\.ui\.usageEnabled === true/.test(fs.readFileSync(path.join(ROOT, 'lib/agent.mjs'), 'utf8')), detail());
+  // B4: under 30 rows the start screen is three lines with no wordmark and no blank rows; a tall terminal keeps the wordmark.
   for (const rowCount of [24, 40]) {
     const start = rig(); start.output.rows = rowCount; start.terminal.welcome('4.0.0', 'C:/project');
     const text = start.output.text, boxAt = text.indexOf('+');
