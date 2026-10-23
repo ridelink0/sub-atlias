@@ -4,7 +4,7 @@
 // count rule that eval and benchmark runs were measured with.
 import * as loop from '../lib/loop.mjs';
 
-export default async function cacheMaskSuites({ suite, check }) {
+export default async function cacheMaskSuites({ suite, asyncSuite, check, TMP, fs, path }) {
   const obs = (n) => ({ role: 'user', content: 'x'.repeat(n), _obs: { label: 'read', summary: 'r' } });
   const grow = (sizes, keep = 4) => {
     const msgs = [{ role: 'system', content: 's' }, { role: 'user', content: 'u' }];
@@ -70,5 +70,25 @@ export default async function cacheMaskSuites({ suite, check }) {
     loop.countCache(local, { prompt_eval_count: 76, prompt_eval_cached_count: 71 });
     check('a provider without a write count adds no written field', !('written' in local.cache) && !/written/.test(loop.cacheLine(local.cache)),
       { happened: JSON.stringify(local.cache), why: 'benchmark output for local engines stays byte-identical', fix: 'countCache only adds written when reported' });
+  });
+
+  await asyncSuite('cache and token expert', 'interactive turns name the shell; eval and benchmark prompts are unchanged', async () => {
+    const dir = path.join(TMP, 'shell-note'); fs.mkdirSync(dir, { recursive: true });
+    const win = process.platform === 'win32';
+    const plain = loop.systemPrompt(dir, {});
+    const noted = loop.systemPrompt(dir, { shellNote: true });
+    check('systemPrompt adds the cmd.exe line only when asked, and only on Windows', !plain.includes(loop.SHELL_NOTE_WIN) && noted.includes(loop.SHELL_NOTE_WIN) === win,
+      { happened: JSON.stringify({ plainHas: plain.includes(loop.SHELL_NOTE_WIN), notedHas: noted.includes(loop.SHELL_NOTE_WIN), win }), why: 'the SITE-1 model wrote PowerShell into cmd.exe and lost calls', fix: 'shellNote option' });
+    const firstSystem = async (opts) => {
+      const st = { cwd: dir, messages: [], engine: 'ollama' };
+      await loop.runLoop(st, 'say hi', { chat: async () => ({ content: 'hi', calls: [] }), ...opts });
+      return String(st.messages[0].content);
+    };
+    const evalPrompt = await firstSystem({});
+    const interactivePrompt = await firstSystem({ interactive: true });
+    check('runLoop without interactive (the eval path) sends no shell line', !evalPrompt.includes(loop.SHELL_NOTE_WIN),
+      { happened: 'the eval prompt changed', why: 'eval and benchmark prompts must stay byte-identical', fix: 'runLoop interactive defaults to false' });
+    check('an interactive runLoop sends it on Windows', interactivePrompt.includes(loop.SHELL_NOTE_WIN) === win,
+      { happened: interactivePrompt.slice(-300), why: 'agent.mjs passes interactive: true for repl and exec turns', fix: 'runLoop passes shellNote: interactive' });
   });
 }
