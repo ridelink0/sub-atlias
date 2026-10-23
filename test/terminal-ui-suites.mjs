@@ -48,6 +48,9 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
   // A tab is two cells: 74 letters then a tab fit 76 cells only if counted right, so the tab wraps to a second row (the box is 75 cells inside).
   const wrapped = ui.renderComposer({ text: 'a'.repeat(74) + '\tb', info: {}, columns: 80, rows: 24 }).lines;
   check('a tab counts as two cells when a line wraps (B6)', wrapped[3].startsWith('|   b'), detail(JSON.stringify(wrapped[3])));
+  // B7: zero-width space, word joiner and BOM take no cell, so the right border of a draft holding them stays in its column.
+  const zeroWidth = ui.renderComposer({ text: 'x​y⁠﻿', info: {}, columns: 80, rows: 24 }).lines;
+  check('zero-width space, word joiner and BOM are zero cells wide (B7)', ui.textWidth('a​⁠﻿b') === 2 && ui.textWidth(zeroWidth[2]) === ui.textWidth(zeroWidth[0]), detail(JSON.stringify([ui.textWidth('a​b'), ui.textWidth(zeroWidth[2]), ui.textWidth(zeroWidth[0])])));
   // B5: the footer keeps whole segments; a segment that does not fit is dropped, never cut mid-number.
   const footerInfo = { engine: 'echo (dry run)', permission: 'workspace', tokens: ['Claude plan', 'session', 'ctx 1,234', 'in 5,678'] };
   const footerAt = (columns) => ui.renderComposer({ text: 'x', info: footerInfo, columns, rows: 24 }).lines.at(-1);
