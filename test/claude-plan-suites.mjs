@@ -141,6 +141,9 @@ export default async function claudePlanSuites({ asyncSuite, suite, check, core,
     check('recommended picks the Claude plan first, then ChatGPT, keys, Ollama', onboarding.recommended(found) === '1' && onboarding.recommended({ chatgpt: true }) === '2' && onboarding.recommended({ ollama: true }) === '3' && onboarding.recommended({}) === '1',
       { happened: onboarding.recommended(found), why: 'Enter must take the route that works now.', fix: 'Check recommended.' });
     const text = onboarding.welcomeText(found, { hostEngines: 'off' });
+    const narrow = onboarding.welcomeText(found, { hostEngines: 'off' }, 80).split(String.fromCharCode(10));
+    check('on an 80-column terminal every onboarding line fits and no word is split', narrow.every((l) => l.length < 80) && narrow.some((l) => /^   sign in/.test(l)) && narrow.join(' ').includes('(recommended)'),
+      { happened: narrow.filter((l) => l.length >= 80).join(' | '), why: 'Gev saw (rec / ommended) when the terminal broke the line itself (Computer Use check 2026-10-23)', fix: 'wrapChoice in onboarding.mjs' });
     check('the welcome says what was found, marks the recommended row, and hides host harnesses while they are off', /Found on this computer: your Claude sign-in/.test(text) && /1 {2}Use my Claude plan.*\(recommended\)/.test(text) && !/native host/.test(text),
       { happened: text, why: 'A new user should press Enter, not read nine options.', fix: 'Check welcomeText and visibleChoices.' });
     check('host rows appear only when host harnesses are on', onboarding.visibleChoices({ hostEngines: 'on' }).some((r) => r.method === 'claude') && !onboarding.visibleChoices({ hostEngines: 'off' }).some((r) => r.host),
