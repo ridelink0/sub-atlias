@@ -41,7 +41,14 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
       check(`rendered frame is bounded at ${columns}x${height}`, f.width <= 239 && (!Number.isFinite(columns) || f.width <= columns) && f.lines.every((x) => ui.textWidth(x) <= f.width) && f.lines.length <= (Number.isFinite(height) ? height : 24) && Number.isFinite(f.cursor.col) && f.cursor.col < f.width, detail(JSON.stringify(f.cursor)));
     }
     const source = fs.readFileSync(path.join(ROOT, 'lib/terminal-ui.mjs'), 'utf8');
-    // B5: the footer keeps whole segments; a segment that does not fit is dropped, never cut mid-number.
+    // B6: the frame's cell accounting for a mixed draft (tab, CJK, combining mark) matches the plain width of its text.
+  const mixed = 'a\tb界éc';
+  const mixedFrame = ui.renderComposer({ text: mixed, info: {}, columns: 80, rows: 24 }).lines[2];
+  check('a frame with tab, CJK and combining text pads to exactly its width (B6)', mixedFrame === '| ' + ui.clipText(mixed, 200).replace(/\t/g, '  ') + ' '.repeat(75 - ui.textWidth(mixed.replace(/\t/g, '  '))) + ' |', detail(JSON.stringify(mixedFrame)));
+  // A tab is two cells: 74 letters then a tab fit 76 cells only if counted right, so the tab wraps to a second row (the box is 75 cells inside).
+  const wrapped = ui.renderComposer({ text: 'a'.repeat(74) + '\tb', info: {}, columns: 80, rows: 24 }).lines;
+  check('a tab counts as two cells when a line wraps (B6)', wrapped[3].startsWith('|   b'), detail(JSON.stringify(wrapped[3])));
+  // B5: the footer keeps whole segments; a segment that does not fit is dropped, never cut mid-number.
   const footerInfo = { engine: 'echo (dry run)', permission: 'workspace', tokens: ['Claude plan', 'session', 'ctx 1,234', 'in 5,678'] };
   const footerAt = (columns) => ui.renderComposer({ text: 'x', info: footerInfo, columns, rows: 24 }).lines.at(-1);
   check('a wide footer shows every segment (B5)', footerAt(120) === 'echo (dry run)  |  workspace  |  Claude plan  |  session  |  ctx 1,234  |  in 5,678', detail(JSON.stringify(footerAt(120))));
