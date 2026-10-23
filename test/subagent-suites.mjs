@@ -235,7 +235,7 @@ export default async function subagentSuites({ suite, asyncSuite, check, skip, c
     progress.preCompact(parent); progress.preCompact(worker);
     const a = progress.read(dir), b = progress.read(dir, AGENT);
     check('worker PreCompact cannot overwrite or mix the parent handoff', a.includes(parent.prompt) && !a.includes(worker.prompt) && !a.includes(file) && b.includes(worker.prompt) && b.includes(file) && !b.includes(parent.prompt) && progress.notePath(dir) !== progress.notePath(dir, AGENT), why);
-    check('startup and compact inject only the actor handoff', !brief.build(parent, 'claude').includes(worker.prompt) && !progress.postCompact(parent).hookSpecificOutput.additionalContext.includes(worker.prompt) && brief.build(worker, 'claude').includes(worker.prompt), why);
+    check('startup and compact inject only the actor handoff', !brief.build(parent, 'claude').includes(worker.prompt) && progress.postCompact(parent) === null && !brief.build({ ...parent, source: 'compact' }, 'claude').includes(worker.prompt) && brief.build(worker, 'claude').includes(worker.prompt), why);
     const hintSid = session(dir);
     const frontend = { session_id: hintSid, cwd: dir, prompt: 'Please redesign the website hero section' };
     const hintA = router.prompt({ ...frontend, agent_id: AGENT });
@@ -284,8 +284,8 @@ export default async function subagentSuites({ suite, asyncSuite, check, skip, c
       const skillFile = path.join(dir, 'SKILL.md');
       fs.writeFileSync(skillFile, 'WORKER_SKILL_FULL_74\r\nKeep every line.');
       track.postTool({ ...worker, tool_name: 'Read', tool_input: { file_path: skillFile }, tool_response: { content: 'WORKER_SKILL_FULL_74' } });
-      const parentText = progress.postCompact(parent).hookSpecificOutput.additionalContext;
-      const workerText = progress.postCompact(worker).hookSpecificOutput.additionalContext;
+      const parentText = brief.build({ ...parent, source: 'compact' }, 'claude');
+      const workerText = brief.build({ ...worker, source: 'compact' }, 'claude');
       check('resume carries each actor\'s full requests and skill text without crossing to the parent', parentText.includes(parent.prompt) && !parentText.includes(worker.prompt) && !parentText.includes('WORKER_SKILL_FULL_74') && workerText.includes(worker.prompt) && workerText.includes('WORKER_SKILL_FULL_74\r\nKeep every line.') && !workerText.includes(parent.prompt), why);
       check('long parent ids cannot truncate the worker namespace into a collision', core.actorSession({ session_id: 's'.repeat(200), agent_id: AGENT }) !== core.actorSession({ session_id: 's'.repeat(200), agent_id: 'worker-b' }) && core.actorSession(parent) === sid, why);
       const workerStop = gate.stop({ ...worker, last_assistant_message: DONE }, 'claude');

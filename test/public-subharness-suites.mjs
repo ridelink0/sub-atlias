@@ -239,7 +239,8 @@ process.exitCode=7;
         verify(`${source} restores long authority and selected skill exactly in occurrence order`, positions.every((p, i) => p >= 0 && (!i || p > positions[i - 1])) && text.includes(skillText) && text.split('Repeat the exact request').length === 3, text.length, 'Replay the independent authority ledger without evidence clipping.');
       }
       const post = progress.postCompact({ cwd: PROJECT, session_id: sid });
-      verify('PostCompact retains exact authority beyond the handoff evidence budget', post?.hookSpecificOutput?.additionalContext.includes(long) && post.hookSpecificOutput.additionalContext.includes(skillText), post?.hookSpecificOutput?.additionalContext.length, 'Append exact authority separately from the clipped handoff.');
+      const compacted = brief.build({ cwd: PROJECT, session_id: sid, source: 'compact' }, 'claude');
+      verify('the compact SessionStart retains exact authority beyond the handoff evidence budget and PostCompact prints nothing', post === null && compacted.includes(long) && compacted.includes(skillText), { post, compacted: compacted.length }, 'Append exact authority separately from the clipped handoff in the SessionStart compact brief; PostCompact output reaches only the user.');
       process.env.ATLIAS_FLAG_AUTHORITY_LEDGER = '0';
       verify('off does not replay the added authority representation', authority.render(sid) === '' && !brief.build({ cwd: PROJECT, session_id: sid, source: 'resume' }, 'claude').includes('END_ORIGINAL_AUTHORITY'), 'explicit off mode checked', 'Keep this behavior behind the authority flag.');
       process.env.ATLIAS_FLAG_AUTHORITY_LEDGER = '1';
