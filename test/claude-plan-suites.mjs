@@ -54,6 +54,9 @@ export default async function claudePlanSuites({ asyncSuite, suite, check, core,
     check('the transcript is one labelled block per non-system message, in order', blocks.length === 3 && blocks[0].text === '[user]\nfix it' && blocks[1].text.startsWith('[assistant]') && blocks[2].text.startsWith('[tool result]'),
       { happened: JSON.stringify(blocks), why: 'Separate blocks keep the shared prefix cacheable.', fix: 'Check transcript.' });
     check('systemText appends the note even with no system message', plan.systemText([{ role: 'user', content: 'x' }]) === plan.TRANSCRIPT_NOTE, { happened: plan.systemText([]), why: 'The model must know the layout.', fix: 'Check systemText.' });
+    const stable = plan.planOptions({}, { system: 's', env: { HOME: 'h' } }).env;
+    check('each call turns off the git status snapshot, CLAUDE.md files and attachments', stable.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS === '1' && stable.CLAUDE_CODE_DISABLE_CLAUDE_MDS === '1' && stable.CLAUDE_CODE_DISABLE_ATTACHMENTS === '1' && stable.HOME === 'h',
+      { happened: JSON.stringify(stable), why: 'Each call is a new CLI process; a git status taken again after an edit sits before the transcript and voids its cache.', fix: 'Merge STABLE_PREFIX_ENV into planOptions env.' });
     const env = plan.cleanEnv({ anthropic_api_key: 'lower', ANTHROPIC_AUTH_TOKEN: 't', HOME: 'h' });
     check('cleanEnv drops blocked names in any case and keeps the rest', !('anthropic_api_key' in env) && !('ANTHROPIC_AUTH_TOKEN' in env) && env.HOME === 'h', { happened: JSON.stringify(env), why: 'Windows environment names are case-insensitive.', fix: 'Compare upper-cased names.' });
     const opts = plan.planOptions({ claudePlanEffort: 'model' }, { system: 's' });
