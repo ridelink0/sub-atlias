@@ -202,6 +202,44 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('a closed editor cannot create another question', answer.error === 'terminal closed', detail());
   });
 
+  // TUI-B 1: Esc or Ctrl+C stops a turn; a permission question during the turn gets the composer back afterwards.
+  await asyncSuite('terminal turn expert', 'terminal composer during a turn: Esc and Ctrl+C stop it, questions still ask (TUI-B)', async () => {
+    const settle = (promise, ms = 1000) => Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve({ error: `still open after ${ms} ms` }), ms))]);
+    const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+    let r = rig(); const first = new AbortController();
+    check('a turn opens the composer, raw and listening', r.terminal.turnStart(first) === true && r.input.isRaw && r.input.listenerCount('data') === 1, detail());
+    r.send('\u001b'); await wait(100);
+    check('Esc aborts the turn signal', first.signal.aborted, detail());
+    r.send('\x03'); const leftAt = r.terminal.turnEnd();
+    check('a second Ctrl+C within two seconds of the interrupt asks to leave', leftAt.exit === true && !r.input.isRaw && r.input.listenerCount('data') === 0, detail(JSON.stringify(leftAt)));
+    r = rig(); const second = new AbortController(); r.terminal.turnStart(second); r.send('\x03');
+    check('the first Ctrl+C stops the turn and Atlias stays open', second.signal.aborted && r.terminal.turnEnd().exit === false, detail());
+    r = rig(); const third = new AbortController(); r.terminal.turnStart(third);
+    const asked = r.terminal.question('Allow this action? '); r.send('y\r');
+    check('a permission question during a turn is answered', (await settle(asked)) === 'y', detail());
+    check('the turn gets its composer back after the question', r.input.isRaw && r.input.listenerCount('data') === 1 && !third.signal.aborted, detail());
+    r.terminal.turnEnd();
+    // The stop reaches a chat call that waits on its signal, and a POST waiting for its reply.
+    const agent = await import('../lib/agent.mjs');
+    const hang = new AbortController(); const cut = agent.withSignal(() => new Promise(() => {}), hang.signal);
+    setTimeout(() => hang.abort(), 30);
+    const cutReply = await settle(cut([], null, {}));
+    check('a chat call waiting on the turn signal is cut and reports interrupted (TUI-B 1)', cutReply.error === 'interrupted', detail(JSON.stringify(cutReply)));
+    const http = await import('node:http');
+    const { postJsonAbortable } = await import('../lib/http-abort.mjs');
+    const { postJson } = await import('../lib/loop.mjs');
+    const bodies = []; const server = http.createServer((req, res) => { let text = ''; req.on('data', (x) => { text += x; }); req.on('end', () => { bodies.push(text); if (req.url === '/hang') return; res.setHeader('content-type', 'application/json'); res.end('{"ok":true}'); }); });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const base = `http://127.0.0.1:${server.address().port}`;
+    const stop = new AbortController(); setTimeout(() => stop.abort(), 50);
+    const hung = await settle(postJsonAbortable(`${base}/hang`, { a: 1 }, {}, 10000, undefined, stop.signal), 2000);
+    check('a POST waiting for its reply is cut by the signal (TUI-B 1)', hung.error === 'interrupted' && hung.status === 0, detail(JSON.stringify(hung)));
+    const body = { model: 'm', messages: [{ role: 'user', content: 'é"\\\n' }] };
+    const plain = await postJson(`${base}/ok`, body, {}); const withSig = await postJsonAbortable(`${base}/ok`, body, {}, undefined, undefined, new AbortController().signal);
+    check('a signal does not change the request bytes, and the reply is the same (TUI-B 1)', bodies.at(-2) === bodies.at(-1) && plain.json?.ok === true && withSig.json?.ok === true, detail(JSON.stringify(bodies)));
+    server.closeAllConnections(); server.close();
+  });
+
   await asyncSuite('terminal integration expert', 'terminal composer integration stays outside model requests', async () => {
     check('terminal install is discoverable in the real command registry', commands.BUILTINS.some((x) => x.name === 'shortcut') && commands.helpText(ROOT).includes('/shortcut'), detail());
     const lines = []; const state = { cwd: ROOT };
