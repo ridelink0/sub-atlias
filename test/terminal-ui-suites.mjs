@@ -212,6 +212,12 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('Esc aborts the turn signal', first.signal.aborted, detail());
     r.send('\x03'); const leftAt = r.terminal.turnEnd();
     check('a second Ctrl+C within two seconds of the interrupt asks to leave', leftAt.exit === true && !r.input.isRaw && r.input.listenerCount('data') === 0, detail(JSON.stringify(leftAt)));
+    // TUI-B 2: the footer shows the spinner, the seconds and the stop key, repainted at most ten times a second.
+    r = rig(); const ticking = new AbortController(); r.terminal.turnStart(ticking);
+    const before = (r.output.text.split('esc to interrupt').length - 1); await wait(1000);
+    const paints = (r.output.text.split('esc to interrupt').length - 1) - before;
+    check('a running turn shows "esc to interrupt" and repaints it 5 to 12 times a second (TUI-B 2)', before >= 1 && paints >= 5 && paints <= 12 && /[|/\\-] \d+s  esc to interrupt/.test(r.output.text), detail(JSON.stringify({ before, paints })));
+    r.terminal.turnEnd();
     r = rig(); const second = new AbortController(); r.terminal.turnStart(second); r.send('\x03');
     check('the first Ctrl+C stops the turn and Atlias stays open', second.signal.aborted && r.terminal.turnEnd().exit === false, detail());
     r = rig(); const third = new AbortController(); r.terminal.turnStart(third);
