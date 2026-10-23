@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import * as ui from '../lib/terminal-ui.mjs';
+import * as mdRender from '../lib/render-markdown.mjs';
 import * as commands from '../lib/commands.mjs';
 
 export default async function terminalUISuites({ suite, asyncSuite, check, core, fs, path, ROOT }) {
@@ -57,6 +58,16 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
   check('a draft taller than the box marks the lines above and keeps the caret row visible (B11)', atEnd.lines[2] === '| ' + ui.clipText('... 8 more lines above', 75).padEnd(75) + ' |' && atEnd.lines[6].includes('l12') && atEnd.cursor.row === 6, detail(JSON.stringify([atEnd.lines[2], atEnd.lines[6], atEnd.cursor])));
   const atStart = ui.renderComposer({ text: twelve, cursor: 0, info: {}, columns: 80, rows: 24 });
   check('the lines below are marked at the foot of the box (B11)', atStart.lines[6].includes('... 8 more lines below') && atStart.lines[2].includes('l1') && atStart.dim.length === 1, detail(JSON.stringify([atStart.lines[2], atStart.lines[6]])));
+  // TUI-B 4: replies are styled only with colour on; code is verbatim; lists hang inside the width; model control codes never reach the screen.
+  const md = mdRender;
+  check('a plain terminal gets the reply text back unchanged (TUI-B 4)', md.renderMarkdown('**a** `b`\n## c', { color: false }) === '**a** `b`\n## c', detail());
+  const styled = md.renderMarkdown('## Plan\n- **one** and `two` and a long line of words to wrap here\n```js\n**literal** `x`\n```\n1. third', { color: true, width: 24 });
+  check('bold, code spans, headings and lists are styled (TUI-B 4)', styled.includes(`\u001b[1mPlan\u001b[0m`) && styled.includes(`\u001b[1mone\u001b[0m`) && styled.includes(`\u001b[94mtwo\u001b[0m`) && !styled.includes('##') && styled.includes('1. third'), detail(JSON.stringify(styled)));
+  check('fenced code is kept verbatim, with no styling inside (TUI-B 4)', styled.includes('\u001b[2m| \u001b[0m**literal** `x`') || styled.includes('| **literal** `x`'), detail(JSON.stringify(styled)));
+  const hanging = styled.split('\n').filter((l) => l.startsWith('  ') || l.startsWith('- '));
+  check('a list item wraps with a hanging indent and every line fits the width (TUI-B 4)', hanging.length >= 3 && hanging.slice(1).every((l) => l.startsWith('  ')) && styled.split('\n').every((l) => ui.textWidth(l) <= 24), detail(JSON.stringify(hanging)));
+  check('the composer prints a styled reply with its styling kept (TUI-B 4)', (() => { const shown = rig({ env: {} }); shown.terminal.log(md.renderMarkdown('**x**', { color: true }), 'md'); const kept = shown.output.text.includes('\u001b[1mx\u001b[0m'); shown.terminal.close(); return kept; })(), detail());
+  check('terminal control sequences in a reply are removed before styling (TUI-B 4)', !md.renderMarkdown('a\u001b[2Jb', { color: true }).includes('\u001b[2J') && md.renderMarkdown('x\u001b[2Jy', { color: true }).includes('xy'), detail());
   // B5: the footer keeps whole segments; a segment that does not fit is dropped, never cut mid-number.
   const footerInfo = { engine: 'echo (dry run)', permission: 'workspace', tokens: ['Claude plan', 'session', 'ctx 1,234', 'in 5,678'] };
   const footerAt = (columns) => ui.renderComposer({ text: 'x', info: footerInfo, columns, rows: 24 }).lines.at(-1);
