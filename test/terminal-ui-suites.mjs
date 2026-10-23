@@ -76,6 +76,8 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
   });
 
   await asyncSuite('terminal input expert', 'terminal composer keys, paste, prompts and cleanup', async () => {
+    // A prompt that should have closed but did not fails its check instead of hanging the run.
+    const settle = (promise, ms = 1000) => Promise.race([promise, new Promise((resolve) => setTimeout(() => resolve({ error: `still open after ${ms} ms` }), ms))]);
     let r = rig(), p = r.start();
     r.send('/he'); check('slash text paints a live choice list', r.output.text.includes('/help') && r.output.text.includes('command list'), detail());
     r.send('\t'); r.send('\r'); let answer = await p;
@@ -153,12 +155,21 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     r = rig(); r.input.paused = false; p = r.start(); r.send('/exit'); r.send('\r'); await p; r.terminal.close();
     check('closing releases a resumed input handle after the final prompt', r.input.paused && !r.input.isRaw && r.input.listenerCount('data') === 0, detail());
 
-    r = rig(); const foreign = () => {}; r.input.on('data', foreign); p = r.start(); r.send('\x04'); answer = await p;
+    r = rig(); const foreign = () => {}; r.input.on('data', foreign); p = r.start(); r.send('\x04'); r.send('\x04'); answer = await settle(p);
     check('EOF rejects the prompt and preserves foreign listeners', /end of input/.test(answer.error) && !r.input.isRaw && r.input.listeners('data').includes(foreign), detail(JSON.stringify(answer))); r.terminal.close();
     r = rig(); p = r.start(); r.send('edit'); r.send('\x03'); r.send('new'); r.send('\r'); answer = await p;
     check('Ctrl+C clears a draft before exiting', answer.text === 'new', detail());
-    p = r.start(); r.send('\x03'); answer = await p;
-    check('Ctrl+C on empty cancels cleanly', /cancelled/.test(answer.error) && !r.input.isRaw, detail()); r.terminal.close();
+    // TUI-A item 10: on an empty main prompt the first Ctrl+C only shows the hint; a second one inside two seconds exits.
+    r = rig(); p = r.start(); let exited = false; p.then(() => { exited = true; }); r.send('\x03'); await new Promise(setImmediate);
+    check('the first Ctrl+C on an empty prompt does not exit and says how to (TUI-A item 10)', !exited && r.output.text.includes('Press Ctrl+C again to exit') && r.input.isRaw, detail(String(exited)));
+    r.send('\x03'); answer = await settle(p);
+    check('a second Ctrl+C inside two seconds exits cleanly', /cancelled/.test(answer.error) && !r.input.isRaw && r.input.listenerCount('data') === 0, detail(JSON.stringify(answer))); r.terminal.close();
+    r = rig(); p = r.start(); exited = false; p.then(() => { exited = true; }); r.send('\x03'); await new Promise((resolve) => setTimeout(resolve, 2100));
+    r.send('\x03'); await new Promise(setImmediate);
+    check('after two seconds the first press is forgotten: the next press only shows the hint again (TUI-A item 10)', !exited && r.input.isRaw, detail(String(exited)));
+    r.send('\x03'); answer = await settle(p); r.terminal.close();
+    r = rig(); p = r.start('Allow this action? '); r.send('\x03'); answer = await settle(p);
+    check('Ctrl+C at a permission question cancels it at once, with no hint', /cancelled/.test(answer.error) && !r.output.text.slice(r.output.text.lastIndexOf('Allow')).includes('Press Ctrl+C'), detail(JSON.stringify(answer))); r.terminal.close();
     r = rig({ rawFails: true }); answer = await r.start(); const next = await r.start();
     check('a failed raw mode uses one persistent line fallback', answer.text === 'plain answer' && next.text === 'plain answer' && r.counts().fallbackCalls === 2 && r.input.listenerCount('data') === 0, detail()); r.terminal.close();
     check('closing also closes the fallback reader', r.counts().fallbackClosed === 1, detail());
