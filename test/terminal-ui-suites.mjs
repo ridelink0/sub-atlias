@@ -165,7 +165,11 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     p = r.start(); r.send('\u0012'); r.send('alpha'); r.send('\u0012'); r.send('\r'); r.send('\r'); answer = await p;
     check('a second Ctrl+R steps to the next older match', answer.text === 'alpha one', detail(JSON.stringify(answer)));
     r = rig({ history: { initial: ['alpha one'] } });
-    p = r.start(); r.send('draft'); r.send('\u0012'); r.send('zz'); r.send('\u001b'); await new Promise((resolve) => setTimeout(resolve, 100)); r.send('\r'); answer = await p;
+    // h4 F6: a line break pasted during the search becomes a space in the query, never a second line.
+    r = rig({ history: { initial: ['alpha one'] } }); p = r.start(); r.send('\u0012'); r.send('a\nb');
+    check('a pasted line break during Ctrl+R becomes a space in the query (h4 F6)', r.output.text.includes('(search) a b: '), detail(JSON.stringify(r.output.text.slice(-80))));
+    r.send('\u001b'); await new Promise((resolve) => setTimeout(resolve, 100)); r.send('\r'); await settle(p); r.terminal.close();
+    r = rig({ history: { initial: ['alpha one'] } }); p = r.start(); r.send('draft'); r.send('\u0012'); r.send('zz'); r.send('\u001b'); await new Promise((resolve) => setTimeout(resolve, 100)); r.send('\r'); answer = await p;
     check('Esc cancels the search and keeps the draft (TUI-A item 12)', answer.text === 'draft', detail(JSON.stringify(answer)));
     r = rig(); p = r.start(); r.send('draft'); r.send('\u001b[A'); r.send('\u001b[B'); r.send('\r'); answer = await p;
     check('history down restores the current draft', answer.text === 'draft', detail(JSON.stringify(answer)));
@@ -229,6 +233,9 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     const paints = (r.output.text.split('esc to interrupt').length - 1) - before;
     check('a running turn shows "esc to interrupt" and repaints it 5 to 12 times a second (TUI-B 2)', before >= 1 && paints >= 5 && paints <= 12 && /[|/\\-] \d+s  esc to interrupt/.test(r.output.text), detail(JSON.stringify({ before, paints })));
     r.terminal.turnEnd();
+    // h4 F-h1-C: once the turn ends the spinner stops repainting.
+    const stopsAt = r.output.text.length; await new Promise((resolve) => setTimeout(resolve, 300));
+    check('the spinner stops repainting when the turn ends (h4 F-h1-C)', !r.output.text.slice(stopsAt).includes('esc to interrupt'), detail());
     // TUI-B 3: Enter during a turn queues the message (dim "queued: ...") and the turn hands it back; typed text becomes the next draft.
     r = rig(); const queuing = new AbortController(); r.terminal.turnStart(queuing);
     r.send('next one'); r.send('\r'); r.send('half');
