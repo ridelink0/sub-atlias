@@ -57,4 +57,18 @@ export default async function cacheMaskSuites({ suite, check }) {
     check('view() hands masked results over as their one-line note', v.filter((m) => /elided to keep the context small/.test(String(m.content))).length === 5 && loop.maskedIndices(ten, 1, 4).size === 8,
       { happened: 'note count differs from the masked set', why: 'view and the ledger must agree', fix: 'view' });
   });
+
+  suite('cache and token expert', 'the cache readout counts what was written to the cache as well as what was read', () => {
+    const st = {};
+    loop.countCache(st, { input_tokens: 10, cache_creation_input_tokens: 900, cache_read_input_tokens: 90 });
+    loop.countCache(st, { input_tokens: 5, cache_creation_input_tokens: 100, cache_read_input_tokens: 995 });
+    check('writes are summed for the Anthropic shape', st.cache.written === 1000 && st.cache.cached === 1085 && st.cache.prompt === 2100,
+      { happened: JSON.stringify(st.cache), why: 'a rewritten prefix costs 1.25x or 2x base input, more than an uncached token', fix: 'cacheReading written, countCache' });
+    check('the cache line names the writes', /1000 written to it/.test(loop.cacheLine(st.cache)),
+      { happened: loop.cacheLine(st.cache), why: 'Gev reads this line after a run', fix: 'cacheLine' });
+    const local = {};
+    loop.countCache(local, { prompt_eval_count: 76, prompt_eval_cached_count: 71 });
+    check('a provider without a write count adds no written field', !('written' in local.cache) && !/written/.test(loop.cacheLine(local.cache)),
+      { happened: JSON.stringify(local.cache), why: 'benchmark output for local engines stays byte-identical', fix: 'countCache only adds written when reported' });
+  });
 }
