@@ -89,3 +89,17 @@ export async function h4LowSuite({ asyncSuite, check, agentMod, webfetch, http }
       { happened: JSON.stringify(seen), why: 'a reused socket skips the pinned lookup', fix: 'agent: false in pinnedTransport' });
   });
 }
+
+export function costSuite({ suite, check, loop }) {
+  suite('merge expert', 'the cache readout also sums output tokens and the provider price when they are reported', () => {
+    const st = {};
+    loop.countCache(st, { input_tokens: 2, cache_creation_input_tokens: 863, cache_read_input_tokens: 0, output_tokens: 4, cost_usd: 0.0069 });
+    loop.countCache(st, { input_tokens: 3, cache_creation_input_tokens: 100, cache_read_input_tokens: 900, output_tokens: 40, cost_usd: 0.0021 });
+    check('output and cost are summed for a claude-plan run', st.cache.output === 44 && st.cache.costUsd === 0.009,
+      { happened: JSON.stringify(st.cache), why: 'Gev wants tokens, requests and overall cost per run, not only the cache share', fix: 'countCache output and costUsd' });
+    const local = {};
+    loop.countCache(local, { prompt_eval_count: 76, prompt_eval_cached_count: 71 });
+    check('a provider that reports neither adds no field', !('output' in local.cache) && !('costUsd' in local.cache),
+      { happened: JSON.stringify(local.cache), why: 'no number is invented', fix: 'only add when reported' });
+  });
+}

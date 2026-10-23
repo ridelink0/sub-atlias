@@ -1115,6 +1115,7 @@ await (await import('./claude-plan-suites.mjs')).default({ suite, asyncSuite, ch
 await (await import('./loop-subagent-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./cache-mask-suites.mjs')).default({ suite, asyncSuite, check, TMP, fs, path });
 await (await import('./merge-1023-suites.mjs')).default({ asyncSuite, check });
+(await import('./merge-1023-suites.mjs')).costSuite({ suite, check, loop: await import('../lib/loop.mjs') });
 await (await import('./merge-1023-suites.mjs')).h4LowSuite({ asyncSuite, check, agentMod, webfetch: await import('../lib/webfetch.mjs'), http: (await import('node:http')).default });
 await (await import('./merge-1023-suites.mjs')).treeStopSuite({ asyncSuite, check, bg: await import('../lib/background.mjs'), EventEmitter: (await import('node:events')).EventEmitter, dir: path.join(TMP, 'bg-tree') });
 await (await import('./last-phase-names-suites.mjs')).default({ asyncSuite, check, TMP, fs, path });
