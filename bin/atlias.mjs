@@ -384,7 +384,7 @@ else switch (cmd) {
     if (prompt === '-' || (!prompt && !process.stdin.isTTY)) { prompt = ''; for await (const chunk of process.stdin) prompt += chunk; prompt = prompt.trim(); }
     if (!prompt) { say('usage: atlias exec "<prompt>" [--engine chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)'); process.exitCode = 2; break; }
     // A valued flag with no value exits 2 (it used to fall back silently); --flag=value is read as well.
-    const bare = ['--output-format', '--permissions'].find((f) => { const i = argv.indexOf(f); return i !== -1 && (i + 1 >= argv.length || argv[i + 1].startsWith('--')); });
+    const bare = ['--output-format', '--permissions'].find((f) => { const i = argv.indexOf(f); return (i !== -1 && (i + 1 >= argv.length || argv[i + 1].startsWith('--'))) || argv.includes(f + '='); });
     if (bare) { say(`${bare} needs a value, for example ${bare}=text`); process.exitCode = 2; break; }
     const eqValue = (f) => { const hit = argv.find((a) => a.startsWith(f + '=')); return hit ? hit.slice(f.length + 1) : undefined; };
     const format = after('--output-format') || eqValue('--output-format') || (flag('--json') ? 'json' : 'text');
