@@ -31,6 +31,11 @@ export default async function claudePlanSuites({ asyncSuite, suite, check, core,
     check('the chosen model and effort are sent', o.model === 'claude-opus-5-5' && o.effort === 'xhigh', { happened: `${o.model} ${o.effort}`, why: 'Opus 5.5 defaults to medium effort unless one is set.', fix: 'Pass cfg.claudePlanEffort as effort.' });
     check('no API key, base URL or cloud-provider switch reaches the SDK process', !('ANTHROPIC_API_KEY' in o.env) && !('ANTHROPIC_BASE_URL' in o.env) && !('CLAUDE_CODE_USE_BEDROCK' in o.env) && o.env.PATH === 'p' && /^atlias\//.test(o.env.CLAUDE_AGENT_SDK_CLIENT_APP),
       { happened: JSON.stringify(o.env), why: 'An API key in the environment would bill an API account instead of the plan.', fix: 'Build env with cleanEnv.' });
+    check('a call with no interactive flag asks for the 5-minute cache', o.env.CLAUDE_CODE_PROMPT_CACHE_TTL === '5m', { happened: String(o.env.CLAUDE_CODE_PROMPT_CACHE_TTL), why: 'exec and sub-agent calls come seconds apart', fix: 'claudePlanChat passes at.interactive to planOptions' });
+    const seenLive = {};
+    await plan.claudePlanChat({}, { sdk: fakeSdk([init(), reply('x'), ok('x')], seenLive), env: { PATH: 'p' } })(msgs, null, { cwd: TMP, interactive: true });
+    check('an interactive call leaves the CLI 1-hour default in place', Boolean(seenLive.options) && !('CLAUDE_CODE_PROMPT_CACHE_TTL' in seenLive.options.env),
+      { happened: JSON.stringify(seenLive.options && seenLive.options.env), why: 'a person may pause past 5 minutes; the whole conversation would be written again', fix: 'claudePlanChat passes at.interactive to planOptions' });
     check('Atlias\'s system prompt is the whole system prompt, with the transcript note', o.systemPrompt.startsWith('SYSTEM RULES') && o.systemPrompt.endsWith(plan.TRANSCRIPT_NOTE),
       { happened: o.systemPrompt, why: 'Atlias\'s own text tools are described there.', fix: 'Use systemText.' });
 
@@ -57,6 +62,10 @@ export default async function claudePlanSuites({ asyncSuite, suite, check, core,
     const stable = plan.planOptions({}, { system: 's', env: { HOME: 'h' } }).env;
     check('each call turns off the git status snapshot, CLAUDE.md files and attachments', stable.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS === '1' && stable.CLAUDE_CODE_DISABLE_CLAUDE_MDS === '1' && stable.CLAUDE_CODE_DISABLE_ATTACHMENTS === '1' && stable.CLAUDE_CODE_PROMPT_CACHE_TTL === '5m' && stable.HOME === 'h',
       { happened: JSON.stringify(stable), why: 'Each call is a new CLI process; a git status taken again after an edit sits before the transcript and voids its cache.', fix: 'Merge STABLE_PREFIX_ENV into planOptions env.' });
+    const live = plan.planOptions({}, { system: 's', env: { HOME: 'h' }, interactive: true }).env;
+    const own = plan.planOptions({}, { system: 's', env: { CLAUDE_CODE_PROMPT_CACHE_TTL: '1h' }, interactive: false }).env;
+    check('an interactive turn keeps the 1-hour default; a one-shot call asks for 5 minutes over any inherited value', !('CLAUDE_CODE_PROMPT_CACHE_TTL' in live) && live.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS === '1' && own.CLAUDE_CODE_PROMPT_CACHE_TTL === '5m',
+      { happened: JSON.stringify({ live, own }), why: 'Gev: 26% of prompts came 5-60 minutes after the last event; a 5-minute entry is gone by then and the whole conversation is written again.', fix: 'planOptions: ONE_SHOT_TTL_ENV only when not interactive.' });
     const env = plan.cleanEnv({ anthropic_api_key: 'lower', ANTHROPIC_AUTH_TOKEN: 't', HOME: 'h' });
     check('cleanEnv drops blocked names in any case and keeps the rest', !('anthropic_api_key' in env) && !('ANTHROPIC_AUTH_TOKEN' in env) && env.HOME === 'h', { happened: JSON.stringify(env), why: 'Windows environment names are case-insensitive.', fix: 'Compare upper-cased names.' });
     const opts = plan.planOptions({ claudePlanEffort: 'model' }, { system: 's' });

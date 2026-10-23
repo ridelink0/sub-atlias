@@ -93,6 +93,15 @@ export default async function cacheMaskSuites({ suite, asyncSuite, check, TMP, f
       { happened: 'the eval prompt changed', why: 'eval and benchmark prompts must stay byte-identical', fix: 'runLoop interactive defaults to false' });
     check('an interactive runLoop sends it on Windows', interactivePrompt.includes(loop.SHELL_NOTE_WIN) === win,
       { happened: interactivePrompt.slice(-300), why: 'agent.mjs passes interactive: true for repl and exec turns', fix: 'runLoop passes shellNote to systemPrompt; agent.mjs sets it for repl and exec turns' });
+    const flagSeen = async (opts, depth) => {
+      const seen = [];
+      const st = { cwd: dir, messages: [], engine: 'ollama', ...(depth ? { depth } : {}) };
+      await loop.runLoop(st, 'say hi', { chat: async (_m, _t, at) => { seen.push(at && at.interactive); return { content: 'hi', calls: [] }; }, ...opts });
+      return seen;
+    };
+    const [atPrompt, oneShot, child] = [await flagSeen({ interactive: true }), await flagSeen({}), await flagSeen({ interactive: true }, 1)];
+    check('each model call is told whether a person is at the prompt: only a top-level interactive turn is', atPrompt[0] === true && oneShot[0] === false && child[0] === false,
+      { happened: JSON.stringify({ atPrompt, oneShot, child }), why: 'claude-plan keeps the 1-hour cache only where a person may pause between prompts', fix: 'runLoop passes interactive: state.interactive to chat' });
   });
   suite('cache and token expert', 'the Anthropic API route marks the system prompt and the last block for the cache', () => {
     const body = anthropicBody([{ role: 'system', content: 'sys' }, { role: 'user', content: 'one' }, { role: 'assistant', content: 'two' }, { role: 'user', content: 'three' }], { model: 'm' });
