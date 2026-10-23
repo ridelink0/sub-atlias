@@ -143,6 +143,18 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     // The sent line is now the newest entry, so the walk reaches the loaded 'first' on the third Up.
     p = r.start(); r.send('\u001b[A'); r.send('\u001b[A'); r.send('\u001b[A'); r.send('\r'); answer = await p;
     check('Up walks back to the earlier loaded line', answer.text === 'first', detail(JSON.stringify(answer)));
+    // TUI-A item 12: Ctrl+R searches the history newest first and shows the match in the box; Enter takes it, Esc cancels.
+    r = rig({ history: { initial: ['alpha one', 'beta two', 'alpha three'] } });
+    p = r.start(); r.send('\u0012'); r.send('alpha');
+    check('Ctrl+R shows the newest match in the box as "(search) query: match" (TUI-A item 12)', r.output.text.includes('(search) alpha: alpha three'), detail());
+    r.send('\r'); r.send('\r'); answer = await p;
+    check('Enter takes the match into the draft, and the next Enter sends it', answer.text === 'alpha three', detail(JSON.stringify(answer)));
+    r = rig({ history: { initial: ['alpha one', 'beta two', 'alpha three'] } });
+    p = r.start(); r.send('\u0012'); r.send('alpha'); r.send('\u0012'); r.send('\r'); r.send('\r'); answer = await p;
+    check('a second Ctrl+R steps to the next older match', answer.text === 'alpha one', detail(JSON.stringify(answer)));
+    r = rig({ history: { initial: ['alpha one'] } });
+    p = r.start(); r.send('draft'); r.send('\u0012'); r.send('zz'); r.send('\u001b'); await new Promise((resolve) => setTimeout(resolve, 100)); r.send('\r'); answer = await p;
+    check('Esc cancels the search and keeps the draft (TUI-A item 12)', answer.text === 'draft', detail(JSON.stringify(answer)));
     r = rig(); p = r.start(); r.send('draft'); r.send('\u001b[A'); r.send('\u001b[B'); r.send('\r'); answer = await p;
     check('history down restores the current draft', answer.text === 'draft', detail(JSON.stringify(answer)));
     // B9: ESC O D is the left arrow in application cursor mode, even when its three bytes arrive in three reads;
