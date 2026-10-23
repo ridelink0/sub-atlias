@@ -1122,6 +1122,8 @@ await (await import('./features-1022-project-settings-suites.mjs')).default({ su
 await (await import('./features-1022-exec-suites.mjs')).default({ suite, check, TMP, ROOT, fs, path });
 await (await import('./features-1022-plan-suites.mjs')).default({ asyncSuite, check, agentMod: await import('../lib/agent.mjs') });
 await (await import('./features-1022-rewind-suites.mjs')).default({ asyncSuite, check, TMP });
+await (await import('./features-1022-webfetch-suites.mjs')).default({ asyncSuite, check });
+await (await import('./features-1022-background-suites.mjs')).default({ asyncSuite, check, TMP, ROOT });
 
 let failed = 0;
 for (const r of results) {
