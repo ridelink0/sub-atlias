@@ -128,6 +128,11 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('backspace deletes a whole combining grapheme', answer.text === '界', detail(JSON.stringify(answer)));
     p = r.start(); const bytes = Buffer.from('界'); r.send(bytes.subarray(0, 1)); r.send(bytes.subarray(1)); r.send('\r'); answer = await p;
     check('split UTF8 input is decoded without replacement characters', answer.text === '界', detail(JSON.stringify(answer)));
+    // Ctrl+U deletes from the cursor to the start of the line only (Claude Code), not the whole draft.
+    p = r.start(); r.send('abc'); r.send('\u001b[D'); r.send('\x15'); r.send('\r'); answer = await p;
+    check('Ctrl+U deletes from the cursor back to the start of the line, keeping the rest (TUI-A item 9)', answer.text === 'c', detail(JSON.stringify(answer)));
+    p = r.start(); r.send('one two'); r.send('\x15'); r.send('x'); r.send('\r'); answer = await p;
+    check('Ctrl+U at the end of a line clears it', answer.text === 'x', detail(JSON.stringify(answer)));
     p = r.start(); r.send('draft'); r.send('\u001b[A'); r.send('\u001b[B'); r.send('\r'); answer = await p;
     check('history down restores the current draft', answer.text === 'draft', detail(JSON.stringify(answer)));
     // B9: ESC O D is the left arrow in application cursor mode, even when its three bytes arrive in three reads;
