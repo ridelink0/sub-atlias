@@ -51,6 +51,12 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
   // B7: zero-width space, word joiner and BOM take no cell, so the right border of a draft holding them stays in its column.
   const zeroWidth = ui.renderComposer({ text: 'x​y⁠﻿', info: {}, columns: 80, rows: 24 }).lines;
   check('zero-width space, word joiner and BOM are zero cells wide (B7)', ui.textWidth('a​⁠﻿b') === 2 && ui.textWidth(zeroWidth[2]) === ui.textWidth(zeroWidth[0]), detail(JSON.stringify([ui.textWidth('a​b'), ui.textWidth(zeroWidth[2]), ui.textWidth(zeroWidth[0])])));
+  // B11: a 12-line draft shows the lines around the caret, with a marker row for the lines out of view.
+  const twelve = Array.from({ length: 12 }, (_, i) => 'l' + (i + 1)).join('\n');
+  const atEnd = ui.renderComposer({ text: twelve, info: {}, columns: 80, rows: 24 });
+  check('a draft taller than the box marks the lines above and keeps the caret row visible (B11)', atEnd.lines[2] === '| ' + ui.clipText('... 8 more lines above', 75).padEnd(75) + ' |' && atEnd.lines[6].includes('l12') && atEnd.cursor.row === 6, detail(JSON.stringify([atEnd.lines[2], atEnd.lines[6], atEnd.cursor])));
+  const atStart = ui.renderComposer({ text: twelve, cursor: 0, info: {}, columns: 80, rows: 24 });
+  check('the lines below are marked at the foot of the box (B11)', atStart.lines[6].includes('... 8 more lines below') && atStart.lines[2].includes('l1') && atStart.dim.length === 1, detail(JSON.stringify([atStart.lines[2], atStart.lines[6]])));
   // B5: the footer keeps whole segments; a segment that does not fit is dropped, never cut mid-number.
   const footerInfo = { engine: 'echo (dry run)', permission: 'workspace', tokens: ['Claude plan', 'session', 'ctx 1,234', 'in 5,678'] };
   const footerAt = (columns) => ui.renderComposer({ text: 'x', info: footerInfo, columns, rows: 24 }).lines.at(-1);
