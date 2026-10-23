@@ -41,7 +41,16 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
       check(`rendered frame is bounded at ${columns}x${height}`, f.width <= 239 && (!Number.isFinite(columns) || f.width <= columns) && f.lines.every((x) => ui.textWidth(x) <= f.width) && f.lines.length <= (Number.isFinite(height) ? height : 24) && Number.isFinite(f.cursor.col) && f.cursor.col < f.width, detail(JSON.stringify(f.cursor)));
     }
     const source = fs.readFileSync(path.join(ROOT, 'lib/terminal-ui.mjs'), 'utf8');
-    check('the renderer never starts a shell, model, network or alternate screen', !/child_process|fetch\(|model\.complete|1049h/.test(source), detail());
+    // B4: under 30 rows the start screen is three lines with no wordmark and no blank rows; a tall terminal keeps the wordmark.
+  for (const rowCount of [24, 40]) {
+    const start = rig(); start.output.rows = rowCount; start.terminal.welcome('4.0.0', 'C:/project');
+    const text = start.output.text, boxAt = text.indexOf('+');
+    const above = text.slice(0, boxAt).replace(/\r\n$/, '').split('\r\n');
+    const shortScreen = rowCount < 30;
+    check(`a ${rowCount}-row start screen ${shortScreen ? 'is three lines with no wordmark or blank rows' : 'keeps the wordmark'} (B4)`, shortScreen ? above.length === 3 && above.every((x) => x.trim() !== '') && !text.includes('█') : text.includes('█') && above.length > 3, detail(JSON.stringify(above)));
+    start.terminal.close();
+  }
+  check('the renderer never starts a shell, model, network or alternate screen',!/child_process|fetch\(|model\.complete|1049h/.test(source), detail());
   });
 
   await asyncSuite('terminal input expert', 'terminal composer keys, paste, prompts and cleanup', async () => {
