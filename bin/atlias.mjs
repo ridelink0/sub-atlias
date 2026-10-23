@@ -377,15 +377,20 @@ else switch (cmd) {
   case 'exec': {
     // The prompt is every word that is not a flag or a flag's value; - or a
     // pipe reads it from stdin, as codex exec does.
-    const valued = new Set(['--engine', '--resume']);
+    const valued = new Set(['--engine', '--resume', '--output-format', '--permissions']);
     const words = [];
     for (let i = 1; i < argv.length; i++) { if (valued.has(argv[i])) { i++; continue; } if (!argv[i].startsWith('--')) words.push(argv[i]); }
     let prompt = words.join(' ').trim();
     if (prompt === '-' || (!prompt && !process.stdin.isTTY)) { prompt = ''; for await (const chunk of process.stdin) prompt += chunk; prompt = prompt.trim(); }
     if (!prompt) { say('usage: atlias exec "<prompt>" [--engine chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)'); process.exitCode = 2; break; }
+    const format = after('--output-format') || (flag('--json') ? 'json' : 'text');
+    if (!['text', 'json', 'stream-json'].includes(format)) { say('--output-format must be text, json or stream-json'); process.exitCode = 2; break; }
+    const permissions = after('--permissions');
+    if (permissions && !['read-only', 'plan', 'workspace', 'auto'].includes(permissions)) { say('--permissions must be read-only, plan, workspace or auto'); process.exitCode = 2; break; }
     const rs = after('--resume');
-    const res = await agent.runOnce({ engine: after('--engine'), prompt, resume: flag('--resume') ? (rs && !rs.startsWith('--') ? rs : 'last') : null, sandbox: sandboxFlag() });
-    say(flag('--json') ? JSON.stringify(res.json) : res.text);
+    const res = await agent.runOnce({ engine: after('--engine'), prompt, resume: flag('--resume') ? (rs && !rs.startsWith('--') ? rs : 'last') : null, sandbox: sandboxFlag(), permissions, emit: format === 'stream-json' ? (ev) => say(JSON.stringify(ev)) : null });
+    if (format === 'stream-json') { if (res.code !== 0) say(JSON.stringify({ type: 'error', message: res.text })); }
+    else say(format === 'json' ? JSON.stringify(res.json) : res.text);
     process.exitCode = res.code;
     break;
   }
