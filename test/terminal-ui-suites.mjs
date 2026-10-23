@@ -218,6 +218,17 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     const paints = (r.output.text.split('esc to interrupt').length - 1) - before;
     check('a running turn shows "esc to interrupt" and repaints it 5 to 12 times a second (TUI-B 2)', before >= 1 && paints >= 5 && paints <= 12 && /[|/\\-] \d+s  esc to interrupt/.test(r.output.text), detail(JSON.stringify({ before, paints })));
     r.terminal.turnEnd();
+    // TUI-B 3: Enter during a turn queues the message (dim "queued: ...") and the turn hands it back; typed text becomes the next draft.
+    r = rig(); const queuing = new AbortController(); r.terminal.turnStart(queuing);
+    r.send('next one'); r.send('\r'); r.send('half');
+    check('Enter during a turn queues the message and shows it as "queued: ..." (TUI-B 3)', r.output.text.includes('queued: next one') && r.output.text.includes('\u001b[2m') === false, detail());
+    const ended = r.terminal.turnEnd();
+    check('the turn hands back the queued message, and the unsent text as the draft (TUI-B 3)', JSON.stringify(ended.queued) === JSON.stringify(['next one']) && ended.draft === 'half' && !ended.exit, detail(JSON.stringify(ended)));
+    const carried = r.terminal.prompt(ended.draft); r.send('\r');
+    check('the next prompt starts with that draft (TUI-B 3)', (await settle(carried)) === 'half', detail());
+    r = rig({ env: {} }); r.terminal.turnStart(new AbortController()); r.send('kept'); r.send('\r');
+    check('queued text is shown dim when colour is on (TUI-B 3)', r.output.text.includes('\u001b[2mqueued: kept\u001b[0m'), detail(JSON.stringify(r.output.text.slice(-120))));
+    r.terminal.turnEnd();
     r = rig(); const second = new AbortController(); r.terminal.turnStart(second); r.send('\x03');
     check('the first Ctrl+C stops the turn and Atlias stays open', second.signal.aborted && r.terminal.turnEnd().exit === false, detail());
     r = rig(); const third = new AbortController(); r.terminal.turnStart(third);
