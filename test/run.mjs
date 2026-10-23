@@ -1118,6 +1118,17 @@ await (await import('./qol-suites.mjs')).default({ suite, asyncSuite, check, cor
 await (await import('./terminal-ui-suites.mjs')).default({ suite, asyncSuite, check, core, fs, path, ROOT });
 await (await import('./direct-contract-suites.mjs')).default({ asyncSuite, check, ROOT, path, spawnSync });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
+await (await import('./features-1022-compact-suites.mjs')).default({ asyncSuite, check, TMP, agentMod, commands: await import('../lib/commands.mjs') });
+await (await import('./features-1022-project-settings-suites.mjs')).default({ suite, check, core, TMP, fs, path });
+await (await import('./features-1022-exec-suites.mjs')).default({ suite, check, TMP, ROOT, fs, path });
+await (await import('./features-1022-plan-suites.mjs')).default({ asyncSuite, check, agentMod: await import('../lib/agent.mjs') });
+await (await import('./features-1022-rewind-suites.mjs')).default({ asyncSuite, check, TMP });
+await (await import('./features-1022-rewind2-suites.mjs')).default({ asyncSuite, check, TMP });
+await (await import('./features-1022-webfetch-suites.mjs')).default({ asyncSuite, check });
+await (await import('./features-1022-background-suites.mjs')).default({ asyncSuite, check, TMP, ROOT });
+await (await import('./features-1022-tools-suites.mjs')).default({ asyncSuite, check, TMP });
+await (await import('./features-1022-review-fix-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
+await (await import('./features-1022-review-fix2-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
 
 let failed = 0;
 for (const r of results) {

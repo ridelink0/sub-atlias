@@ -88,11 +88,11 @@ export default async function cacheMaskSuites({ suite, asyncSuite, check, TMP, f
       return String(st.messages[0].content);
     };
     const evalPrompt = await firstSystem({});
-    const interactivePrompt = await firstSystem({ interactive: true });
+    const interactivePrompt = await firstSystem({ shellNote: true });
     check('runLoop without interactive (the eval path) sends no shell line', !evalPrompt.includes(loop.SHELL_NOTE_WIN),
       { happened: 'the eval prompt changed', why: 'eval and benchmark prompts must stay byte-identical', fix: 'runLoop interactive defaults to false' });
     check('an interactive runLoop sends it on Windows', interactivePrompt.includes(loop.SHELL_NOTE_WIN) === win,
-      { happened: interactivePrompt.slice(-300), why: 'agent.mjs passes interactive: true for repl and exec turns', fix: 'runLoop passes shellNote: interactive' });
+      { happened: interactivePrompt.slice(-300), why: 'agent.mjs passes interactive: true for repl and exec turns', fix: 'runLoop passes shellNote to systemPrompt; agent.mjs sets it for repl and exec turns' });
   });
   suite('cache and token expert', 'the Anthropic API route marks the system prompt and the last block for the cache', () => {
     const body = anthropicBody([{ role: 'system', content: 'sys' }, { role: 'user', content: 'one' }, { role: 'assistant', content: 'two' }, { role: 'user', content: 'three' }], { model: 'm' });
