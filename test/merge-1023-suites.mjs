@@ -62,10 +62,14 @@ export async function treeStopSuite({ asyncSuite, check, bg, EventEmitter, dir }
   await asyncSuite('merge expert', 'h4 B3: kill, the time limit and the output cap stop the whole tree a background job started', async () => {
     const stopped = [];
     const fake = () => { const c = new EventEmitter(); c.pid = 4242; c.kill = () => stopped.push('shell-only'); return c; };
-    const r = bg.start('anything', { cwd: dir, dir, spawnImpl: fake, treeStop: (pid) => stopped.push(pid) });
+    // The fake exits when stopped, so it leaves no job counted as running for later suites.
+    let child;
+    const r = bg.start('anything', { cwd: dir, dir, spawnImpl: (...x) => (child = fake(...x)), treeStop: (pid) => { stopped.push(pid); setImmediate(() => child.emit('exit', null, 'SIGKILL')); } });
     const reply = bg.kill(r.id);
     check('kill hands the job pid to the tree stop, not just the shell', stopped[0] === 4242 && /stop sent/.test(reply),
       { happened: JSON.stringify(stopped) + ' ' + reply, why: 'a probe showed a child writing 8 MB a second after the shell was killed', fix: 'stop() calls job.treeStop(job.child.pid, job.child)' });
+    await bg.waitFor(r.id);
+    check('the stopped job ends and holds no slot', bg.running() === 0, { happened: 'running ' + bg.running(), why: 'a job left counted blocks later starts', fix: 'stop must lead to the exit event' });
   });
 }
 
