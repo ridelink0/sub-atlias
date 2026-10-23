@@ -57,3 +57,31 @@ export default async function merge1023Suites({ asyncSuite, check }) {
       { happened: 'threw', why: 'tests and /clear call it', fix: 'clearCache' });
   });
 }
+
+export async function treeStopSuite({ asyncSuite, check, bg, EventEmitter, dir }) {
+  await asyncSuite('merge expert', 'h4 B3: kill, the time limit and the output cap stop the whole tree a background job started', async () => {
+    const stopped = [];
+    const fake = () => { const c = new EventEmitter(); c.pid = 4242; c.kill = () => stopped.push('shell-only'); return c; };
+    const r = bg.start('anything', { cwd: dir, dir, spawnImpl: fake, treeStop: (pid) => stopped.push(pid) });
+    const reply = bg.kill(r.id);
+    check('kill hands the job pid to the tree stop, not just the shell', stopped[0] === 4242 && /stop sent/.test(reply),
+      { happened: JSON.stringify(stopped) + ' ' + reply, why: 'a probe showed a child writing 8 MB a second after the shell was killed', fix: 'stop() calls job.treeStop(job.child.pid, job.child)' });
+  });
+}
+
+export async function h4LowSuite({ asyncSuite, check, agentMod, webfetch, http }) {
+  await asyncSuite('merge expert', 'h4 G1 and the two web_fetch lows: one-shot runs get no repl tools; 6to4 and pooled sockets cannot slip past the address check', async () => {
+    check('a repl turn is interactive, a one-shot run and a turn without ask are not', agentMod.replTurn({}, () => '') === true && agentMod.replTurn({ once: true }, () => '') === false && agentMod.replTurn({}, null) === false,
+      { happened: 'replTurn misjudged', why: 'atlias agent --once is scripted; nobody watches web_fetch or a background job there', fix: 'replTurn' });
+    check('a 6to4 address is judged by the IPv4 inside it', webfetch.privateAddress('2002:c0a8:0101::1') === true && webfetch.privateAddress('2002:7f00:0001::') === true && webfetch.privateAddress('2002:5db8:d822::1') === false,
+      { happened: [webfetch.privateAddress('2002:c0a8:0101::1'), webfetch.privateAddress('2002:7f00:0001::'), webfetch.privateAddress('2002:5db8:d822::1')].join(','), why: '2002:c0a8:0101:: is 192.168.1.1', fix: 'privateAddress 6to4 branch' });
+    const seen = [];
+    const server = http.createServer((req, res) => { seen.push(req.headers.connection); res.end('ok'); });
+    await new Promise((r) => server.listen(0, '127.0.0.1', r));
+    const port = server.address().port;
+    try { for (let i = 0; i < 2; i++) await webfetch.pinnedTransport(`http://pinned.test:${port}/`, { address: '127.0.0.1', family: 4 }); } catch { /* the answer shape does not matter here */ }
+    server.close();
+    check('each fetch opens its own connection (no pooled keep-alive socket)', seen.length === 2 && seen.every((c) => c === 'close'),
+      { happened: JSON.stringify(seen), why: 'a reused socket skips the pinned lookup', fix: 'agent: false in pinnedTransport' });
+  });
+}
