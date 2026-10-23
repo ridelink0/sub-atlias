@@ -124,6 +124,12 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('split UTF8 input is decoded without replacement characters', answer.text === '界', detail(JSON.stringify(answer)));
     p = r.start(); r.send('draft'); r.send('\u001b[A'); r.send('\u001b[B'); r.send('\r'); answer = await p;
     check('history down restores the current draft', answer.text === 'draft', detail(JSON.stringify(answer)));
+    // B9: ESC O D is the left arrow in application cursor mode, even when its three bytes arrive in three reads;
+    // a lone ESC O is held for its last byte, never typed as text.
+    p = r.start(); r.send('ab'); r.send('\u001b'); r.send('O'); r.send('D'); r.send('X'); r.send('\r'); answer = await p;
+    check('ESC O D moves left across split reads (B9)', answer.text === 'aXb', detail(JSON.stringify(answer)));
+    p = r.start(); r.send('ab'); r.send('\u001bO'); r.send('H'); r.send('X'); r.send('\r'); answer = await p;
+    check('ESC O H moves to the start and a lone ESC O is not typed (B9)', answer.text === 'Xab', detail(JSON.stringify(answer)));
     p = r.start(); r.send('/h'); r.output.columns = 32; r.output.rows = 10; r.output.emit('resize'); r.send('\t'); r.send('\r'); answer = await p;
     check('resize retains the draft and palette selection', answer.text === '/help ', detail(JSON.stringify(answer)));
     // B2: a 79-cell box line wraps to two rows at 40 columns. The draft's cursor sits on the third
