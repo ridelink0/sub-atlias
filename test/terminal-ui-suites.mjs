@@ -16,7 +16,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     output.write = (s) => { output.text += s; };
     let fallbackCalls = 0, fallbackClosed = 0;
     const createUI = opts.impl ? opts.impl.createTerminalUI : ui.createTerminalUI;
-    const terminal = createUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, getCommands: () => opts.rows || rows,
+    const terminal = createUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, history: opts.history, getCommands: () => opts.rows || rows,
       getInfo: () => ({ engine: 'echo', permission: 'workspace', tokens: 'tokens not recorded' }),
       fallbackQuestion: async () => { fallbackCalls++; return 'plain answer'; }, closeFallback: () => fallbackClosed++ });
     const start = (q) => (q === undefined ? terminal.prompt() : terminal.question(q)).then((text) => ({ text }), (error) => ({ error: error.message }));
@@ -135,7 +135,15 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('Ctrl+U deletes from the cursor back to the start of the line, keeping the rest (TUI-A item 9)', answer.text === 'c', detail(JSON.stringify(answer)));
     p = r.start(); r.send('one two'); r.send('\x15'); r.send('x'); r.send('\r'); answer = await p;
     check('Ctrl+U at the end of a line clears it', answer.text === 'x', detail(JSON.stringify(answer)));
-    p = r.start(); r.send('draft'); r.send('\u001b[A'); r.send('\u001b[B'); r.send('\r'); answer = await p;
+    // TUI-A item 11: the history loaded at start is walked with Up, and every sent line is handed to the save.
+    const saved = []; r = rig({ history: { initial: ['first', 'second'], save: (list) => saved.push(list) } });
+    p = r.start(); r.send('\u001b[A'); r.send('\r'); answer = await p;
+    check('Up recalls the last line of the history loaded at start (TUI-A item 11)', answer.text === 'second', detail(JSON.stringify(answer)));
+    check('each sent line is handed to the save with the history so far', JSON.stringify(saved[0]) === JSON.stringify(['first', 'second', 'second']), detail(JSON.stringify(saved)));
+    // The sent line is now the newest entry, so the walk reaches the loaded 'first' on the third Up.
+    p = r.start(); r.send('\u001b[A'); r.send('\u001b[A'); r.send('\u001b[A'); r.send('\r'); answer = await p;
+    check('Up walks back to the earlier loaded line', answer.text === 'first', detail(JSON.stringify(answer)));
+    r = rig(); p = r.start(); r.send('draft'); r.send('\u001b[A'); r.send('\u001b[B'); r.send('\r'); answer = await p;
     check('history down restores the current draft', answer.text === 'draft', detail(JSON.stringify(answer)));
     // B9: ESC O D is the left arrow in application cursor mode, even when its three bytes arrive in three reads;
     // a lone ESC O is held for its last byte, never typed as text.
@@ -188,6 +196,18 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('terminal status is a direct command without a model turn', lines.some((x) => x.startsWith('terminal command:')), detail(JSON.stringify(lines)));
     const src = fs.readFileSync(path.join(ROOT, 'lib/agent.mjs'), 'utf8');
     check('the interactive module is dynamically loaded only in replIn', src.indexOf("import('./terminal-ui.mjs')") > src.indexOf('async function replIn'), detail());
+    // TUI-A item 11: the history file is one per project folder, keeps the last 200 lines, and a damaged file reads as empty.
+    const ih = await import('../lib/input-history.mjs');
+    const stateDir = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-input-history-'));
+    try {
+      const fileA = ih.fileFor(stateDir, ROOT), fileB = ih.fileFor(stateDir, path.join(ROOT, 'other'));
+      ih.write(fileA, Array.from({ length: 250 }, (_, i) => `line ${i}`));
+      const back = ih.read(fileA);
+      check('input history keeps the last 200 lines per project (TUI-A item 11)', back.length === 200 && back[0] === 'line 50' && back.at(-1) === 'line 249', detail(JSON.stringify([back.length, back[0], back.at(-1)])));
+      check('each project folder has its own history file (TUI-A item 11)', fileA !== fileB && ih.read(fileB).length === 0 && path.dirname(fileA) === path.join(stateDir, 'input-history'), detail(fileA));
+      fs.writeFileSync(fileB, '{ not json');
+      check('a damaged history file reads as empty instead of stopping Atlias (TUI-A item 11)', ih.read(fileB).length === 0 && ih.read(path.join(stateDir, 'missing.json')).length === 0, detail());
+    } finally { fs.rmSync(stateDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); }
     for (const file of ['lib/loop.mjs', 'lib/eval.mjs', 'tools/h2h/atlias_task.mjs']) check(`${file} has no terminal composer import`, !fs.readFileSync(path.join(ROOT, file), 'utf8').includes('terminal-ui'), detail());
   });
 }
