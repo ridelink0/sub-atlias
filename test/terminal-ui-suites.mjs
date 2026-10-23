@@ -126,4 +126,23 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('the interactive module is dynamically loaded only in replIn', src.indexOf("import('./terminal-ui.mjs')") > src.indexOf('async function replIn'), detail());
     for (const file of ['lib/loop.mjs', 'lib/eval.mjs', 'tools/h2h/atlias_task.mjs']) check(`${file} has no terminal composer import`, !fs.readFileSync(path.join(ROOT, file), 'utf8').includes('terminal-ui'), detail());
   });
+
+  await asyncSuite('terminal input expert', 'esc esc on an empty prompt sends /rewind, as if typed; one Esc, or Esc after text, does not', async () => {
+    const pause = (ms) => new Promise((res) => setTimeout(res, ms));
+    let r = rig();
+    let answer;
+    const p = r.start().then((x) => { answer = x; });
+    r.send(''); await pause(150);
+    check('one Esc on an empty prompt leaves the prompt open', answer === undefined, detail());
+    r.send(''); await pause(150);
+    await Promise.race([p, pause(800)]);
+    check('two Esc on an empty prompt send /rewind, as if typed', answer && answer.text === '/rewind', detail(JSON.stringify(answer)));
+    let r2 = rig();
+    let answer2;
+    const p2 = r2.start().then((x) => { answer2 = x; });
+    r2.send('abc'); r2.send(''); await pause(150); r2.send(''); await pause(150);
+    check('Esc Esc after text does not send /rewind and keeps the text', answer2 === undefined, detail());
+    r2.send('\r'); await Promise.race([p2, pause(800)]);
+    check('the text survives and Enter returns it', answer2 && answer2.text === 'abc', detail(JSON.stringify(answer2)));
+  });
 }
