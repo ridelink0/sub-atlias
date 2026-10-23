@@ -309,8 +309,8 @@ export default async function importSuites({ suite, asyncSuite, check, skip, cor
     const src = read('lib/agent.mjs');
     const exec = src.slice(src.indexOf('async function execOnce'), src.indexOf('export const slashApi'));
     check('atlias exec and --once never offer an import: the offer is inside the repl only, and not for --once', !/importer/.test(exec) && /if \(!opts\.once\) await importer\.firstRunOffer/.test(src) && (src.match(/importer\.firstRunOffer/g) || []).length === 1, { happened: 'importer referenced in execOnce or twice', why: 'exec is non-interactive and has no one to ask.', fix: 'Call it only in replIn.' });
-    const r5 = spawnSync('git', ['diff', '--name-only', '672b60f', '--', 'lib/loop.mjs', 'lib/eval.mjs', 'tools/h2h'], { cwd: ROOT, encoding: 'utf8' });
-    if (r5.status === 0) check('git: lib/loop.mjs, lib/eval.mjs and tools/h2h are byte-identical to the base commit 672b60f', r5.stdout.trim() === '', { happened: r5.stdout.trim(), why: 'Gev: the benchmark path must not change.', fix: 'Revert the change to the benchmark path.' });
-    else skip('git diff against 672b60f', 'the base commit is not in this checkout');
+    const r5 = spawnSync('git', ['diff', '--name-only', 'd3bdc73', '--', 'lib/loop.mjs', 'lib/eval.mjs', 'tools/h2h'], { cwd: ROOT, encoding: 'utf8' });
+    if (r5.status === 0) check('git: lib/loop.mjs, lib/eval.mjs and tools/h2h are byte-identical to the base commit d3bdc73', r5.stdout.trim() === '', { happened: r5.stdout.trim(), why: 'Gev: the benchmark path must not change.', fix: 'Revert the change to the benchmark path.' });
+    else skip('git diff against d3bdc73', 'the base commit is not in this checkout');
   });
 }
