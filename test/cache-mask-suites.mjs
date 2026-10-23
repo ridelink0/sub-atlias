@@ -3,6 +3,7 @@
 // results are masked rarely and in one batch; everything else keeps the
 // count rule that eval and benchmark runs were measured with.
 import * as loop from '../lib/loop.mjs';
+import { anthropicBody } from '../lib/direct-transports.mjs';
 
 export default async function cacheMaskSuites({ suite, asyncSuite, check, TMP, fs, path }) {
   const obs = (n) => ({ role: 'user', content: 'x'.repeat(n), _obs: { label: 'read', summary: 'r' } });
@@ -20,7 +21,9 @@ export default async function cacheMaskSuites({ suite, asyncSuite, check, TMP, f
     const p = loop.maskPolicyFor({}, 'claude-plan');
     check('claude-plan gets the cache rule with its defaults', p && p.high === 240000 && p.low === 80000,
       { happened: JSON.stringify(p), why: 'claude-plan reads a cached prefix at a tenth of the price', fix: 'maskPolicyFor' });
-    check('every other engine keeps the count rule', loop.maskPolicyFor({}, 'ollama') === null && loop.maskPolicyFor({}, 'openai') === null && loop.maskPolicyFor({}, '') === null,
+    check('every cloud route that caches a prefix gets the cache rule', ['chatgpt', 'responses', 'anthropic', 'gemini'].every((e) => loop.maskPolicyFor({}, e)?.high === 240000),
+      { happened: 'a cloud route kept the count rule', why: 'OpenAI, Gemini and Anthropic all cache an exact prefix only', fix: 'CACHED_ENGINES' });
+    check('local engines keep the count rule', loop.maskPolicyFor({}, 'ollama') === null && loop.maskPolicyFor({}, 'openai') === null && loop.maskPolicyFor({}, '') === null,
       { happened: 'a non-claude-plan engine got the cache rule', why: 'eval and benchmark runs were measured with the count rule', fix: 'maskPolicyFor' });
     check('maskPolicy setting forces either rule', loop.maskPolicyFor({ maskPolicy: 'count' }, 'claude-plan') === null && loop.maskPolicyFor({ maskPolicy: 'cache' }, 'ollama')?.high === 240000,
       { happened: 'the setting was ignored', why: 'agent.maskPolicy overrides the engine default', fix: 'maskPolicyFor' });
@@ -90,5 +93,15 @@ export default async function cacheMaskSuites({ suite, asyncSuite, check, TMP, f
       { happened: 'the eval prompt changed', why: 'eval and benchmark prompts must stay byte-identical', fix: 'runLoop interactive defaults to false' });
     check('an interactive runLoop sends it on Windows', interactivePrompt.includes(loop.SHELL_NOTE_WIN) === win,
       { happened: interactivePrompt.slice(-300), why: 'agent.mjs passes interactive: true for repl and exec turns', fix: 'runLoop passes shellNote: interactive' });
+  });
+  suite('cache and token expert', 'the Anthropic API route marks the system prompt and the last block for the cache', () => {
+    const body = anthropicBody([{ role: 'system', content: 'sys' }, { role: 'user', content: 'one' }, { role: 'assistant', content: 'two' }, { role: 'user', content: 'three' }], { model: 'm' });
+    const marks = JSON.stringify(body).split('cache_control').length - 1;
+    check('two marks: system and the last message block', marks === 2 && body.system[0].cache_control?.type === 'ephemeral' && body.messages.at(-1).content.at(-1).cache_control?.type === 'ephemeral',
+      { happened: JSON.stringify(body), why: 'without a mark the Messages API caches nothing', fix: 'markCache in direct-transports' });
+    check('earlier messages carry no mark, so their bytes stay what the cache holds', !JSON.stringify(body.messages.slice(0, -1)).includes('cache_control'),
+      { happened: JSON.stringify(body.messages), why: 'a mark that moves changes an earlier block', fix: 'mark only the last block' });
+    const off = anthropicBody([{ role: 'user', content: 'x' }], { model: 'm', cache: false });
+    check('cache: false sends no mark', !JSON.stringify(off).includes('cache_control'), { happened: JSON.stringify(off), why: 'an escape hatch for endpoints that reject the field', fix: 'opts.cache' });
   });
 }
