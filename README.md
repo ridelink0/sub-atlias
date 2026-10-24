@@ -51,7 +51,30 @@ stay in the native session. See [API setup and measured cost estimates](docs/API
 for supported protocols, credentials and resume commands. These optional
 features do not establish a 20x benchmark result.
 
-Every number below was measured, on one consumer PC, with a local 9-billion-parameter model (`qwen3.5:9b` through Ollama, a 16,384-token window, replies capped at 2,048 tokens). A task counts as solved only when its hidden check, a command, exits 0; what the model says about its own work never scores. Tokens per solve is every prompt and output token of the run divided by the tasks solved.
+Every number below was measured, on one consumer PC, with a local 9-billion-parameter model (`qwen3.5:9b` through Ollama, a 16,384-token window, replies capped at 2,048 tokens, unless a section says otherwise). A task counts as solved only when its hidden check, a command, exits 0; what the model says about its own work never scores. Tokens per solve is every prompt and output token of the run divided by the tasks solved.
+
+#### Against plain Claude Code
+
+Atlias's own agent against plain Claude Code 2.1.302, the same local model at a 32,768-token window, the same 60 tasks twice (120 matched pairs), step budgets and grader (2026-10-17). The plain arm was measured once and reused for every screen.
+
+| Screen | Atlias solved | Plain Claude Code solved | Fewer total tokens |
+| --- | --- | --- | --- |
+| 1 | 86 / 120 | 80 / 120 | 22.51x |
+| 2 | 83 / 120 | 80 / 120 | 22.36x |
+| 3 | 79 / 120 | 80 / 120 | 14.02x |
+| 4 | 82 / 120 | 80 / 120 | 15.48x |
+| 5 | 89 / 120 | 80 / 120 | 19.66x |
+| 6 | 85 / 120 | 80 / 120 | 19.63x |
+| 7 | 85 / 120 | 80 / 120 | 23.42x |
+| 8 | 83 / 120 | 80 / 120 | 20.95x |
+| 9 | 82 / 120 | 80 / 120 | 22.91x |
+
+- Pooled over the nine screens: **19.52x fewer tokens** (a ratio of pooled token totals; the mean of the nine ratios is 20.1x). Screen 1: 10,195 tokens per solved task against 246,712.
+- Atlias solved at least as many as plain Claude Code on 8 of 9 screens, but a few tasks were lost on most screens (79_int_to_key in nearly every one), so "20x with no task lost" is not met yet.
+
+**Sub-atlias inside Claude Code** (the free plugin), a ten-task smoke on the same model (2026-10-16, one run per arm, a lead): Claude Code with sub-atlias 250,143 tokens against plain Claude Code's 659,112, **2.63x fewer**, both solving 8 of 10. That trial build carried two Claude Code mods (tool deferral and a short skill listing) that the public 4.0.1 package does not ship yet, and it has not been measured against a Claude plan's 5-hour limit.
+
+**On a Claude plan** (the `claude-plan` engine, Opus 5.5 at effort xhigh, 2026-10-23): over the five tasks measured in every run, a 1-hour prompt cache cost $1.075 at API prices for 196,855 prompt tokens and a 5-minute cache $0.827 for 192,678, so one-shot runs now write the 5-minute cache.
 
 #### Against other harnesses
 
