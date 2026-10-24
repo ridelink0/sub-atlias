@@ -34,6 +34,12 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('literal slash and arguments do not open a palette', ui.commandMatches('//literal', rows).length === 0 && ui.commandMatches('/help args', rows).length === 0 && ui.commandMatches(' /help', rows).length === 0, detail());
     check('malformed command rows cannot inject a completed command', ui.commandMatches('/', [null, {}, { name: 'a\n/permissions' }, { name: '\u001b[31m' }]).length === 0 && ui.commandMatches('/', null).length === 0, detail());
     check('missing matches are explicit', ui.renderComposer({ text: '/zzzz', commands: rows }).lines.some((x) => x.includes('No matching commands')), detail());
+    const approval = 'Allow a reviewer to use chatgpt / gpt-6.1-sol? This uses your other subscription and its billing. [y/N]';
+    const questionFrame = ui.renderComposer({ question: approval, text: 'yes', columns: 48, rows: 20 });
+    check('approval questions wrap with billing and the default answer visible', questionFrame.lines.map(line => line.replace(/^\| | \|$/g, '').trim()).join(' ').includes('other subscription and its billing. [y/N]') && questionFrame.lines[questionFrame.cursor.row].includes('yes') && questionFrame.lines.every(line => ui.textWidth(line) <= 47), detail(JSON.stringify(questionFrame.lines)));
+    const clippedQuestion = ui.renderComposer({ question: approval.repeat(20), columns: 40, rows: 10 });
+    check('an oversized question tells the user to resize without overflowing the terminal', clippedQuestion.lines.some(line => line.includes('resize to read full question')) && clippedQuestion.lines.length <= 10 && clippedQuestion.cursor.row < clippedQuestion.lines.length, detail());
+    check('the slash menu explains what Enter actually sends', ui.renderComposer({ text: '/h', commands: rows, info: { hint: 'Enter send' }, columns: 80 }).lines.some(line => line.includes('Enter sends typed text')), detail());
     check('CJK and combining characters use cell widths', ui.textWidth('e\u0301界') === 3 && ui.clipText('界e\u0301x', 3) === '界e\u0301', detail());
     check('terminal control sequences are not painted', ui.textWidth('\u001b[31mred\u001b[0m') === 3 && !ui.renderComposer({ text: '\u001b]0;bad\u0007text', info: { engine: '\u001b[2Jecho' } }).lines.join('').includes('\u001b'), detail());
     check('unknown counts do not become zero and native-host tokens stay unobserved', ui.tokenSummary({ promptLog: [10], outLog: [null] }) === 'tokens not recorded' && ui.tokenSummary({ engine: 'codex', promptLog: [10], outLog: [1] }) === 'tokens not recorded', detail());
@@ -232,7 +238,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     r = rig(); const ticking = new AbortController(); r.terminal.turnStart(ticking);
     const before = (r.output.text.split('esc to interrupt').length - 1); await wait(1000);
     const paints = (r.output.text.split('esc to interrupt').length - 1) - before;
-    check('a running turn shows "esc to interrupt" and repaints it 5 to 12 times a second (TUI-B 2)', before >= 1 && paints >= 5 && paints <= 12 && /[|/\\-] \d+s  esc to interrupt/.test(r.output.text), detail(JSON.stringify({ before, paints })));
+    check('a running turn names the activity and repaints 5 to 12 times a second (TUI-B 2)', before >= 1 && paints >= 5 && paints <= 12 && /[|/\\-] Working \d+s  esc to interrupt/.test(r.output.text), detail(JSON.stringify({ before, paints })));
     r.terminal.turnEnd();
     // h4 F-h1-C: once the turn ends the spinner stops repainting.
     const stopsAt = r.output.text.length; await new Promise((resolve) => setTimeout(resolve, 300));

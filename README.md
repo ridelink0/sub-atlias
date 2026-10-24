@@ -30,6 +30,8 @@ atlias install
 > [!TIP]
 > `atlias doctor` checks the whole install. `atlias uninstall` removes exactly what `atlias install` wrote and nothing else.
 
+The website offers **curl, npm and Bun** instructions for the public Free sub-atlias package. Its **Homebrew, paru and yay** choices include prepared package recipes and stay marked **coming soon** until their releases are published and verified. These downloads do not install the full Atlias app.
+
 ### Two ways to run it
 
 - **Sub-harness** - inside Claude Code, Codex, Antigravity, Gemini CLI and fourteen other harnesses: a shared memory, a knowledge graph, loop and destructive-command guards, and a gate that holds a reply until the work behind it is real.
