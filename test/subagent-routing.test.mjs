@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
+import { pathToFileURL } from 'node:url';
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-workers-'));
 process.env.ATLIAS_HOME = path.join(root, 'home');
 process.env.ATLIAS_NO_DETACH = '1';
@@ -55,6 +56,20 @@ test('max effort skips connection approval but selects the requested transport',
   assert.match(result, /gpt-worker/); assert.equal(asked, 0); assert.equal(state.engine, 'claude-plan');
 });
 
+test('unknown worker measurements stay absent and mixed provider accounting keeps its label', async () => {
+  set();
+  const state = { sid: 'unknown-worker', cwd: root, engine: 'claude-plan', subagent: { chat: () => {} } };
+  await loop.runSubagent(state, { task: 'review' }, { runLoop: async child => {
+    child.cache = { calls: 1, reported: 0, silent: 1, prompt: 0, cached: 0, source: '' }; return 'no usage reported';
+  } });
+  assert.equal(Object.hasOwn(state.cache, 'costUsd'), false);
+  assert.equal(Object.hasOwn(state.cache, 'output'), false);
+  loop.countCache(state, { prompt_tokens: 10, prompt_tokens_details: { cached_tokens: 5 } });
+  loop.countCache(state, { input_tokens: 4, output_tokens: 2, cache_read_input_tokens: 2 });
+  loop.countCache(state, { prompt_tokens: 10, prompt_tokens_details: { cached_tokens: 5 } });
+  assert.equal(state.cache.source, 'mixed providers');
+});
+
 test('actual loop delegates to a different engine over HTTP and accounts for the worker', async () => {
   set(); const requests = [];
   const server = http.createServer(async (req, res) => {
@@ -91,4 +106,42 @@ test('worker commands configure defaults and do not change the main engine or mo
   await commands.dispatch('/agents', ctx); assert.match(lines.join('\n'), /skips that approval/);
   set({ subagentModel: 'bad name' });
   await commands.dispatch('/agents', ctx); assert.match(lines.join('\n'), /Worker setting is invalid/);
+});
+
+test('interrupting the parent closes the worker provider request', async () => {
+  set(); const controller = new AbortController(); let sawChat, sawClose;
+  const started = new Promise(r => sawChat = r), closed = new Promise(r => sawClose = r);
+  const server = http.createServer(async (req, res) => {
+    for await (const _ of req) { /* consume this test request */ }
+    if (req.url === '/api/chat') { res.once('close', sawClose); sawChat(); return; }
+    res.setHeader('content-type', 'application/json'); res.end('{}');
+  });
+  await new Promise(r => server.listen(0, '127.0.0.1', r));
+  try {
+    const state = { sid: 'cancel-worker', cwd: root, engine: 'claude-plan', subagent: { ask: async () => 'yes', resolve: r => agent.chatRoute(r.engine, { ...r.cfg, ollamaUrl: `http://127.0.0.1:${server.address().port}` }, controller.signal) } };
+    const pending = loop.runSubagent(state, { task: 'review', engine: 'ollama', model: 'local-worker' });
+    const deadline = promise => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(Error('worker did not stop')), 3000))]);
+    await deadline(started); controller.abort(); await deadline(pending); await deadline(closed);
+    assert.equal(state.engine, 'claude-plan');
+    await assert.rejects(agent.chatRoute('ollama', cfg, controller.signal), /interrupted/);
+  } finally { await new Promise(r => server.close(r)); }
+});
+
+test('a planted missing-measurement regression is detected', async () => {
+  set(); const copy = path.join(root, 'mutation'); fs.mkdirSync(copy);
+  const sourceRoot = path.resolve(import.meta.dirname, '..');
+  for (const dir of ['lib', 'mcp']) fs.cpSync(path.join(sourceRoot, dir), path.join(copy, dir), { recursive: true });
+  fs.copyFileSync(path.join(sourceRoot, 'package.json'), path.join(copy, 'package.json'));
+  const file = path.join(copy, 'lib', 'loop.mjs');
+  const source = fs.readFileSync(file, 'utf8');
+  const anchor = "for (const k of ['output', 'written', 'costUsd']) if (Number.isFinite(child.cache[k])) c[k] = (c[k] || 0) + child.cache[k];";
+  assert.ok(source.includes(anchor));
+  fs.writeFileSync(file, source.replace(anchor, "for (const k of ['output', 'written', 'costUsd']) c[k] = (c[k] || 0) + (child.cache[k] || 0);"));
+  const mutant = await import(pathToFileURL(file).href);
+  const observe = async mod => {
+    const state = { sid: 'plant-worker', cwd: root, engine: 'claude-plan', subagent: { chat: () => {} } };
+    await mod.runSubagent(state, { task: 'review' }, { runLoop: async child => { child.cache = { calls: 1 }; return 'answer'; } });
+    return Object.hasOwn(state.cache, 'costUsd');
+  };
+  assert.equal(await observe(loop), false); assert.equal(await observe(mutant), true);
 });
