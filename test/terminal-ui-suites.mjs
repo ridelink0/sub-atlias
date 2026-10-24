@@ -45,17 +45,17 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     // B6: the frame's cell accounting for a mixed draft (tab, CJK, combining mark) matches the plain width of its text.
   const mixed = 'a\tb界éc';
   const mixedFrame = ui.renderComposer({ text: mixed, info: {}, columns: 80, rows: 24 }).lines[2];
-  check('a frame with tab, CJK and combining text pads to exactly its width (B6)', mixedFrame === '| ' + ui.clipText(mixed, 200).replace(/\t/g, '  ') + ' '.repeat(75 - ui.textWidth(mixed.replace(/\t/g, '  '))) + ' |', detail(JSON.stringify(mixedFrame)));
+  check('a frame with tab, CJK and combining text pads to exactly its width (B6)', mixedFrame.startsWith('> a  b界éc') && ui.textWidth(mixedFrame) === 79, detail(JSON.stringify(mixedFrame)));
   // A tab is two cells: 74 letters then a tab fit 76 cells only if counted right, so the tab wraps to a second row (the box is 75 cells inside).
   const wrapped = ui.renderComposer({ text: 'a'.repeat(74) + '\tb', info: {}, columns: 80, rows: 24 }).lines;
-  check('a tab counts as two cells when a line wraps (B6)', wrapped[3].startsWith('|   b'), detail(JSON.stringify(wrapped[3])));
+  check('a tab counts as two cells when a line wraps (B6)', wrapped[3].startsWith('    b'), detail(JSON.stringify(wrapped[3])));
   // B7: zero-width space, word joiner and BOM take no cell, so the right border of a draft holding them stays in its column.
   const zeroWidth = ui.renderComposer({ text: 'x​y⁠﻿', info: {}, columns: 80, rows: 24 }).lines;
   check('zero-width space, word joiner and BOM are zero cells wide (B7)', ui.textWidth('a​⁠﻿b') === 2 && ui.textWidth(zeroWidth[2]) === ui.textWidth(zeroWidth[0]), detail(JSON.stringify([ui.textWidth('a​b'), ui.textWidth(zeroWidth[2]), ui.textWidth(zeroWidth[0])])));
   // B11: a 12-line draft shows the lines around the caret, with a marker row for the lines out of view.
   const twelve = Array.from({ length: 12 }, (_, i) => 'l' + (i + 1)).join('\n');
   const atEnd = ui.renderComposer({ text: twelve, info: {}, columns: 80, rows: 24 });
-  check('a draft taller than the box marks the lines above and keeps the caret row visible (B11)', atEnd.lines[2] === '| ' + ui.clipText('... 8 more lines above', 75).padEnd(75) + ' |' && atEnd.lines[6].includes('l12') && atEnd.cursor.row === 6, detail(JSON.stringify([atEnd.lines[2], atEnd.lines[6], atEnd.cursor])));
+  check('a draft taller than the box marks the lines above and keeps the caret row visible (B11)', atEnd.lines[2].trim() === '... 8 more lines above' && atEnd.lines[6].trim() === 'l12' && atEnd.cursor.row === 6, detail(JSON.stringify([atEnd.lines[2], atEnd.lines[6], atEnd.cursor])));
   const atStart = ui.renderComposer({ text: twelve, cursor: 0, info: {}, columns: 80, rows: 24 });
   check('the lines below are marked at the foot of the box (B11)', atStart.lines[6].includes('... 8 more lines below') && atStart.lines[2].includes('l1') && atStart.dim.length === 1, detail(JSON.stringify([atStart.lines[2], atStart.lines[6]])));
   // TUI-B 4: replies are styled only with colour on; code is verbatim; lists hang inside the width; model control codes never reach the screen.
@@ -74,13 +74,11 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
   check('a wide footer shows every segment (B5)', footerAt(120) === 'echo (dry run)  |  workspace  |  Claude plan  |  session  |  ctx 1,234  |  in 5,678', detail(JSON.stringify(footerAt(120))));
   check('a narrow footer drops whole trailing segments, not the middle of a number (B5)', footerAt(40) === 'echo (dry run)  |  workspace' && footerAt(50) === 'echo (dry run)  |  workspace  |  Claude plan' && footerAt(60) === 'echo (dry run)  |  workspace  |  Claude plan  |  session', detail(JSON.stringify([footerAt(40), footerAt(50), footerAt(60)])));
   check('the token counts follow ui.usageEnabled, which defaults off (B5)', core.DEFAULTS.ui.usageEnabled === false && /config\(\)\.ui\.usageEnabled === true/.test(fs.readFileSync(path.join(ROOT, 'lib/agent.mjs'), 'utf8')), detail());
-  // B4: under 30 rows the start screen is three lines with no wordmark and no blank rows; a tall terminal keeps the wordmark.
+  // Gev's reference: Atlo stays next to the unchanged pixel wordmark at normal terminal sizes.
   for (const rowCount of [24, 40]) {
     const start = rig(); start.output.rows = rowCount; start.terminal.welcome('4.0.0', 'C:/project');
-    const text = start.output.text, boxAt = text.indexOf('+');
-    const above = text.slice(0, boxAt).replace(/\r\n$/, '').split('\r\n');
-    const shortScreen = rowCount < 30;
-    check(`a ${rowCount}-row start screen ${shortScreen ? 'is three lines with no wordmark or blank rows' : 'keeps the wordmark'} (B4)`, shortScreen ? above.length === 3 && above.every((x) => x.trim() !== '') && !text.includes('█') : text.includes('█') && above.length > 3, detail(JSON.stringify(above)));
+    const text = start.output.text, above = text.trimEnd().split('\r\n');
+    check(`a ${rowCount}-row start screen pairs Atlo with the original wordmark`, text.includes('▄██▄') && text.includes(' ███  █████ █      ███   ███   ████') && above.length <= 9 && text.includes('/help'), detail(JSON.stringify(above)));
     start.terminal.close();
   }
   check('the renderer never starts a shell, model, network or alternate screen',!/child_process|fetch\(|model\.complete|1049h/.test(source), detail());
@@ -115,6 +113,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
       check('completion mutation has a stable production anchor', source.includes(needle), detail());
       const mutated = source.replace(needle, 'const matches = a.matches || [];');
       const mutantPath = path.join(temp, 'terminal-ui-mutant.mjs'); fs.writeFileSync(mutantPath, mutated);
+      fs.copyFileSync(path.join(ROOT, 'lib/terminal-brand.mjs'), path.join(temp, 'terminal-brand.mjs'));
       const mutant = await import(pathToFileURL(mutantPath).href);
       const mutantCompletion = await coalescedCompletion(mutant);
       check('stale-frame mutation is detected by the coalesced-input regression', mutantCompletion === '/goal status' && mutantCompletion !== currentCompletion, detail(JSON.stringify(mutantCompletion)));
@@ -210,7 +209,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('a failed raw mode uses one persistent line fallback', answer.text === 'plain answer' && next.text === 'plain answer' && r.counts().fallbackCalls === 2 && r.input.listenerCount('data') === 0, detail()); r.terminal.close();
     check('closing also closes the fallback reader', r.counts().fallbackClosed === 1, detail());
     r = rig({ env: { NO_COLOR: '1' } }); r.terminal.welcome('4.0.0', 'C:/project'); p = r.start(); r.send('x'); r.send('\r'); await p;
-    check('NO_COLOR removes SGR but keeps the composer', !/\u001b\[[0-9;]*m/.test(r.output.text) && r.output.text.includes('ATLIAS') && r.output.text.includes('Message Atlias'), detail()); r.terminal.close();
+    check('NO_COLOR removes SGR but keeps the composer', !/\u001b\[[0-9;]*m/.test(r.output.text) && r.output.text.includes('/help') && r.output.text.includes('Ask about this project'), detail()); r.terminal.close();
     r = rig(); p = r.start(); r.output.emit('error', new Error('closed output')); answer = await p;
     check('output failure also restores raw mode and rejects the question', answer.error === 'closed output' && !r.input.isRaw && r.input.listenerCount('data') === 0, detail()); r.terminal.close();
     r = rig(); r.terminal.close(); answer = await r.start();

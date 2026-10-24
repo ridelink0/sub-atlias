@@ -43,7 +43,7 @@ export default async function subagentSuites({ asyncSuite, check, core, agentMod
       { happened: JSON.stringify({ answer, results }), why: 'The parent must see each sub-agent\'s final answer.', fix: 'Check runSubagent and the agent case in runToolCore.' });
     check('the two sub-agents ran at the same time', live.max === 2, { happened: `at most ${live.max} at once`, why: 'Gev asked for sub-agents; Claude Code runs them in parallel.', fix: 'Start every agent block of a reply before running the calls in order.' });
     const parentSys = log.find((l) => !l.child).system, childSys = log.find((l) => l.child).system;
-    check('the parent is offered the agent tool and a sub-agent is not (one level)', /agent\{task,name\}/.test(parentSys) && !/agent\{task,name\}/.test(childSys),
+    check('the parent is offered the agent tool and a sub-agent is not (one level)', /agent\{task,name,engine,model\}/.test(parentSys) && !/agent\{task,name,engine,model\}/.test(childSys),
       { happened: `parent ${/agent\{/.test(parentSys)} child ${/agent\{/.test(childSys)}`, why: 'Nested sub-agents multiply cost without bound.', fix: 'Offer extra only when depth is 0.' });
     check('the sub-agents\' token counts join the parent\'s', st.cache && st.cache.calls === 4 && st.cache.reported === 4,
       { happened: JSON.stringify(st.cache), why: '/cost must count every call the turn made.', fix: 'Merge child.cache into state.cache.' });

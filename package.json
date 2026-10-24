@@ -7,7 +7,7 @@
     "atlias": "bin/atlias.mjs"
   },
   "scripts": {
-    "test": "node test/run.mjs",
+    "test": "node test/run.mjs && node --test test/subagent-routing.test.mjs",
     "doctor": "node bin/atlias.mjs doctor",
     "test:install": "node test/install-sandbox.mjs"
   },

@@ -33,7 +33,7 @@ atlias install
 ### Two ways to run it
 
 - **Sub-harness** - inside Claude Code, Codex, Antigravity, Gemini CLI and fourteen other harnesses: a shared memory, a knowledge graph, loop and destructive-command guards, and a gate that holds a reply until the work behind it is real.
-- **Agent** - typed as `atlias` in any terminal, driving Claude Code, Codex, any OpenAI-compatible endpoint or a local Ollama model through a tool loop built around what weaker models get wrong.
+- **Agent** - typed as `atlias` in any terminal, using its own tool loop with a connected Claude plan, ChatGPT, a provider API or a local Ollama model. Choose a connection on first open, then describe a task.
 
 ```bash
 atlias                     # choose, then fly
@@ -42,6 +42,27 @@ atlias mode both           # or sub, or standalone
 ```
 
 No dependencies. Node 18 or newer.
+
+### Choose a model for each subagent
+
+In the full Atlias app, your main agent can delegate a separate task to a worker on another connected engine and model. Keep Claude in charge and ask a ChatGPT model to review a file, or choose a smaller model on the same connection. You can do this for a different perspective, to share work between subscriptions, or to manage usage; savings depend on the task and are not guaranteed.
+
+```text
+/agents                                 Show worker defaults and connected engines
+/agents chatgpt MODEL                    Choose a ChatGPT worker model
+/agents claude-plan claude-haiku-5-5      Choose a Claude worker model
+/agents inherit                         Follow the main agent again
+/agents off                             Disable workers
+/agents on                              Enable workers
+```
+
+Replace `MODEL` with an available model from that account. Connect providers first with `/auth` or `/onboarding`. Choosing a worker default does not change the main agent's model. You can also request a particular worker engine/model in plain language; Atlias's agent tool accepts optional `engine` and `model` fields for that task.
+
+Before a worker uses a **different connection**, Atlias shows the model and its subscription or API billing and asks for approval. No approval means no worker on that connection; there is no automatic billing fallback. Each worker launch needs its own approval. **Main-agent `/effort max` or `/permissions max` skips this connection approval**, as requested by Gev. Other permissions, model availability and sign-in requirements still apply. API keys use separate API billing; subscriptions are not transferred or merged. A noninteractive run refuses an unapproved connection change unless one of those max settings applies.
+
+Workers have separate conversations, at most 20 rounds and one level of delegation. Their results return to the main agent; selected routes are shown while they run and their reported usage joins session accounting. Stop the parent turn to stop its provider requests. Give parallel workers separate files.
+
+**Sub-atlias:** the public plugin works inside a native host such as Claude Code or Codex. Its setup, launch identity and help use the same beginner guidance, while the host owns its prompt and native worker/model controls. The full app's `/agents` command does not intercept or replace those native tools. The full app is not publicly on sale yet.
 
 ### Benchmarks
 

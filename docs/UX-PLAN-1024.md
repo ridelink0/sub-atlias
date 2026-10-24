@@ -1,0 +1,13 @@
+# Beginner experience implementation plan
+
+Gev's October 24 request. Research: [report](../reports/Atlias%20beginner%20experience.md), with source notes in `research_notes/Atlias beginner experience/`. Existing research basis: RESEARCH-FIRST H3 (actionable errors), H4 (stopping is not completing), H5 (execution evidence), H8 (bounded delegation).
+
+1. Preserve the pixel atlias wordmark exactly. Translate the original Atlo pixel asset into terminal cells and place it beside the wordmark. Keep a compact identity at narrow sizes. Share that identity with sub-atlias launch and CLI help.
+2. Give the task composer a quiet input area, an empty-state example, model/billing context and persistent help. Retain paste, history, cancellation, questions and line-mode support. Keep all commands available, grouped around common tasks. Setup leads with sign-in/local choices; API and native-host choices remain explicitly available on request.
+3. Add `/agents` for a default worker engine/model and per-call engine/model choices. Inherit by default. Cross-engine launches require approval before inference. Gev's exception: main engine effort `max` or permissions `max` skips that approval. Other permissions and connection requirements apply. Never change main configuration, borrow credentials or choose a fallback. Serialize questions; keep approved workers parallel; preserve cancellation and usage accounting.
+4. Add a dedicated website section and README guide. Explain full-app versus native sub-atlias ownership accurately. Apply shared setup/help/launch improvements to sub-atlias while the native host retains its interface and tools.
+5. Remove public terminal examples, per-screen plots, detailed result/plan tables and history downloads. Exclude history data at the build boundary. Preserve private datasets and concise aggregate charts with readable descriptions and honest limits.
+6. Functional pass: focused/full Node checks, native ConPTY typing/help/paste/resize/exit, mocked routing and consent through actual loop/provider adapters, public build/browser actions and removed-asset HTTP checks. No live subscription inference or benchmark is needed.
+7. Adversarial pass: read every changed file; test missing/denied consent, failed routes, max effort, concurrent approvals, unchanged parent config, cancellation, Unicode input, tiny terminals, no color and public disclosure. Open rendered images. Live purchases, deployment and assistive-technology testing remain unverified.
+
+Baseline: app focused checks 290/291. An existing `/model` test assumes an arbitrary Ollama name, contradicted by the current validated-model implementation; isolate its catalogue fixture. Preserve prior website edits/untracked research. No push or deployment requested.

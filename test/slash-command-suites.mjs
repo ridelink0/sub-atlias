@@ -86,12 +86,14 @@ export default async function slashCommandSuites({ suite, asyncSuite, check, cor
 
     // /model
     const before = core.config().agent.ollamaModel;
+    const realFetch = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ models: [{ name: 'qwen-test:1b' }] }) });
     try {
       r = ctxFor(cwd, { engine: 'ollama' });
       await commands.dispatch('/model', r.ctx);
       await commands.dispatch('/model qwen-test:1b', r.ctx);
       check('/model shows the ollama model and sets it in the config', text(r.out).includes('model ' + before) && core.config().agent.ollamaModel === 'qwen-test:1b', { happened: text(r.out) + ' / ' + core.config().agent.ollamaModel, why: 'The model is a setting, so /model must change the setting.', fix: 'Check the model entry.' });
-    } finally { settings.reset('agent.ollamaModel'); }
+    } finally { globalThis.fetch = realFetch; settings.reset('agent.ollamaModel'); }
     r = ctxFor(cwd, { engine: 'claude' });
     await commands.dispatch('/model gpt-x', r.ctx);
     check('/model on the claude engine says the program picks it and changes nothing', /picks its own model/.test(text(r.out)) && core.config().agent.ollamaModel === before && core.config().agent.openaiModel === '', { happened: text(r.out), why: 'Atlias does not pass a model to the claude or codex program, so pretending to set one would be false.', fix: 'The key is null for those engines.' });

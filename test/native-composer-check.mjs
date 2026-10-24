@@ -28,7 +28,7 @@ async function waitFor(text, after = 0) {
 }
 const evidence = { command: installed ? 'bare atlias via normal PATH shim' : 'source agent --engine echo diagnostic', source: root, home: 'C:/Users/OWNER/.atlias-agent', steps: [], noModelPromptSent: true };
 try {
-  await waitFor('Message Atlias'); evidence.steps.push('default composer boot');
+  await waitFor('Ask about this project'); evidence.steps.push('default composer boot');
   let at = transcript.length; child.write('/'); await waitFor('/clear', at); evidence.steps.push('slash opens live palette');
   child.write('\x1b[B'); child.write('\x1b'); await pause(100);
   // Clear the slash and use a unique prefix, with no pasted newline.
