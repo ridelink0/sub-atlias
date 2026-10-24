@@ -1,3 +1,7 @@
+## October 24 beginner UI and worker routing completed
+
+Gev's request is complete locally on codex/beginner-ux-1024. Research: reports/Atlias beginner experience.md. Plan: docs/UX-PLAN-1024.md. Verification: docs/UX-CHECKS-1024.md. Final app release3115/3115 across398 suites, 9 process-termination checks skipped by rule, worker9/9, website198/198, final browser/anchor/privacy checks all passed; release log exit0. Website D:/atlias-site commits cc23a51 and1f51c9b; preview http://127.0.0.1:4321/#agents. No remaining implementation steps. Live subscription inference, screen-reader use and production publication remain unverified. No push/deployment performed. Preserve site's original .gitignore and untracked research.
+
 # Okay Gev - clean quota/resource handoff, Oct18 03:55Z
 
 Runtime WIP commit b939a8d57fc61b970a47bb5833829e39732fed79 is saved and source pins matched. This is NOT accepted/integrated UI. Last app meter86%fivehour used,29%weekly; remaining full verification and integration held, latest physicalRAM1.116GiB below2GiB reserve. Newest behavior edits remain UNTESTED; syntax0 is not functional acceptance. Earlier49/137functional0 and7/8plants exit1 remain immutable. Read codex-tui-1018/FINAL-WIP-REVIEW.md and CHECKPOINT-r1.json for findings/source pins. All request-path files inspected remain unchanged; flags defaultoff. Original Claude builder WIP and installed/source ef0446d preserved by this work.
