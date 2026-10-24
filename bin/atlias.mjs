@@ -360,6 +360,17 @@ else switch (cmd) {
     process.exitCode = r.code;
     break;
   }
+  case 'activate': {
+    // Max subscription: a Stripe Checkout link that carries this install's hidden id, opened in the browser.
+    const license = await import('../lib/license.mjs');
+    try {
+      const url = await license.checkoutUrl();
+      say(`Opening Stripe Checkout for Atlias Max. If no browser opens, visit:\n${url}\nAfter paying, start Atlias again; it picks up the subscription by itself.`);
+      if (process.platform === 'win32') spawnSync('cmd', ['/c', 'start', '""', url], { stdio: 'ignore' });
+      else spawnSync(process.platform === 'darwin' ? 'open' : 'xdg-open', [url], { stdio: 'ignore' });
+    } catch (error) { say(`atlias activate: ${error.message}`); process.exitCode = 1; }
+    break;
+  }
   case 'setup': {
     if (argv[1] !== 'claude') { say('usage: atlias setup claude   (installs the Claude Agent SDK, signs you in through Anthropic, then asks for the model and reasoning effort)'); process.exitCode = 2; break; }
     const onboarding = await import('../lib/onboarding.mjs');
