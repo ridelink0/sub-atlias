@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events';
 import os from 'node:os';
 import { pathToFileURL } from 'node:url';
 import * as ui from '../lib/terminal-ui.mjs';
+import * as brand from '../lib/terminal-brand.mjs';
 import * as mdRender from '../lib/render-markdown.mjs';
 import * as commands from '../lib/commands.mjs';
 
@@ -25,6 +26,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
   };
 
   suite('terminal palette expert', 'terminal composer matching, width and exact unknown usage', () => {
+    check('Atlo occupies six rows of twelve terminal cells', brand.atloRows().length === 6 && brand.atloRows().every(row => ui.textWidth(row) === 12), detail());
     check('the terminal composer defaults on and describes the explicit opt-out', core.DEFAULTS.ui.terminalEnabled === true && fs.readFileSync(path.join(ROOT, 'lib/settings.mjs'), 'utf8').includes('On by default; set false to opt out.'), detail());
     check('slash lists visible commands once and hidden commands stay hidden', ui.commandMatches('/', rows).length === 4 && !ui.commandMatches('/', rows).some((x) => x.name === 'hidden'), detail());
     check('prefix ranks above fuzzy and exact ranks first', ui.commandMatches('/h', rows)[0].name === 'help' && ui.commandMatches('/hosts', rows)[0].rank === 0, detail());

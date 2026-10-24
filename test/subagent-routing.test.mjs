@@ -11,30 +11,32 @@ const core = await import('../lib/core.mjs');
 const loop = await import('../lib/loop.mjs');
 const agent = await import('../lib/agent.mjs');
 const commands = await import('../lib/commands.mjs');
-const { selectSubagentRoute, approveSubagentRoute } = await import('../lib/subagent-routing.mjs');
+const routes = await import('../lib/subagent-routing.mjs');
 const cfg = { ...core.DEFAULTS.agent, claudePlanModel: 'claude-opus-5-5', chatgptModel: 'gpt-6.1-sol' };
 const set = (more = {}) => core.writeJson(path.join(process.env.ATLIAS_HOME, 'config.json'), { agent: { ...cfg, ...more } });
 test.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
 test('routes inherit, isolate worker model, and require approval for another connection', () => {
-  assert.equal(selectSubagentRoute('claude-plan', {}, cfg).engine, 'claude-plan');
-  const route = selectSubagentRoute('claude-plan', { engine: 'chatgpt', model: 'gpt-worker' }, cfg);
+  assert.equal(routes.selectSubagentRoute('claude-plan', {}, cfg).engine, 'claude-plan');
+  const route = routes.selectSubagentRoute('claude-plan', { engine: 'chatgpt', model: 'gpt-worker' }, cfg);
   assert.equal(route.approval, true); assert.equal(route.cfg.chatgptModel, 'gpt-worker');
   assert.equal(cfg.chatgptModel, 'gpt-6.1-sol');
-  assert.equal(selectSubagentRoute('claude-plan', { model: 'claude-haiku-5-5' }, cfg).approval, false);
-  assert.equal(selectSubagentRoute('claude-plan', { engine: 'chatgpt' }, { ...cfg, claudePlanEffort: 'max' }).approval, false);
-  assert.equal(selectSubagentRoute('claude-plan', { engine: 'chatgpt' }, { ...cfg, permissions: 'max' }).approval, false);
-  for (const engine of ['auto', 'codex', 'unknown', {}, 'chatgpt\n']) assert.throws(() => selectSubagentRoute('claude-plan', { engine }, cfg));
-  for (const model of ['bad name', '\x1b[2J', {}]) assert.throws(() => selectSubagentRoute('claude-plan', { model }, cfg));
+  assert.equal(routes.selectSubagentRoute('claude-plan', { model: 'claude-haiku-5-5' }, cfg).approval, false);
+  assert.equal(routes.selectSubagentRoute('claude-plan', { engine: 'chatgpt' }, { ...cfg, claudePlanEffort: 'max' }).approval, false);
+  assert.equal(routes.selectSubagentRoute('claude-plan', { engine: 'chatgpt' }, { ...cfg, permissions: 'max' }).approval, false);
+  for (const engine of ['auto', 'codex', 'unknown', {}, 'chatgpt\n']) assert.throws(() => routes.selectSubagentRoute('claude-plan', { engine }, cfg));
+  for (const model of ['bad name', '\x1b[2J', {}]) assert.throws(() => routes.selectSubagentRoute('claude-plan', { model }, cfg));
 });
 
 test('concurrent worker approvals serialize, default to no, and never share approval', async () => {
-  const route = selectSubagentRoute('claude-plan', { engine: 'chatgpt' }, cfg);
+  const route = routes.selectSubagentRoute('claude-plan', { engine: 'chatgpt' }, cfg);
   let live = 0, peak = 0, count = 0;
   const sub = { ask: async q => { assert.match(q, /ChatGPT plan/); count++; peak = Math.max(peak, ++live); await new Promise(r => setTimeout(r, 5)); live--; return count === 1 ? 'y' : ''; } };
-  assert.deepEqual(await Promise.all([approveSubagentRoute(sub, route, 'one'), approveSubagentRoute(sub, route, 'two')]), [true, false]);
+  assert.deepEqual(await Promise.all([routes.approveSubagentRoute(sub, route, 'one'), routes.approveSubagentRoute(sub, route, 'two')]), [true, false]);
   assert.equal(peak, 1); assert.equal(count, 2);
-  assert.equal(await approveSubagentRoute({}, route, 'headless'), false);
+  assert.match(routes.routeLabel(route), /chatgpt.*gpt-6.1-sol/);
+  assert.equal(await routes.askSubagent({ask:async()=> 'yes'}, 'Allow?'), 'yes');
+  assert.equal(await routes.approveSubagentRoute({}, route, 'headless'), false);
 });
 
 test('denied or unavailable route cannot run a worker or silently fall back', async () => {
@@ -73,6 +75,7 @@ test('actual loop delegates to a different engine over HTTP and accounts for the
     assert.equal(answer, 'review received'); assert.equal(approvals, 1); assert.equal(requests.filter(r => r.messages).length, 1); // /api/show is metadata only
     assert.equal(requests[0].model, 'local-worker'); assert.equal(state.engine, 'claude-plan');
     assert.equal(state.subagentUsage[0].engine, 'ollama'); assert.equal(state.subagentUsage[0].cache.calls, 1); assert.equal(state.cache.calls, 3);
+    assert.ok(state.promptLog.includes(12)); assert.ok(state.outLog.includes(4));
     assert.equal(core.config().agent.ollamaModel, cfg.ollamaModel);
   } finally { await new Promise(r => server.close(r)); }
 });
@@ -86,4 +89,6 @@ test('worker commands configure defaults and do not change the main engine or mo
   await commands.dispatch('/agents inherit', ctx);
   assert.equal(core.config().agent.subagentEngine, 'inherit'); assert.equal(core.config().agent.subagentModel, '');
   await commands.dispatch('/agents', ctx); assert.match(lines.join('\n'), /skips that approval/);
+  set({ subagentModel: 'bad name' });
+  await commands.dispatch('/agents', ctx); assert.match(lines.join('\n'), /Worker setting is invalid/);
 });

@@ -380,7 +380,7 @@ await mcpSuite();
 suite('ship expert', 'logo', () => {
   const plain = logoMod.logo({ color: 'none', width: 100 });
   check('the wordmark spells ATLIAS in blocks', logoMod.wordmark('ATLIAS').length === 5 && plain.includes('\u2588'), { happened: plain.split('\n')[1], why: 'The logo is the first thing anyone sees; block letters are the whole design.', fix: 'Check GLYPHS and wordmark().' });
-  check('the ship rides on the right', plain.includes('<_') && plain.includes('>=='), { happened: plain, why: 'Gev asked for a small spaceship beside the wordmark.', fix: 'Keep the SHIP rows and the wide branch in logo().' });
+  check('Atlo sits beside the original wordmark', plain.includes('▄██▄') && plain.split('\n')[0].includes(logoMod.wordmark('ATLIAS')[0]), { happened: plain, why: 'Gev now asks for Atlo beside the unchanged atlias text.', fix: 'Keep Atlo and the original wordmark together in logo().' });
   check('NO_COLOR output carries no escape codes', !plain.includes('\u001b'), { happened: JSON.stringify(plain.slice(0, 60)), why: 'A logo that prints escape codes into a pipe or a log file is unreadable.', fix: 'colorMode returns none when NO_COLOR is set; paint must pass text through.' });
   const colored = logoMod.logo({ color: 'truecolor', width: 100 });
   check('truecolor output is blue', colored.includes('38;2;29;78;216') && colored.includes('38;2;147;197;253'), { happened: JSON.stringify(colored.slice(0, 80)), why: 'Gev asked for blue, light to dark.', fix: 'Check the BLUE ramp and paint().' });
