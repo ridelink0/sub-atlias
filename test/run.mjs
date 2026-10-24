@@ -1146,6 +1146,7 @@ await (await import('./features-1022-tools-suites.mjs')).default({ asyncSuite, c
 await (await import('./features-1022-review-fix-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
 await (await import('./features-1022-review-fix2-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
 await (await import('./license-suites.mjs')).default({ asyncSuite, check, TMP, ROOT, fs, path });
+await (await import('./model-check-suites.mjs')).default({ asyncSuite, check });
 
 let failed = 0;
 for (const r of results) {
