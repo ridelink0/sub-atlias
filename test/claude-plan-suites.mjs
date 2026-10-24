@@ -151,10 +151,15 @@ export default async function claudePlanSuites({ asyncSuite, suite, check, core,
       { happened: onboarding.recommended(found), why: 'Enter must take the route that works now.', fix: 'Check recommended.' });
     const text = onboarding.welcomeText(found, { hostEngines: 'off' });
     const narrow = onboarding.welcomeText(found, { hostEngines: 'off' }, 80).split(String.fromCharCode(10));
-    check('on an 80-column terminal every onboarding line fits and no word is split', narrow.every((l) => l.length < 80) && narrow.some((l) => /^   sign in/.test(l)) && narrow.join(' ').includes('(recommended)'),
+    check('on an 80-column terminal every onboarding line fits and no word is split', narrow.every((l) => l.length < 80) && narrow.some((l) => /^ {3}\S/.test(l)) && narrow.join(' ').includes('(recommended)'),
       { happened: narrow.filter((l) => l.length >= 80).join(' | '), why: 'Gev saw (rec / ommended) when the terminal broke the line itself (Computer Use check 2026-10-23)', fix: 'wrapChoice in onboarding.mjs' });
     check('the welcome says what was found, marks the recommended row, and hides host harnesses while they are off', /Found on this computer: your Claude sign-in/.test(text) && /1 {2}Use my Claude plan.*\(recommended\)/.test(text) && !/native host/.test(text),
       { happened: text, why: 'A new user should press Enter, not read nine options.', fix: 'Check welcomeText and visibleChoices.' });
+    const rows = text.split(String.fromCharCode(10));
+    check('beginners see the sign-ins and the local model first, API keys under their own line, and no engine jargon',
+      rows.findIndex((l) => /^Have an API key\?/.test(l)) === rows.findIndex((l) => /^4 {2}/.test(l)) - 1 && rows.findIndex((l) => /^Have an API key\?/.test(l)) > rows.findIndex((l) => /^3 {2}/.test(l))
+        && !/direct loop|local inference|Responses API;|Messages API;|plan authorization/.test(text) && (text.match(/Press Enter/g) || []).length === 1,
+      { happened: text, why: 'Gev 2026-10-24: make the UI simpler for beginner vibe coders.', fix: 'Keep the CHOICES details in plain words and the API-key line in welcomeText.' });
     check('host rows appear only when host harnesses are on', onboarding.visibleChoices({ hostEngines: 'on' }).some((r) => r.method === 'claude') && !onboarding.visibleChoices({ hostEngines: 'off' }).some((r) => r.host),
       { happened: 'visibleChoices', why: 'The setting decides what is offered.', fix: 'Filter host rows.' });
     const prev = { engine: core.config().agent.engine, model: core.config().agent.claudePlanModel, effort: core.config().agent.claudePlanEffort };
