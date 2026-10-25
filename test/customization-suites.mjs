@@ -1,3 +1,4 @@
+import { terminalTheme } from '../lib/terminal-appearance.mjs';
 import * as settings from '../lib/settings.mjs';
 import * as commands from '../lib/commands.mjs';
 import * as qol from '../lib/qol.mjs';
@@ -7,6 +8,9 @@ export default async function({ suite, asyncSuite, check, core, agentMod, TMP, f
   suite('customization expert', 'customization: searchable settings keep stable identities', () => {
     const all = settings.rows(), common = settings.selectRows(all);
     check('the opening view is short and all options remain reachable', common.length > 5 && common.length < 20 && all.length > 100 && settings.selectRows(all, 'all').length === all.length, detail());
+    check('custom colors are normalized, and rainbow or terminal escapes cannot enter the accent', core.parseSetting('ui','accentColor','#abc').value === '#aabbcc' && core.parseSetting('ui','accentColor','amber').value === 'amber' && Boolean(core.parseSetting('ui','accentColor','rainbow').error) && Boolean(core.parseSetting('ui','accentColor','\x1b[31m').error), detail());
+    check('the theme has a safe basic-color fallback and does not interpret arbitrary text', terminalTheme('#abc').basic >= 30 && terminalTheme('#abc').basic <= 97 && terminalTheme('invalid').mark.join(',') === '47,116,245' && terminalTheme('none').plain, detail());
+    check('menu rows are brief while full descriptions remain available on selection', settings.formatMenu(common).split('\n').length === common.length && !settings.formatMenu(common).includes(common[0].about) && settings.format([common[0]]).includes(common[0].about), detail());
     const attachments = settings.selectRows(all, 'section attachments');
     check('section and description searches preserve global numbers', attachments.length === 5 && attachments.every(r => all[r.number - 1].id === r.id) && settings.selectRows(all, 'image detail').some(r => r.id === 'attachments.detail'), detail());
     check('no match stays empty instead of displaying unrelated settings', settings.selectRows(all, 'no-such-setting-query').length === 0, detail());
@@ -23,6 +27,8 @@ export default async function({ suite, asyncSuite, check, core, agentMod, TMP, f
       settings.reset('agent.mode');
       const choice = await menu(['agent.mode', '3junk', 'q']);
       check('a malformed numbered choice cannot select a mode', core.config().agent.mode === 'both' && /is one of/.test(choice), detail());
+      const pages = await menu(['all','next','prev','q']);
+      check('large groups page in both directions and retain their global numbers', /page 2\//.test(pages) && pages.lastIndexOf('page 1/') > pages.indexOf('page 2/'), detail());
       const empty = await menu(['/no-such-setting-query', 'q']);
       check('an empty search gives an actionable next step', /No settings match. Try all/.test(empty), detail());
     } finally { if (before) fs.writeFileSync(cfgFile, before); else fs.rmSync(cfgFile, { force: true }); }

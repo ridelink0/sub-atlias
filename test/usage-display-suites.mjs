@@ -22,8 +22,8 @@ export default async function usageDisplaySuites({ suite, check, core, ROOT, TMP
   const make = (ui, stream, extra = {}) => { const k = clock(), p = proc(); return { k, p, stream, d: ud.createDisplay({ ui, stream, mode: 'truecolor', getState: () => extra.state || STATE, getExtra: () => ({ windows: WIN }), timers: k, proc: p, ...extra.opts }) }; };
 
   suite('usage display', 'usage display:the keys are registered off, described, checked, and settable', () => {
-    // ui.terminalEnabled (the terminal composer) shares the section; it is checked in terminal-ui-suites.mjs.
-    const rows = settings.rows().filter((r) => r.section === 'ui' && r.id !== 'ui.terminalEnabled');
+    // Appearance and composer settings share this section; this contract covers the four usage keys.
+    const rows = settings.rows().filter((r) => r.section === 'ui' && r.id.startsWith('ui.usage'));
     const ids = rows.map((r) => r.id).sort().join(',');
     check('ui has four usage keys, each described, with enabled off by default',
       ids === 'ui.usageAnimation,ui.usageColor,ui.usageEnabled,ui.usagePosition' && rows.every((r) => r.about.length > 40) && core.DEFAULTS.ui.usageEnabled === false && core.DEFAULTS.ui.usageAnimation === 'none',

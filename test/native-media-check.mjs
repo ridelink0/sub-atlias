@@ -37,6 +37,10 @@ try {
   process.stdout.write(`Fixture: ${temp}\n`);
   await waitFor('Ask about this project');
   let at = await send('/help attachments'); await waitFor('inspect images in this chat', at); await waitFor('Ask about this project', at);
+  const bad = 'Describe @"missing image.png"';
+  at = await send(bad); await waitFor('Message not sent.', at);
+  await waitFor(bad, transcript.indexOf('Message not sent.', at)); assert.equal(captured.length, 0);
+  child.write('\x15'); await pause(200);
   const typed = 'Describe @"shot one.png" using @"notes one.txt"';
   at = await send(typed); await waitFor('NATIVE_MEDIA_RECEIVED', at); await pause(300);
   assert.ok(captured.length > 0);
@@ -54,7 +58,7 @@ try {
   assert.ok(saved.messages.every(m => !m._images));
   await new Promise(resolve => server.close(resolve));
   child._agent?.inSocket?.destroy(); child._agent?.outSocket?.destroy();
-  process.stdout.write(JSON.stringify({ source: root, fixture: temp, providerCalls: captured.length, nativeExitCode: result.exitCode, checks: ['contextual help', 'quoted image and reference mentions', 'real HTTP image payload', 'reference authority separation', 'saved exact request', 'clear images persists', 'clean native exit'], externalModelCalls: 0 }, null, 2) + '\n');
+  process.stdout.write(JSON.stringify({ source: root, fixture: temp, providerCalls: captured.length, nativeExitCode: result.exitCode, checks: ['rejected image preserves draft without a model call', 'contextual help', 'quoted image and reference mentions', 'real HTTP image payload', 'reference authority separation', 'saved exact request', 'clear images persists', 'clean native exit'], externalModelCalls: 0 }, null, 2) + '\n');
   process.exit(0);
 } catch (error) {
   if (!exit) { child.write('\x03'); await pause(100); child.write('/exit'); await pause(100); child.write('\r'); }

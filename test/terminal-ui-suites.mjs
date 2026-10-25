@@ -18,7 +18,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     output.write = (s) => { output.text += s; };
     let fallbackCalls = 0, fallbackClosed = 0;
     const createUI = opts.impl ? opts.impl.createTerminalUI : ui.createTerminalUI;
-    const terminal = createUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, history: opts.history, keepRawBetweenPrompts: opts.keepRawBetweenPrompts, getCommands: () => opts.rows || rows,
+    const terminal = createUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, history: opts.history, keepRawBetweenPrompts: opts.keepRawBetweenPrompts, appearance: opts.appearance, getCommands: () => opts.rows || rows,
       getInfo: () => ({ engine: 'echo', permission: 'workspace', tokens: 'tokens not recorded' }),
       fallbackQuestion: async () => { fallbackCalls++; return 'plain answer'; }, closeFallback: () => fallbackClosed++ });
     const start = (q) => (q === undefined ? terminal.prompt() : terminal.question(q)).then((text) => ({ text }), (error) => ({ error: error.message }));
@@ -39,12 +39,24 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
       const mutated = source.replace('if (!keepRawBetweenPrompts) input.setRawMode(active.wasRaw);', 'input.setRawMode(active.wasRaw);');
       const file = path.join(temp, 'terminal-ui.mjs'); fs.writeFileSync(file, mutated);
       fs.copyFileSync(path.join(ROOT, 'lib/terminal-brand.mjs'), path.join(temp, 'terminal-brand.mjs'));
+      for (const dependency of ['terminal-appearance.mjs', 'usage-display.mjs']) fs.copyFileSync(path.join(ROOT, 'lib', dependency), path.join(temp, dependency));
       const impl = await import(pathToFileURL(file).href), broken = rig({ impl, keepRawBetweenPrompts: true });
       const pending = broken.start(); broken.send('/help\r'); await pending;
       check('a planted per-prompt mode reset fails the held-mode contract', mutated !== source && !broken.input.isRaw, detail());
       broken.terminal.close();
     } finally { fs.rmSync(temp, { recursive: true, force: true }); }
 
+  });
+
+  suite('appearance expert', 'terminal appearance is optional and respects plain text', () => {
+    const custom = rig({ appearance: { accentColor: '#fbbf24', compactWelcome: true, showHints: false }, env: { COLORTERM: 'truecolor' } });
+    custom.terminal.welcome('fixture', 'C:/project');
+    check('a custom accent reaches truecolor output and compact welcome omits the block header', custom.output.text.includes('38;2;251;191;36m') && custom.output.text.includes('ATLIAS fixture') && !custom.output.text.includes('▄██▄') && !custom.output.text.includes('/help commands'), detail());
+    custom.terminal.close();
+    const mono = rig({ appearance: { accentColor: 'none' }, env: { COLORTERM: 'truecolor' } }); mono.terminal.welcome('fixture','C:/project');
+    check('the plain-text accent preserves content without color escape sequences', mono.output.text.includes('C:/project') && !/\x1b\[[0-9;]*m/.test(mono.output.text), detail()); mono.terminal.close();
+    const disabled = rig({ appearance: { accentColor: '#fbbf24' }, env: { NO_COLOR: '1', COLORTERM: 'truecolor' } }); disabled.terminal.welcome('fixture','C:/project');
+    check('NO_COLOR takes precedence over a custom color', !/\x1b\[[0-9;]*m/.test(disabled.output.text), detail()); disabled.terminal.close();
   });
 
   suite('terminal palette expert', 'terminal composer matching, width and exact unknown usage', () => {
@@ -144,6 +156,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
       const mutated = source.replace(needle, 'const matches = a.matches || [];');
       const mutantPath = path.join(temp, 'terminal-ui-mutant.mjs'); fs.writeFileSync(mutantPath, mutated);
       fs.copyFileSync(path.join(ROOT, 'lib/terminal-brand.mjs'), path.join(temp, 'terminal-brand.mjs'));
+      for (const dependency of ['terminal-appearance.mjs', 'usage-display.mjs']) fs.copyFileSync(path.join(ROOT, 'lib', dependency), path.join(temp, dependency));
       const mutant = await import(pathToFileURL(mutantPath).href);
       const mutantCompletion = await coalescedCompletion(mutant);
       check('stale-frame mutation is detected by the coalesced-input regression', mutantCompletion === '/goal status' && mutantCompletion !== currentCompletion, detail(JSON.stringify(mutantCompletion)));
