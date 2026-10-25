@@ -2,6 +2,10 @@
 
 Gev, October 24, 2026. Local source changes; publication is separate.
 
+## Later download correction
+
+Gev subsequently requested removal of brew, paru and yay for now. The website and both READMEs now list only curl, npm and Bun. Native recipe downloads were removed from source/public and the build exporter. The rebuilt output passed 12 focused checks and eight desktop/phone normal/reduced browser scenarios; both pages also passed without JavaScript, the direct Bun fragment selected its panel and the removed download URLs returned 404. An isolated reintroduction of brew was caught by the test (expected exit 1). Changed files were re-read adversarially. Receipts are in D:/atlias-site/research/downloads-removal-*.log and downloads-removal-review/. The six-method results below describe the preceding checkpoint and are superseded for current availability.
+
 ## Terminal changes
 
 Approval questions wrap at word boundaries so the engine/model, other subscription billing and default answer remain visible. Oversized questions explain that the terminal needs resizing. Help uses bounded spacing instead of padding every command to the longest syntax. The slash menu explains Tab versus Enter, and running turns explicitly say Working. Atlo, the original atlias wordmark, the prompt and brand remain intact. Sub-atlias keeps the host-owned prompt and receives the shared Atlias setup/help changes.
