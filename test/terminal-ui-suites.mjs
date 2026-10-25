@@ -48,6 +48,36 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
 
   });
 
+  await asyncSuite('draft expert', 'terminal draft stash preserves text and cannot fill permission answers', async () => {
+    let r = rig(), p = r.start();
+    r.send('first\x01\x1b[C\x13'); r.send('\x13X\r');
+    check('restoring keeps the exact draft and cursor', (await p).text === 'fXirst', detail()); r.terminal.close();
+    const saved = []; r = rig({ history: { save: lines => saved.push(lines) } }); p = r.start();
+    r.send('alpha\x13');
+    check('stashing does not submit or save the unsent draft to input history', saved.length === 0 && r.input.listenerCount('data') === 1, detail());
+    r.send('beta\x13\r'); const first = await p; p = r.start(); r.send('\x13\r'); const second = await p;
+    check('two drafts swap and both remain reachable across prompt boundaries', first.text === 'alpha' && second.text === 'beta', detail()); r.terminal.close();
+    const approval = async impl => {
+      const editor = rig({ impl }); let pending = editor.start(); editor.send('original\x13\r'); await pending;
+      pending = editor.start('Allow this action? [y/N]'); editor.send('n\x13\r'); const answer = await pending;
+      pending = editor.start(); editor.send('\x13\r'); const restored = await pending; editor.terminal.close();
+      return answer.text === 'n' && restored.text === 'original';
+    };
+    check('permission answers never swap with user drafts', await approval(ui), detail());
+    r = rig(); const controller = new AbortController(); r.terminal.turnStart(controller);
+    r.send('later\x13urgent\r\x13');
+    const handoff = r.terminal.turnEnd();
+    check('coalesced stash keys and Enter preserve a busy draft and its queued message', handoff.draft === 'later' && handoff.queued.join(',') === 'urgent' && !controller.signal.aborted, detail(JSON.stringify(handoff))); r.terminal.close();
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-stash-plant-'));
+    try {
+      const source = fs.readFileSync(path.join(ROOT, 'lib/terminal-ui.mjs'), 'utf8');
+      const mutant = source.replace('if (!a.main && !a.busy) return;', 'if (false) return;');
+      const file = path.join(folder, 'terminal-ui.mjs'); fs.writeFileSync(file, mutant);
+      for (const dependency of ['terminal-brand.mjs','terminal-appearance.mjs','usage-display.mjs']) fs.copyFileSync(path.join(ROOT,'lib',dependency),path.join(folder,dependency));
+      check('a planted missing permission boundary fails the identical scenario', source !== mutant && !await approval(await import(pathToFileURL(file).href)), detail());
+    } finally { fs.rmSync(folder, { recursive: true, force: true }); }
+  });
+
   suite('appearance expert', 'terminal appearance is optional and respects plain text', () => {
     const custom = rig({ appearance: { accentColor: '#fbbf24', compactWelcome: true, showHints: false }, env: { COLORTERM: 'truecolor' } });
     custom.terminal.welcome('fixture', 'C:/project');
