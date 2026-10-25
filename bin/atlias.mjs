@@ -76,11 +76,11 @@ const HELP = {
   polyglot: ['usage: atlias polyglot <path to a polyglot-benchmark clone> [--lang python] [--out <dir>] [--limit N] [--only name,name]'],
   editbench: ['usage: atlias editbench <rows.jsonl> --bench canitedit|humanevalfix [--variant lazy|descriptive] [--lang python|js] [--out <dir>] [--limit N] [--only id,id] [--rounds N]'],
   refactorbench: ['usage: atlias refactorbench <path to refactor-benchmark/refactor-benchmark> [--out <dir>] [--limit N] [--only name,name] [--max-bytes 40960] [--rounds 16]'],
-  agent: ['usage: atlias agent [--engine chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--once "<prompt>"] [--resume [id]] [--sandbox]'],
+  agent: ['usage: atlias agent [--plain] [--engine chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--once "<prompt>"] [--resume [id]] [--sandbox]'],
   exec: ['usage: atlias exec "<prompt>" [--engine claude-plan|chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)'],
   update: ['usage: atlias update [--check] [--no-fetch]', 'Fast-forwards this git checkout of atlias from its update source (config update.source; empty means the upstream of the current branch) and prints the commits it pulled. Refuses when tracked files are changed, HEAD is detached, no source is set, or the history has diverged. Never resets, merges, rebases or pushes. --check only reports.'],
   import: ['usage: atlias import [--dry-run] [--from claude|codex|gemini|antigravity] [--sessions] [--yes] [--undo]', 'Brings instructions, memory, skills, slash commands and MCP definitions (and with --sessions the saved sessions) from your other tools into the Atlias home. --dry-run prints the plan only. Nothing is copied without a yes; credentials are never read; --undo removes exactly what an import made.'],
-  resume: ['usage: atlias resume [id] [--engine e] [--sandbox]   carry on the last agent session in this folder'],
+  resume: ['usage: atlias resume [id] [--engine e] [--sandbox] [--plain]   carry on the last agent session in this folder'],
   install: ['usage: atlias install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--extras [ids]|--companions|--shortcut]'],
   uninstall: ['usage: atlias uninstall [--all|--codex|--antigravity|--gemini|--extras|--shortcut]'],
   shortcut: ['usage: atlias shortcut [install|uninstall|status]   the atlias command in any terminal'],
@@ -346,7 +346,7 @@ else switch (cmd) {
   case 'chooser': process.exitCode = await agent.chooser(); break;
   case 'agent': case 'run': case 'fly': {
     const r = after('--resume');
-    process.exitCode = await agent.repl({ engine: after('--engine'), once: after('--once'), resume: flag('--resume') ? (r && !r.startsWith('--') ? r : 'last') : null, sandbox: sandboxFlag() });
+    process.exitCode = await agent.repl({ plain: flag('--plain'), engine: after('--engine'), once: after('--once'), resume: flag('--resume') ? (r && !r.startsWith('--') ? r : 'last') : null, sandbox: sandboxFlag() });
     break;
   }
   case 'import': {
@@ -384,7 +384,7 @@ else switch (cmd) {
     if (result?.ok === false) process.exitCode = 1;
     break;
   }
-  case 'resume': process.exitCode = await agent.repl({ engine: after('--engine'), resume: argv[1] && !argv[1].startsWith('--') ? argv[1] : 'last', sandbox: sandboxFlag() }); break;
+  case 'resume': process.exitCode = await agent.repl({ plain: flag('--plain'), engine: after('--engine'), resume: argv[1] && !argv[1].startsWith('--') ? argv[1] : 'last', sandbox: sandboxFlag() }); break;
   case 'exec': {
     // The prompt is every word that is not a flag or a flag's value; - or a
     // pipe reads it from stdin, as codex exec does.

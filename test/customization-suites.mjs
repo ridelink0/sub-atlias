@@ -23,7 +23,7 @@ export default async function({ suite, asyncSuite, check, core, agentMod, TMP, f
     try {
       settings.reset('attachments.enabled');
       const n = settings.rows().find(r => r.id === 'attachments.enabled').number;
-      const text = await menu(['/attachments', `${n}junk`, 'attachments.enabled', 'changed', 'reset attachments.enabled', 'q']);
+      const text = await menu(['/attachments', `${n}junk`, 'attachments.enabled', '2', 'changed', 'reset attachments.enabled', 'q']);
       check('search, exact key toggle, changed filter and reset work through the menu', /Settings: attachments/.test(text) && /no setting .*junk/.test(text) && /attachments.enabled = false/.test(text) && /Settings: changed/.test(text) && core.config().attachments.enabled === true, detail(text.slice(-200)));
       settings.reset('agent.mode');
       const choice = await menu(['agent.mode', '3junk', 'q']);

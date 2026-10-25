@@ -55,3 +55,6 @@ Gev requested a reset wake and more terminal research. Live account resetsAt1792
 
 
 FINAL VERIFIED CHECKPOINT: npm test exited0 with3194/3194 checks across410 suites, plus9/9 worker-routing tests;9 PID-termination checks explicitly skipped. reports-terminal-release-verified.log is the final complete result. All code is committed; primary integration follows this handoff commit. New terminal research is scheduled for02:33:14CDT, not yet written. Benchmark remains resource-stopped with results preserved.
+
+
+October25 terminal continuation is complete: three-pass research and implemented question visibility guards, queue draft recovery, explicit boolean choices, current-state keyboard matching, setup hints and session --plain. Final full3209/3209 plus9/9 worker tests exited0, with9 PID cases skipped. See docs/TERMINAL-UX-PLAN-1025.md and reports/terminal-usability-1025 for actual receipts and limits.

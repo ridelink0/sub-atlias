@@ -768,8 +768,8 @@ export default async function agentSuites({ suite, asyncSuite, check, core, agen
     check('reset returns it to the default and leaves no empty section', back.ok && core.config().guard.loopThreshold === core.DEFAULTS.guard.loopThreshold && !(cfgFile.guard && 'loopThreshold' in cfgFile.guard), { happened: JSON.stringify(cfgFile), why: 'A reset that leaves the key behind is not a reset.', fix: 'Delete the key, and the section when it empties.' });
     const menuRun = async (answers) => { const said = []; const q = [...answers]; await settings.menu(async () => (q.length ? q.shift() : 'q'), (s) => said.push(s)); return said.join(NL); };
     const syntaxIdx = settings.rows().findIndex((r) => r.id === 'verify.syntax') + 1;
-    await menuRun([String(syntaxIdx), 'q']);
-    check('the menu flips a switch with one keypress', core.config().verify.syntax === false, { happened: String(core.config().verify.syntax), why: 'A switch should not ask for the word false.', fix: 'Toggle booleans in menu().' });
+    await menuRun([String(syntaxIdx), '2', 'q']);
+    check('the menu changes a switch after an explicit value choice', core.config().verify.syntax === false, { happened: String(core.config().verify.syntax), why: 'Selecting a switch for its explanation must not change it.', fix: 'Use the same value-choice step for boolean settings.' });
     await menuRun(['r' + syntaxIdx, 'q']);
     check('and resets it with r and the number', core.config().verify.syntax === true, { happened: String(core.config().verify.syntax), why: 'Undo has to be as easy as the change.', fix: 'Check the reset branch in menu().' });
     const modeIdx = settings.rows().findIndex((r) => r.id === 'agent.mode') + 1;
