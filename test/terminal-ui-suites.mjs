@@ -241,8 +241,17 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     r = rig({ history: { initial: ['alpha one'] } }); p = r.start(); r.send('\u0012'); r.send('a\nb');
     check('a pasted line break during Ctrl+R becomes a space in the query (h4 F6)', r.output.text.includes('(search) a b: '), detail(JSON.stringify(r.output.text.slice(-80))));
     r.send('\u001b'); await new Promise((resolve) => setTimeout(resolve, 100)); r.send('\r'); await settle(p); r.terminal.close();
-    r = rig({ history: { initial: ['alpha one'] } }); p = r.start(); r.send('draft'); r.send('\u0012'); r.send('zz'); r.send('\u001b'); await new Promise((resolve) => setTimeout(resolve, 100)); r.send('\r'); answer = await p;
+    r = rig({ history: { initial: ['alpha one'] } }); p = r.start(); r.send('draft'); r.send('\u0012'); r.send('zz');
+    check('history search explicitly says when the query has no matches', r.output.text.includes('(search) zz: No matches'), detail());
+    r.send('\u001b'); await new Promise((resolve) => setTimeout(resolve, 100)); r.send('\r'); answer = await p;
     check('Esc cancels the search and keeps the draft (TUI-A item 12)', answer.text === 'draft', detail(JSON.stringify(answer)));
+    const searchSaves = []; r = rig({ history: { initial: [], save: list => searchSaves.push(list) } }); p = r.start();
+    r.send('original'); r.send('\u0012');
+    check('an empty history shows the same explicit no-match state', r.output.text.includes('(search) : No matches'), detail());
+    r.send('not in history'); r.send('\r'); r.send(' draft'); r.send('\r'); answer = await p;
+    check('Enter on no match returns to editing the original draft before sending', answer.text === 'original draft', detail(JSON.stringify(answer)));
+    check('search queries and display labels never enter saved input history', JSON.stringify(searchSaves) === JSON.stringify([['original draft']]), detail(JSON.stringify(searchSaves)));
+    r.terminal.close();
     r = rig(); p = r.start(); r.send('draft'); r.send('\u001b[A'); r.send('\u001b[B'); r.send('\r'); answer = await p;
     check('history down restores the current draft', answer.text === 'draft', detail(JSON.stringify(answer)));
     // B9: ESC O D is the left arrow in application cursor mode, even when its three bytes arrive in three reads;
