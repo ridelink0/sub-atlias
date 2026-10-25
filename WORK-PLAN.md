@@ -716,3 +716,19 @@ launch competing GPU inference; coordinate by the handoff/status files. Claude
 owns completing the pending full-suite failure diagnosis, native protocol/
 accounting, local qualification and paired Claude then Codex trials. The old
 suite is finished, so new edits are safe within this isolated worktree.
+
+
+## Current handoff October24 terminal UI work
+
+This supersedes the dated October12 continuation above. Gev requested terminal UI/UX continuation and more deep-research after reset. Measured resetsAt1792913294 = October25 02:28:14 CDT. One-time heartbeat atlias-terminal-ux-continuation is ACTIVE at02:33:14 CDT (reset+300s), COUNT1 read back. It follows the named deep-research skill, extends reports/Atlias beginner experience.md, and writes reports/Terminal UI research update.md with notes in research_notes/Terminal UI research update. That new report does not exist yet. Separate03:20 benchmark and older21:20 continuations remain unchanged in timing.
+
+Feature branch codex/capabilities-customization-1024 in C:/Users/OWNER/.codex/worktrees/capabilities-customization/atlias-app has code checkpoint07763c0. Includes real direct-route image inputs, raw-user/reference separation, byte/count bounds, opt-in absolute external image paths, friendly searchable/paged settings with MiB values, focused help, optional accent/compact welcome/hints, and in-memory Ctrl+S stash/swap isolated from permission answers. Original Atlo/wordmark/blue defaults retained. No provider/billing fallback, push or deployment.
+
+Full3188/3188 plus9 worker tests passed before the last label/external/plain-reply fixes. Next full3193/3194 failed only a stale mutation anchor; fixed the anchor while retaining its outside-text leak scenario, then85/85 boundary/media/customization/golden checks passed. FINAL full npm test is now running: reports-terminal-release-verified.log. Inspect actual exit/result before claiming success or merging. Native ConPTY default/plain/external-image, draft recovery, real loopbackHTTP payload/history/clear/exit0 passed. Visual blue/amber/plain/narrow screens and guide390/1440 inspected. Paid-account vision accuracy unverified. Nine PID-termination tests deliberately skipped.
+
+Primary D:/atlias-app is02a8f89 at this writing. After final full pass, commit receipts/handoff, fast-forward the feature branch into primary without disturbing untracked files, and copy logs into reports/capabilities-customization-1024. Website D:/atlias-site local02a4018 built and16 targeted checks passed; earlier201/201 full checks passed. Preserve preexisting.gitignore/untracked changes.
+
+Benchmark is STOPPED by resource guard, not running. Follow D:/harness-work/harness-compare-1024/CONTINUATION.json. V2 OpenCode finished60 screen records with39passes; mini smoke2 and partial screen5 records preserved. STOP04:35:24UTC; fresh free physicalRAMabout2.3GiB below4GiB start reserve. Preserve STOP/history, check cleanup/lease and qualify resources before any restart. Never lower budgets/guards, duplicate runs, edit frozen source or spend API credits. The03:20 heartbeat prompt now reflects this stop. Review pi provenance before publication. SeparateTerminal-Bench remains gated.
+
+
+FINAL VERIFIED CHECKPOINT: npm test exited0 with3194/3194 checks across410 suites, plus9/9 worker-routing tests;9 PID-termination checks explicitly skipped. reports-terminal-release-verified.log is the final complete result. All code is committed; primary integration follows this handoff commit. New terminal research is scheduled for02:33:14CDT, not yet written. Benchmark remains resource-stopped with results preserved.
