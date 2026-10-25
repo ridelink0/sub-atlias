@@ -6,4 +6,4 @@ Functional verification:128/128 focused checks passed, actual exit0. A real Wind
 
 Adversarial verification: an isolated actual-line removal of `No matches` failed the two corresponding assertions in the identical53-check composer scenario. Original source was never mutated. Separate source/test review found no new persistence, permission handling or model-request path. Actual receipts and native transcript are in reports/search-feedback-1025.
 
-Full regression verification is pending in full-exit.json/full.log; this document does not claim it passed until the actual recorded result is appended. Preserve the live benchmark's frozen source and owned resources. No paid inference or PID termination.
+Full regression verification:3213/3213 checks across414 suites passed, actual exit0 in full-exit.json/full.log. Nine PID-dependent cases were explicitly skipped and remain unverified. The separate worker-routing suite was not rerun for this display-only change. Final source/test syntax and whitespace checks passed; the changed line affects presentation only. Preserve the live benchmark's frozen source and owned resources. No paid inference or PID termination.

@@ -1,3 +1,9 @@
+## October25 final verified search follow-up
+
+Integrated the verified no-match history-search display change from45d7955. Full3213/3213 across414 suites actualexit0,9PID-dependent cases explicitly skipped/unverified. Focused128/1280, actualConPTY(no match/40columns/exactdraft recovery)0, actual-line omission caught by identical53-check scenario. Primary source/test hashes equal the full-tested worktree bytes. Receipts copied without overwriting to reports/search-feedback-1025; docs/TERMINAL-SEARCH-FEEDBACK-1025.md records actual results. Worker-routing suite not rerun for this display-only change; prior9/9 result is separate. No further implementation remains for this small follow-up. Broader runtime/provider behavior and assistive technology remain limited as documented.
+
+Website completed common60 results remain live and verified; sitecommit1b471f7. V6benchmark continuing on separate frozen source: fresh Atlias60 then plainClaude60/Mini/Codex/Pi serially, no historical120 reuse. Read current CONTINUATION and actual logs for status; never edit frozen operational files or weaken guards. Daily03:20 and21:20 schedules preserved. See comparison CONTINUATION-HANDOFF-1025.md. Usage91% at17:15UTC, reset approximately18:18UTC; stopped new work at a clean boundary. Existing header below records the pre-integration checkpoint and is superseded by this one.
+
 ## October25 live comparison and published completed results
 
 Completed common60 results are live at https://atlias.ridelinkmaps.com/evidence.html#completed-harness-results: OpenCode39/60 and Nanobot41/60, complete token measurements. Sitecommit1b471f7, Netlify6ade3408fe2fdc6fc20cc4ee, custom/provider HTTP verified, exact checkout/entitlement functions unchanged. Full206/206 actual0, adversarial regressions caught, local/draft desktop+phone checks0 and screenshots inspected. No private raw records/tables/Git history, DNS or billing changes published.
