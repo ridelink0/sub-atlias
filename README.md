@@ -64,6 +64,13 @@ Before a worker uses a **different connection**, Atlias shows the model and its 
 
 Workers have separate conversations, at most 20 rounds and one level of delegation. Their results return to the main agent; selected routes are shown while they run and their reported usage joins session accounting. Stop the parent turn to stop its provider requests. Give parallel workers separate files.
 
+### Make it yours
+
+`/settings` starts with common options. Type `/image` to search, `section ui` to browse a group, `changed` to review your choices, or `all` for every option. Select by the number shown or the exact `section.key`; `reset section.key` restores its default. The same settings are available with `atlias config set <section.key> <value>` in sub-atlias mode. Terminal usage display, placement, color and animation, provider/model/effort, worker defaults, checks, permissions and attachment limits are configurable. `/help <command>` shows focused usage and examples, including custom commands.
+
+Attach a project image with `@image.png` or `@"image with spaces.png"`, alongside text references such as `@"notes one.txt"`. PNG, JPEG and WebP reach supported direct model connections as image inputs; the selected model must support vision. Atlias keeps the typed request separate from reference-file contents. `/attachments` shows image names and sizes; `/attachments clear` removes image payloads from future requests and saves the chat. Older checkpoints may retain them. `/config attachments.detail high` requests OpenAI image detail; `/config attachments.enabled false` disables images. Model/provider limits and billing still apply. Text estimates exclude image processing; provider-reported usage remains authoritative.
+
+
 **Sub-atlias:** the public plugin works inside a native host such as Claude Code or Codex. Its setup, launch identity and help use the same beginner guidance, while the host owns its prompt and native worker/model controls. The full app's `/agents` command does not intercept or replace those native tools. The full app is not publicly on sale yet.
 
 ### Benchmarks

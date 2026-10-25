@@ -17,3 +17,16 @@ Active benchmark: original five-harness run stopped on memory; raw nanobot97 IDs
 ## Grounding
 
 Atlias RESEARCH-FIRST H3 actionable errors,H4 stopping versus completion,H5 mechanism-backed checks,H6 matched measurements,H8 bounded delegation. Cache-engineering R1/R6 and Q1 require identical prefixes and append-only history; adding attachments must preserve all earlier text/image blocks, never strip reasoning or claim unmeasured cache savings. TTL/accounting policies remain unchanged. Primary protocol references: https://developers.openai.com/api/docs/guides/images-vision, https://platform.claude.com/docs/en/build-with-claude/vision, https://ai.google.dev/api/generate-content. Responses input_image with data URI, Anthropic image/source/base64 and Gemini inlineData are documented. No live provider access or new API billing has been tested.
+
+
+## Capability and customization checkpoint, October 24 evening
+
+Implemented in the capabilities-customization worktree: explicit project PNG/JPEG/WebP inputs for Responses/ChatGPT, Anthropic, Gemini, Claude plan SDK, OpenAI-compatible and native Ollama transports. Model vision support is required; no account/model fallback. Raw typed requests stay separate from reference-file contents, including saved history and authority records. Attachment settings bound counts, bytes and requested detail; /attachments inspects or clears future image payloads, with older checkpoints disclosed. File mentions accept quoted paths with spaces.
+
+/settings now starts with common options, searches descriptions/keys, browses sections, reviews changed values and keeps stable selection numbers. Malformed numbers and inherited setting names are refused. /help accepts a command or search and respects custom command homes. Text context estimates include reference files and exclude unknown image token costs.
+
+Pass 1: 215/215 focused checks across19 suites passed (including exact baseline request fingerprints), plus real Windows ConPTY -> quoted mentions -> loopback HTTP provider -> saved exact request -> clear persisted images -> native exit0. No external inference was used by these checks. Live vision accuracy and each paid provider account remain unverified.
+
+Pass 2: isolated image-to-text payload and reference-authority mutations were caught. A Windows per-prompt raw-mode reset reproduced lost input after image clearing; holding raw mode until close fixed the native scenario, and a planted reset fails the same lifecycle contract. Further adversarial reads tightened numeric limits and legitimate dot-prefixed project paths. Native diagnostics removed from production code.
+
+Next: preserve this checkpoint, repin the benchmark source guard to the verified optional-input commit, then run the full app suite with PID termination checks disabled. The separate running benchmark remains on its frozen source; do not modify it or claim these additions improve its scores. Continue customization only after the full suite is clean.

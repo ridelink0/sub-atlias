@@ -18,12 +18,34 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     output.write = (s) => { output.text += s; };
     let fallbackCalls = 0, fallbackClosed = 0;
     const createUI = opts.impl ? opts.impl.createTerminalUI : ui.createTerminalUI;
-    const terminal = createUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, history: opts.history, getCommands: () => opts.rows || rows,
+    const terminal = createUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, history: opts.history, keepRawBetweenPrompts: opts.keepRawBetweenPrompts, getCommands: () => opts.rows || rows,
       getInfo: () => ({ engine: 'echo', permission: 'workspace', tokens: 'tokens not recorded' }),
       fallbackQuestion: async () => { fallbackCalls++; return 'plain answer'; }, closeFallback: () => fallbackClosed++ });
     const start = (q) => (q === undefined ? terminal.prompt() : terminal.question(q)).then((text) => ({ text }), (error) => ({ error: error.message }));
     return { input, output, proc, terminal, start, send: (s) => input.emit('data', s), counts: () => ({ fallbackCalls, fallbackClosed }) };
   };
+
+  await asyncSuite('native input expert', 'terminal raw input stays stable across adjacent prompts', async () => {
+    const r = rig({ keepRawBetweenPrompts: true });
+    let p = r.start(); r.send('/help\r'); await p;
+    check('held mode stays raw between prompts and releases the prompt listeners', r.input.isRaw && r.input.listenerCount('data') === 0 && r.input.paused, detail());
+    p = r.start(); r.send('/exit\r'); const answer = await p;
+    check('the next command submits without another raw mode transition', answer.text === '/exit' && r.input.changes.join(',') === 'true', detail());
+    r.terminal.close();
+    check('closing restores original raw mode and releases the native read handle', !r.input.isRaw && r.input.paused && r.input.listenerCount('data') === 0 && r.input.changes.join(',') === 'true,false', detail());
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-raw-mutation-'));
+    try {
+      const source = fs.readFileSync(path.join(ROOT, 'lib/terminal-ui.mjs'), 'utf8');
+      const mutated = source.replace('if (!keepRawBetweenPrompts) input.setRawMode(active.wasRaw);', 'input.setRawMode(active.wasRaw);');
+      const file = path.join(temp, 'terminal-ui.mjs'); fs.writeFileSync(file, mutated);
+      fs.copyFileSync(path.join(ROOT, 'lib/terminal-brand.mjs'), path.join(temp, 'terminal-brand.mjs'));
+      const impl = await import(pathToFileURL(file).href), broken = rig({ impl, keepRawBetweenPrompts: true });
+      const pending = broken.start(); broken.send('/help\r'); await pending;
+      check('a planted per-prompt mode reset fails the held-mode contract', mutated !== source && !broken.input.isRaw, detail());
+      broken.terminal.close();
+    } finally { fs.rmSync(temp, { recursive: true, force: true }); }
+
+  });
 
   suite('terminal palette expert', 'terminal composer matching, width and exact unknown usage', () => {
     check('Atlo occupies six rows of twelve terminal cells', brand.atloRows().length === 6 && brand.atloRows().every(row => ui.textWidth(row) === 12), detail());
