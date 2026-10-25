@@ -12,7 +12,8 @@ export default async function({ suite, asyncSuite, check, core, agentMod, TMP, f
     check('the theme has a safe basic-color fallback and does not interpret arbitrary text', terminalTheme('#abc').basic >= 30 && terminalTheme('#abc').basic <= 97 && terminalTheme('invalid').mark.join(',') === '47,116,245' && terminalTheme('none').plain, detail());
     check('menu rows are brief while full descriptions remain available on selection', settings.formatMenu(common).split('\n').length === common.length && !settings.formatMenu(common).includes(common[0].about) && settings.format([common[0]]).includes(common[0].about), detail());
     const attachments = settings.selectRows(all, 'section attachments');
-    check('section and description searches preserve global numbers', attachments.length === 5 && attachments.every(r => all[r.number - 1].id === r.id) && settings.selectRows(all, 'image detail').some(r => r.id === 'attachments.detail'), detail());
+    check('section and description searches preserve global numbers', attachments.length === 6 && attachments.every(r => all[r.number - 1].id === r.id) && settings.selectRows(all, 'image detail').some(r => r.id === 'attachments.detail'), detail());
+    check('friendly labels are searchable and the default view avoids internal key names', settings.selectRows(all,'Main connection').some(r=>r.id==='agent.engine') && settings.formatMenu(common).includes('Accent color') && !settings.formatMenu(common).includes('ui.accentColor'), detail());
     check('no match stays empty instead of displaying unrelated settings', settings.selectRows(all, 'no-such-setting-query').length === 0, detail());
     check('filtered lists show their original selection numbers', settings.format(attachments).includes(String(attachments[0].number).padStart(2) + '  attachments.enabled'), detail());
   });

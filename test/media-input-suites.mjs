@@ -56,6 +56,24 @@ export default async function mediaInputSuites({ suite, asyncSuite, check, core,
     check('an image outside the project is never read into model input', !escaped.images && escaped.imageErrors?.length===1, detail());
   });
 
+  suite('attachment scope adversary', 'media inputs: external images require an explicit opt-in and absolute user path', () => {
+    const project = path.join(TMP,'external-images','project'), outside = path.join(TMP,'external-images','outside');
+    fs.mkdirSync(project,{recursive:true});fs.mkdirSync(outside,{recursive:true});
+    const imageFile = path.join(outside,'a shot.png');fs.writeFileSync(imageFile,png);fs.writeFileSync(path.join(outside,'note.txt'),'Outside reference text.');
+    const typed = `Inspect @"${imageFile}"`;
+    const denied = qol.expandMentions(typed,project,{enabled:true});
+    check('the default refuses outside images and gives an explicit next step', denied.imageErrors?.length === 1 && !denied.images && denied.notes.join(' ').includes('attachments.allowExternal true') && core.DEFAULTS.attachments.allowExternal === false,detail());
+    const allowed = qol.expandMentions(typed,project,{enabled:true,allowExternal:true});
+    check('opt-in sends only the explicitly selected image bytes and preserves the exact request', allowed.images?.length === 1 && allowed.images[0].data === image.data && allowed.request === typed && allowed.notes.some(n=>n.includes('outside this project')),detail());
+    const relative = qol.expandMentions('Inspect @"../outside/a shot.png"',project,{enabled:true,allowExternal:true});
+    check('the opt-in does not turn relative traversal into an attachment', relative.imageErrors?.length === 1 && !relative.images,detail());
+    const text = qol.expandMentions(`Read @"${path.join(outside,'note.txt')}"`,project,{enabled:true,allowExternal:true});
+    check('outside text files stay excluded', !text.files.length && !text.fileContext && !text.images,detail());
+    const git = path.join(outside,'.git');fs.mkdirSync(git,{recursive:true});const hidden = path.join(git,'hidden.png');fs.writeFileSync(hidden,png);
+    const blocked = qol.expandMentions(`Inspect @"${hidden}"`,project,{enabled:true,allowExternal:true});
+    check('.git images stay excluded even with opt-in', blocked.imageErrors?.length === 1 && !blocked.images,detail());
+  });
+
   await asyncSuite('provider media expert', 'media inputs: API and subscription request contracts', async () => {
     const messages=[{role:'system',content:'Keep the original system text.'},{role:'user',content:'Inspect this',_images:[image]}];
     const rb=transports.responsesBody(messages,{model:'fixture-vision'}),ab=transports.anthropicBody(messages,{model:'fixture-vision'}); let gb;

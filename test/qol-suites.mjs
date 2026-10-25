@@ -335,7 +335,7 @@ export default async function qolSuites({ suite, asyncSuite, check, core, agentM
     check('the same file twice is attached once', x.files.length === 1, { happened: JSON.stringify(x.files), why: 'No duplicate bytes.', fix: 'seen set.' });
     const scOut = (mod) => mod.expandMentions('look at @' + rel, proj).text.includes('TOP-SECRET') ? ['read a file outside the project'] : [];
     check('the scenario passes on the real module', scOut(qol).length === 0, { happened: '', why: 'Baseline.', fix: '' });
-    const src = fs.readFileSync(path.join(ROOT, 'lib', 'qol.mjs'), 'utf8').replace('!inside(rootReal, real) ||', 'false ||').replace(/from '\.\/([\w-]+)\.mjs'/g, (m, f) => `from '${pathToFileURL(path.join(ROOT, 'lib', f + '.mjs')).href}'`);
+    const src = fs.readFileSync(path.join(ROOT, 'lib', 'qol.mjs'), 'utf8').replace('const inProject = inside(rootReal, real)', 'const inProject = true').replace(/from '\.\/([\w-]+)\.mjs'/g, (m, f) => `from '${pathToFileURL(path.join(ROOT, 'lib', f + '.mjs')).href}'`);
     const mp = path.join(TMP, 'qol', `mutant-mention-${process.pid}-${++n}.mjs`);
     fs.writeFileSync(mp, src);
     const mod = await import(pathToFileURL(mp).href);
