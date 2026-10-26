@@ -37,6 +37,23 @@ export default async function codexCompatSuites({ suite, asyncSuite, check, core
     const genuinelyPending = project([row('check')], [{ ...retained, excerpt: 'completion not established' }, raw()]);
     check('native evidence without a terminal outcome still remains pending', !integrity.passingVerification(genuinelyPending.events), why);
     check('native completed executions retain an explicit terminal marker', project([row('check')]).events.some(e => e.codexId === 'check' && e.nativeTerminal === true), why);
+    const old = row('before-prompt', 0, {}, { started_at_ms: 2000, completed_at_ms: 3000 });
+    const fresh = row('fresh', 0, {}, { started_at_ms: 4000, completed_at_ms: 5000 });
+    const padding = Array.from({ length: 260 }, () => JSON.stringify({ type: 'response_item', payload: { text: 'x'.repeat(9000) } })).join('\n');
+    const journal = path.join(folder, 'large-native-journal.jsonl');
+    fs.writeFileSync(journal, JSON.stringify(old) + '\n' + padding + '\n' + JSON.stringify(fresh) + '\n');
+    const beforePrompt = { ...raw('before-prompt', 3001) };
+    const extended = native.projectCodexChecks(payload(journal), [beforePrompt, raw('fresh', 5001)], { promptAt: 2500, isCheck: () => true });
+    check('pending completion outside the tail is recovered from the actual journal', extended.recovered.some(e => e.codexId === 'before-prompt' && e.nativeTerminal === true && e.outcome === 'unknown') && integrity.passingVerification(extended.events), why);
+    const onlyOld = save('only-before-prompt', [old]);
+    const alone = native.projectCodexChecks(payload(onlyOld), [beforePrompt], { promptAt: 2500, isCheck: () => true });
+    check('pre-prompt execution is not borrowed as a fresh passing check', !integrity.passingVerification(alone.events), why);
+    fs.writeFileSync(journal, JSON.stringify({ type: 'response_item', payload: { output: JSON.stringify(old) } }) + '\n' + padding + '\n' + JSON.stringify(fresh) + '\n');
+    const printedOld = native.projectCodexChecks(payload(journal), [beforePrompt, raw('fresh', 5001)], { promptAt: 2500, isCheck: () => true });
+    check('printed old completion cannot resolve a genuinely pending execution', !integrity.passingVerification(printedOld.events), why);
+    const foreignOld = { ...old, payload: { ...old.payload, thread_id: 'another-thread' } };
+    fs.writeFileSync(journal, JSON.stringify(foreignOld) + '\n' + padding + '\n' + JSON.stringify(fresh) + '\n');
+    check('fallback cannot borrow a completion from another thread', !integrity.passingVerification(native.projectCodexChecks(payload(journal), [beforePrompt, raw('fresh', 5001)], { promptAt: 2500, isCheck: () => true }).events), why);
     check('a native success cannot erase a failure reported for that same hook execution', !integrity.passingVerification(project([row('check')], [{ ...raw(), outcome: 'fail' }]).events), why);
     for (const [label, record] of [
       ['nonzero exit', row('check', 7, { aggregated_output: 'all good' })],
@@ -169,6 +186,17 @@ export default async function codexCompatSuites({ suite, asyncSuite, check, core
       const mutant = await import(mutantFile.href + '?case=retained-terminal');
       const contract = implementation => integrity.passingVerification(implementation.projectCodexChecks(payload(save('terminal-mutant', [row('check')])), [stale, { kind: 'edit', files: [], t: 1500 }, raw()], { isCheck: () => true }).events);
       check('a planted permanently-pending regression rejects the same later valid check', contract(native) && !contract(mutant), why);
+      const longFile = path.join(folder, 'tail-recovery-mutant.jsonl');
+      const old = row('old-pending', 0, {}, { started_at_ms: 2000, completed_at_ms: 3000 });
+      const fresh = row('fresh', 0, {}, { started_at_ms: 4000, completed_at_ms: 5000 });
+      const padding = Array.from({ length: 260 }, () => JSON.stringify({ type: 'response_item', payload: { text: 'x'.repeat(9000) } })).join('\n');
+      fs.writeFileSync(longFile, JSON.stringify(old) + '\n' + padding + '\n' + JSON.stringify(fresh) + '\n');
+      const missingRecovery = source.replace('if (!missing.length) return recent;', 'return recent;');
+      check('the actual pending-ID recovery source line was mutated', missingRecovery !== source, why);
+      fs.writeFileSync(mutantFile, missingRecovery);
+      const tailMutant = await import(mutantFile.href + '?case=missing-tail-recovery');
+      const tailContract = implementation => integrity.passingVerification(implementation.projectCodexChecks(payload(longFile), [raw('old-pending', 3001), raw('fresh', 5001)], { promptAt: 2500, isCheck: () => true }).events);
+      check('a planted missing fallback cannot resolve the same real native completion', tailContract(native) && !tailContract(tailMutant), why);
     } finally { if (fs.existsSync(mutantFile)) fs.unlinkSync(mutantFile); }
   });
   suite('Codex compatibility expert', 'Codex native hook processes accept real interpreter exits and preserve blockers', () => {

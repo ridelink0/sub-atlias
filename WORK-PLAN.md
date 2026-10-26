@@ -1,3 +1,11 @@
+## October26 final tail recovery full pass
+
+3308/3308 checks passed across 423 suites, 9 skipped plus9/9workers, actualexit0 BelowNormal.9PIDcases skipped. Runtime source hashes match final full run. Candidate real-session gate replay null3318ms. Next: final98focused afterdocs, localcommit/FFprimary, installed98+strictreal-sessiongate; thenindependentobserver/gracefulQuit andnativebenchcontinued withoutCodex.
+
+## October26 pending execution outside transcript tail
+
+Third gate edge case fixed in candidate: exact native completion lookup for known pending IDs outside2MiB tail, including pre-prompt starts. Native terminal metadata is retained without borrowing a verification pass.98focused checks and missing-fallback/foreign/printed regressions passed; actual-session candidate replay null3318ms. Second full protected suite is running BelowNormal: session55541, reports/benchmark-reviewed-1026/gate-tail-full.log and gate-tail-full-exit.json. Read actual result before final integration/quit. First3302fullpass predates this last change and is not its verification.
+
 ## October26 full gate repair verification
 
 3302/3302 checks passed across 423 suites, 9 skipped plus9/9workers, actualexit0;9PIDcases skipped/unverified. Runtime source hashes unchanged through the full run. Focused92checks and cross-volume/terminal-ordering actual-line mutants passed. Next: final focused check after this documentation, local commit, fast-forward primary and actual installed-session gate clearance; then arm independent observer and graceful Quit to free native benchmark reserves.
