@@ -1,3 +1,7 @@
+## October25 Claude label verified and integrated
+
+Claude Code + atlias preserves existing status details. Fullapp3229/3229 across417suites exit0; worker9/9 exit0; nine PID cases skipped. PinnedClaude2.1.302 native status display and clean exit verified without inference; actual-line label/ownership mutants caught. Integrity findings[] incomplete[]. See docs/PRIVATE-DISTRIBUTION-1025.md. Private Max and Siteworkwd repositories exist; packaging and invitation next. Website repair345722a is live, deploy6adea0f440216319045928d2. Preserve benchmark V6 STOP; resource recovery still pending.
+
 ## October25 final verified search follow-up
 
 Integrated the verified no-match history-search display change from45d7955. Full3213/3213 across414 suites actualexit0,9PID-dependent cases explicitly skipped/unverified. Focused128/1280, actualConPTY(no match/40columns/exactdraft recovery)0, actual-line omission caught by identical53-check scenario. Primary source/test hashes equal the full-tested worktree bytes. Receipts copied without overwriting to reports/search-feedback-1025; docs/TERMINAL-SEARCH-FEEDBACK-1025.md records actual results. Worker-routing suite not rerun for this display-only change; prior9/9 result is separate. No further implementation remains for this small follow-up. Broader runtime/provider behavior and assistive technology remain limited as documented.

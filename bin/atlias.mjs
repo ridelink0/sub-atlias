@@ -16,6 +16,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { VERSION, STATE_DIR, ROOT, readJson, writeJson, DEFAULTS, config, parseSetting, writeLauncher, flagStamp, flagLine, flagEnvName, sameFlags } from '../lib/core.mjs';
 import * as hosts from '../lib/hosts.mjs';
+import { installClaudeLabel, removeClaudeLabel } from '../lib/claude-label.mjs';
 import * as brief from '../lib/brief.mjs';
 import * as progress from '../lib/progress.mjs';
 import * as dream from '../lib/dream.mjs';
@@ -56,6 +57,7 @@ const shortcutUninstall = () => { const r = shortcut.uninstallShortcut(); return
 // used to be read as one more flag: `atlias eval --help` started a real eval on
 // the default model and left five workspaces behind.
 const HELP = {
+  statusline: ['usage: atlias statusline install|remove', 'Show Claude Code + atlias while preserving the existing status details, or restore the previous status line.'],
   eval: [
     'usage: atlias eval [task ids] [options]   score tasks: the model works in a scratch copy and the check command decides',
     '  --tier smoke|main|big     a named tier (atlias tiers lists them); default: the shipped smoke tasks',
@@ -469,6 +471,13 @@ else switch (cmd) {
     break;
   }
   case 'doctor': { const c = hosts.doctor(cwd).concat(extra.doctorRows()); say(hosts.formatDoctor(c)); process.exitCode = c.every((x) => x.ok) ? 0 : 1; break; }
+  case 'statusline': {
+    const action=argv[1]||'install';
+    if(!['install','remove'].includes(action)){say('usage: atlias statusline install|remove');process.exitCode=1;break;}
+    try { const result=(action==='remove'?removeClaudeLabel:installClaudeLabel)();say(result.preservedOtherOwner?'The status line belongs to another tool and was left intact.':action==='remove'?'Previous Claude status line restored.':'Claude Code + atlias label enabled; existing status details preserved.'); }
+    catch(error){say(error.message);process.exitCode=1;}
+    break;
+  }
   case 'status': {
     const g = graph.status(cwd);
     const p = dream.pending(cwd);

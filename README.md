@@ -207,6 +207,10 @@ node test/run.mjs
 
 ### Known limits
 
+Claude Code can show `Claude Code + atlias` in its supported status line. `atlias install --claude` enables it after a successful plugin install; `atlias statusline install` enables the label on an existing installation. Existing status details are preserved. `atlias statusline remove` restores the previous status line while Atlias still owns that setting.
+
+The Claude-plan engine uses the Claude Agent SDK's bundled runtime for one model turn at a time, with its tools, plugins, MCP servers and settings disabled. Atlias runs the task loop and every tool. This is separate from the explicit Claude Code host-harness engine. Each person signs in with their own eligible account; credentials are never distributed with the app.
+
 - The OpenAI-compatible engine is tested against a local server that speaks the wire format, not against a live paid endpoint in CI.
 - The extra harnesses' config shapes follow each tool's documentation and are marked UNVERIFIED in `lib/hosts-extra.mjs`; only Claude Code and Codex are pinned to source.
 - Antigravity has no hook API, so it gets the MCP server and the instruction block only.
