@@ -1,3 +1,13 @@
+## October26 Codex sub-atlias repair release
+
+Core repair is complete on codex/codex-compatibility-1026. Codex PostToolUse supplies stdout without an exit code; the gate now correlates typed native terminal records by thread/turn/execution identity. Pending, failed, conflicting and stale checks stay blocked; native/mtime edit barriers include shell writes. Evidence is retained during PostToolUse. Native Dream/compaction, stdin assertions, foreign-hook ownership and headless automatic check discovery are covered. VS Code stayed closed.
+
+Pass1: final unchanged-source npm test exited0:3296/3296 checks across423 suites, plus9/9 worker tests.9 PID-termination cases are explicit unverified skips. Actual hook subprocess pass/fail/pending/edit-after-check paths and real Codex journal exit0/exit1 acceptance ran. Pass2: adversarial review of every changed file, four actual-line mutants detected, and actual project placeholder/weakened/unwired checks finished with0 findings and0 incomplete checks. Earlier full run failed only the Windows file-URL launcher and was corrected; earlier passing run was superseded after additional edge fixes. Receipts reports/codex-compat-1026.
+
+Next: local commit and clean primary fast-forward, verify the installed source and an isolated copy of this actual session through the full gate without suppressing any reasons, save final receipts/handoff. Only then arm the independent native post-close checker, delete the one-time automation, and gracefully close the exact Codex package window after successful task completion. Native benchmarks stay running. If the final gate has any finding, resolve it before closure.
+
+Latest benchmark: Atlias qualified41/60 complete; Claude V7-0002 interrupted by resource guard, supervisor resourceRetries1 and waiting for stable reserves before a fresh retry. Preserve its partial rows and STOP; do not call it inference while waiting. No frozen source/model/tasks/client/guard change. Existing03:20 and21:20 schedules remain.
+
 ## Gev latest: keep VS Code closed during Atlias gate
 
 The saved11:15PM compatibility automation explicitly prohibits VS Code/code/code-insiders/editor-launching checks and requires auditing gate/doctor/helper paths for unintended editor launches. Saved prompt read back verified; timing/status unchanged. Finish verification before graceful Codex shutdown; native benchmarks continue. Current usage99percent, no new implementation started.
