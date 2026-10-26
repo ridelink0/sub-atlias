@@ -1,3 +1,7 @@
+## October26 reviewed queue and qualified publication
+
+Website deploy6adf44ab is live with Atlias41/60,OpenCode39/60,Nanobot41/60. Historical best45/60 and variability are explained separately. Final207/207 website checks, four browser states and actual-line adversarial checks passed. See docs/BENCHMARK-REVIEWED-QUEUE-1026.md. Native Atlias Benchmark Recovery now follows reserve-supervisor-1026-v3: remainingMini/Codex/Pi, oldClaude38/60 rejected and oldhold preserved. All original caps/guards/retry history/deadline remain. At installationWAITING for stable reserves, no inference claimed. New source17checks+11actual-main+51qualification actual0. One-time08:26:17Chicago continuation verified reset+5min. VSCode foreign shell-hook launch fixed with explicitNode, nativechecks0VSCode. Actual Codex quit/post-close activity still awaiting independent receipt; never infer from WM_CLOSE. No push/paidAPI/PIDkill/Discord/game/RideLink/VSCode.
+
 ## October26 03:20 benchmark audit: qualification hold
 
 The comparison is NOT running inference. Native supervisor reserve-supervisor-1025-v2/STATE.json is held since06:34UTC, active null, resourceRetries1; native Atlias Benchmark Recovery task is Ready with last result1. Preserve this intentional hold; do not restart, clear it, change caps or rewrite reports. Resource recovery previously worked: Claude0002 was preserved23/38 and automatically restarted as0003.
