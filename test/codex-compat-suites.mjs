@@ -30,6 +30,13 @@ export default async function codexCompatSuites({ suite, asyncSuite, check, core
     check('a direct interpreter preserves a path with spaces', native.codexCommand({ command: ['C:/Program Files/nodejs/node.exe', 'test file.mjs'] }) === '"C:/Program Files/nodejs/node.exe" "test file.mjs"', why);
     check('malformed argv supplies no check', native.codexCommand({ command: [7] }) === '', why);
     check('an explicit exit0 corrects the hook unknown', integrity.passingVerification(project([row('check')]).events), why);
+    const retained = { ...raw('old', 1000), from: 'codex-transcript', startedAt: 500,
+      excerpt: 'the check cannot be placed wholly after the last edit' };
+    const later = project([row('check')], [retained, { kind: 'edit', files: [], t: 1500 }, raw()]);
+    check('a completed pre-edit check outside the transcript tail does not become pending forever', integrity.passingVerification(later.events), why);
+    const genuinelyPending = project([row('check')], [{ ...retained, excerpt: 'completion not established' }, raw()]);
+    check('native evidence without a terminal outcome still remains pending', !integrity.passingVerification(genuinelyPending.events), why);
+    check('native completed executions retain an explicit terminal marker', project([row('check')]).events.some(e => e.codexId === 'check' && e.nativeTerminal === true), why);
     check('a native success cannot erase a failure reported for that same hook execution', !integrity.passingVerification(project([row('check')], [{ ...raw(), outcome: 'fail' }]).events), why);
     for (const [label, record] of [
       ['nonzero exit', row('check', 7, { aggregated_output: 'all good' })],
@@ -154,6 +161,14 @@ export default async function codexCompatSuites({ suite, asyncSuite, check, core
         const contract = implementation => integrity.passingVerification(implementation.projectCodexChecks(payload(save('mutant', rows)), events, { isCheck: () => true }).events);
         check('the same contract catches a planted ' + label + ' regression', !contract(native) && contract(mutant), why);
       }
+      const stale = { ...raw('old', 1000), from: 'codex-transcript', startedAt: 500,
+        excerpt: 'the check cannot be placed wholly after the last edit' };
+      const mutation = source.replace("const ended = event.from === 'codex-transcript'", "const ended = false && event.from === 'codex-transcript'");
+      check('the retained terminal ordering source line was mutated', mutation !== source, why);
+      fs.writeFileSync(mutantFile, mutation);
+      const mutant = await import(mutantFile.href + '?case=retained-terminal');
+      const contract = implementation => integrity.passingVerification(implementation.projectCodexChecks(payload(save('terminal-mutant', [row('check')])), [stale, { kind: 'edit', files: [], t: 1500 }, raw()], { isCheck: () => true }).events);
+      check('a planted permanently-pending regression rejects the same later valid check', contract(native) && !contract(mutant), why);
     } finally { if (fs.existsSync(mutantFile)) fs.unlinkSync(mutantFile); }
   });
   suite('Codex compatibility expert', 'Codex native hook processes accept real interpreter exits and preserve blockers', () => {

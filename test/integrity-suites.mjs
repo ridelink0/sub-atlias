@@ -175,6 +175,11 @@ export default async function integritySuites({ suite, check, core, gate, track,
     fs.writeFileSync(extra, 'export function brandNewModule() { return 1; }' + NL);
 
     const diff = integrity.diffFor(repo, [app, spec, extra]);
+    if (process.platform === 'win32') {
+      const otherDrive = path.parse(repo).root.toLowerCase().startsWith('c:') ? 'D:/foreign/app.js' : 'C:/foreign/app.js';
+      const mixed = integrity.diffFor(repo, [app, spec, extra, otherDrive]);
+      check('another Windows volume cannot make this repository diff incomplete', mixed && !mixed.incomplete && mixed.added.some(a => /unusedFeature/.test(a.text)), { happened: JSON.stringify(mixed && { incomplete: mixed.incomplete }), why: 'Windows returns an absolute relative-path result across volumes; passing it to git aborts every local integrity check.', fix: 'Exclude absolute cross-volume paths from this repository diff.' });
+    }
     check('the diff sees tracked edits and untracked files', diff && diff.added.some((a) => /unusedFeature/.test(a.text)) && diff.added.some((a) => /brandNewModule/.test(a.text)), { happened: diff ? diff.added.length + ' added lines' : 'no diff', why: 'A new file written this turn is the easiest place for an unwired feature to hide.', fix: 'Check diffFor: git diff HEAD plus ls-files --others.' });
     const s = sid('e2e');
     router.prompt({ session_id: s, cwd: repo, prompt: 'add the feature and make the tests pass' });

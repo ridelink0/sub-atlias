@@ -1,3 +1,11 @@
+## October26 full gate repair verification
+
+3302/3302 checks passed across 423 suites, 9 skipped plus9/9workers, actualexit0;9PIDcases skipped/unverified. Runtime source hashes unchanged through the full run. Focused92checks and cross-volume/terminal-ordering actual-line mutants passed. Next: final focused check after this documentation, local commit, fast-forward primary and actual installed-session gate clearance; then arm independent observer and graceful Quit to free native benchmark reserves.
+
+## October26 final gate edge cases
+
+Final audit reproduced cross-volume Git path failure and stale completed-check ordering outside transcript tail. Candidate fixes keep genuine pending/failed checks blocking;92focused checks and actual-line adversarial contracts passed. Full protected npm suite is running; inspect reports/benchmark-reviewed-1026/gate-full-exit.json and gate-full.log before claiming success. Final installed real-session gate still requires recheck after integration. Native benchmark remains waiting for stable RAM, no inference claimed.
+
 ## October26 reviewed queue and qualified publication
 
 Website deploy6adf44ab is live with Atlias41/60,OpenCode39/60,Nanobot41/60. Historical best45/60 and variability are explained separately. Final207/207 website checks, four browser states and actual-line adversarial checks passed. See docs/BENCHMARK-REVIEWED-QUEUE-1026.md. Native Atlias Benchmark Recovery now follows reserve-supervisor-1026-v3: remainingMini/Codex/Pi, oldClaude38/60 rejected and oldhold preserved. All original caps/guards/retry history/deadline remain. At installationWAITING for stable reserves, no inference claimed. New source17checks+11actual-main+51qualification actual0. One-time08:26:17Chicago continuation verified reset+5min. VSCode foreign shell-hook launch fixed with explicitNode, nativechecks0VSCode. Actual Codex quit/post-close activity still awaiting independent receipt; never infer from WM_CLOSE. No push/paidAPI/PIDkill/Discord/game/RideLink/VSCode.
