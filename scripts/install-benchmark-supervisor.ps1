@@ -56,12 +56,12 @@ $action = New-ScheduledTaskAction -Execute $pythonWindowless -Argument ('-u -B "
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $identity.Name
 $principal = New-ScheduledTaskPrincipal -UserId $identity.User.Value -LogonType Interactive -RunLevel Limited
-$settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 2) -ExecutionTimeLimit (New-TimeSpan -Hours 24) -StartWhenAvailable -Priority 7
+$settings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 2) -ExecutionTimeLimit ([TimeSpan]::Zero) -StartWhenAvailable -Priority 7
 $definition = New-ScheduledTask -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description $description
 if ($existing) { Register-ScheduledTask -TaskName $taskName -InputObject $definition -Force | Out-Null }
 else { Register-ScheduledTask -TaskName $taskName -InputObject $definition | Out-Null }
 $saved = Get-ScheduledTask -TaskName $taskName
-if ($saved.Actions.Execute -ne $pythonWindowless -or $saved.Actions.Arguments -notlike '*bootstrap.py*' -or $saved.Settings.MultipleInstances -ne 'IgnoreNew') { throw 'Saved task differs from the reviewed action' }
+if ($saved.Actions.Execute -ne $pythonWindowless -or $saved.Actions.Arguments -notlike '*bootstrap.py*' -or $saved.Settings.MultipleInstances -ne 'IgnoreNew' -or $saved.Settings.ExecutionTimeLimit -ne 'PT0S') { throw 'Saved task differs from the reviewed action' }
 [IO.File]::WriteAllText((Join-Path $rootPath 'scheduled-task.xml'),(Export-ScheduledTask -TaskName $taskName),[Text.UTF8Encoding]::new($false))
 Start-ScheduledTask -TaskName $taskName
 @{ installed=$true; task=$taskName; atLogOn=$true; multipleInstances=[string]$saved.Settings.MultipleInstances; sourceSha256=$sourceHash } | ConvertTo-Json
