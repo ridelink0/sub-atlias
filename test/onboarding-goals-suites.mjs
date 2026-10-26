@@ -123,6 +123,13 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
       check('OpenAI API setup checks only authenticated GET /models and stores no key',
         api.status === 'complete' && api.method === 'responses' && request.options.method === 'GET' && new URL(request.url).pathname === '/v1/models' && request.options.headers.authorization === 'Bearer fixture-private-key' && !fs.readFileSync(keyFile, 'utf8').includes('fixture-private-key'),
         { happened: JSON.stringify({ api, request: { url: request?.url, method: request?.options?.method }, record: fs.readFileSync(keyFile, 'utf8') }), why: 'API account routing and billing must be explicit while secrets stay local.', fix: 'Read the key from the named environment variable and persist only endpoint/model.' });
+      const active = JSON.stringify(['engine', 'openaiUrl', 'openaiModel'].map(key => core.config().agent[key]));
+      const refusedAnswers = ['7', 'https://models.example/v1', 'not-offered', 'yes'];
+      const refused = await onboarding.firstOpen({ detect:false, file:path.join(temp('state'), 'rejected-api.json'), ask:async()=>refusedAnswers.shift(), out:()=>{}, fetchImpl:async()=>response({data:[{id:'offered-model'}]}) });
+      check('a rejected custom model keeps the active provider settings intact', refused.status === 'deferred' && active === JSON.stringify(['engine', 'openaiUrl', 'openaiModel'].map(key => core.config().agent[key])), {happened:JSON.stringify(core.config().agent),why:'An unsuccessful setup must not replace a working connection.',fix:'Save active connection settings only after validation.'});
+      const lines=[];
+      await commands.dispatch('/connections',{cwd:temp('project'),state:{engine:'responses'},out:text=>lines.push(text)});
+      check('connections help names custom providers and local credential variables without leaking keys', /Custom OpenAI-compatible API/.test(lines.join(' ')) && /key available locally/.test(lines.join(' ')) && !lines.join(' ').includes('fixture-private-key'), {happened:lines.join(' '),why:'Beginners need an actionable connection inventory without exposed credentials.',fix:'Show availability and environment variable names only.'});
     } finally { if (prior === undefined) delete process.env.OPENAI_API_KEY; else process.env.OPENAI_API_KEY = prior; }
 
     const savedDeferred = onboarding.onboardingText(missingFile);

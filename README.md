@@ -222,3 +222,10 @@ The Claude-plan engine uses the Claude Agent SDK's bundled runtime for one model
 ---
 
 **MIT. Built by Gev.**
+
+
+### Model connection setup
+
+Use `/connect` to add a subscription, an API provider, a local Ollama model, or a custom OpenAI-compatible endpoint. `/connections` shows the selected connection, configured models and the local environment-variable names for API credentials. It never prints credential values. A failed model-list check leaves your active connection unchanged; an unfinished setup is saved as a draft. API keys belong in your local environment, not in chat or command files.
+
+Common coding workflows are available through `/help`, `/model`, `/effort`, `/permissions`, `/settings`, `/config`, `/status`, `/cost`, `/context`, `/compact`, `/clear`, `/resume`, `/sessions`, `/rewind`, `/undo`, `/diff`, `/review`, `/init`, `/memory`, `/skills`, `/agents`, `/doctor` and `/exit`. `/help <command>` shows exact usage. Provider-specific host commands remain owned by that host; this is not a claim of complete Claude Code feature parity.
