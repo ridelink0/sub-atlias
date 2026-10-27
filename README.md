@@ -229,3 +229,13 @@ The Claude-plan engine uses the Claude Agent SDK's bundled runtime for one model
 Use `/connect` to add a subscription, an API provider, a local Ollama model, or a custom OpenAI-compatible endpoint. `/connections` shows the selected connection, configured models and the local environment-variable names for API credentials. It never prints credential values. A failed model-list check leaves your active connection unchanged; an unfinished setup is saved as a draft. API keys belong in your local environment, not in chat or command files.
 
 Common coding workflows are available through `/help`, `/model`, `/effort`, `/permissions`, `/settings`, `/config`, `/status`, `/cost`, `/context`, `/compact`, `/clear`, `/resume`, `/sessions`, `/rewind`, `/undo`, `/diff`, `/review`, `/init`, `/memory`, `/skills`, `/agents`, `/doctor` and `/exit`. `/help <command>` shows exact usage. Provider-specific host commands remain owned by that host; this is not a claim of complete Claude Code feature parity.
+
+### Automatic relay
+
+Enable `/relay on` to let the main Atlias agent schedule a continuation of its own saved task. Relay is off by default. `/relay status` shows receipts; `/relay cancel <id>` cancels an exact pending relay. A model can call the optional `relay` tool, or an MCP client can use `harness_relay` with an exact saved Atlias session and next step. This resumes Atlias sessions; it does not resume a native host chat.
+
+Windows Task Scheduler runs the saved continuation independently of the desktop app. `/relay after-reset <measured ISO reset with timezone> <next step>` requires a freshly measured reset and waits at least five minutes after it. `/relay at <ISO with timezone> <next step>` schedules a specific time. CLI scheduling also takes `--session <exact saved id> --next <text>`. A relay pauses the current task rather than declaring it completed.
+
+The continuation keeps the saved project, conversation, engine, model and permission policy. It will hold if those change, the saved conversation moves on, the previous model outcome is unknown, or ownership cannot be proved. It cannot switch subscriptions or grant new authority. The default chain limit is three runs, configurable with `agent.relayMaxRuns` from one to twenty. Other platforms currently use `atlias resume` manually.
+
+Configuration writes preserve the previous exact settings under `.atlias/config-backups/<sha256>.json`. The full test runner isolates application and provider homes before loading modules and verifies that live settings remain unchanged.
