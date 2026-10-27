@@ -112,3 +112,20 @@ test('slash command and MCP expose the real relay status, not a host chat resume
  const wire=[{jsonrpc:'2.0',id:1,method:'initialize',params:{}},{jsonrpc:'2.0',id:2,method:'tools/call',params:{name:'harness_relay',arguments:{action:'status',cwd}}}].map(JSON.stringify).join('\n')+'\n';
  const out=execFileSync(process.execPath,['mcp/server.mjs'],{input:wire,encoding:'utf8',env:process.env});assert.equal(JSON.parse(out.trim().split('\n').at(-1)).result.isError,false);
 });
+
+test('native multi-call responses keep a result for every id when a relay pauses them',async()=>{
+ const s=chat();s.messages=[];s.relayContext={scheduler,save:()=>agent.saveChat(s)};
+ await loop.runLoop(s,'Continue the authorized task.',{interactive:true,native:true,ask:async()=> 'y',chat:async()=>({content:'',calls:[{id:'relay-call',tool:'relay',action:'schedule',at,next_step:'Continue the same task.'},{id:'late-call',tool:'write_file',path:'never-written.txt',content:'no'}]})});
+ assert.equal(s.stop.reason,'relay-scheduled');assert.equal(fs.existsSync(path.join(cwd,'never-written.txt')),false);
+ const ids=s.messages.filter(m=>m.role==='tool').map(m=>m.tool_call_id);assert.deepEqual(ids,['relay-call','late-call']);
+ assert.match(s.messages.find(m=>m.tool_call_id==='late-call').content,/Not run/);
+ s.history.push({role:'assistant',text:'Paused.'});agent.saveChat(s);
+});
+
+test('relay limits validate before saving and unknown commands show usage',async()=>{
+ for(const n of [0,21,1.5])assert.ok(core.parseSetting('agent','relayMaxRuns',String(n)).error);
+ assert.equal(core.parseSetting('agent','relayMaxRuns','3').value,3);
+ let text='';await commands.dispatch('/relay mistaken',{cwd,state:chat(),out:s=>{text+=s;},api:agent.slashApi});assert.match(text,/Use \/relay/);
+ set({permissions:'max'});const s=chat();s.interactive=true;s.relayContext={scheduler,save:()=>agent.saveChat(s)};
+ const r=await loop.runTool(s,{tool:'relay',action:'status'},null);assert.equal(JSON.parse(r).enabled,true);
+});
