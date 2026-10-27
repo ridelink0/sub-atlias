@@ -1,3 +1,13 @@
+# October 27 launch work completed
+
+App optional Windows saved-session relay installed and verified. Full3313/3313 plus28actual0; nine safety-restricted cases remain skipped/not counted. Native scheduler Echo task completed/resumed/removed itself actual0. Final focused19+installed19+MCP/import18actual0; seven actual-line mutants caught. Live settings remain approved safe defaults{} with authentication intact; original preferences could not be recovered. Previous exact config versions are now backed up before writes and all npm tests isolate homes before imports.
+
+Website LIVE6ae12623ff9ce670a8257dcb, https://atlias.ridelinkmaps.com . Link previews, real confirmed-member count/captions and opening clipping/contrast fixed. Final post-edit226/226 actual0,48browser cases0,15production HTTP/data checks+4browser cases0. Final render0errors/15warnings; sourceaudit9pinned-blue-policyerrors/31warnings,security0errors/0warnings. No clean source-audit, live social-platform render or live billing claim. Stripe remains unconfigured and checkout closed. No release emails or new signup test sent. Five existing functiondigests and15min schedule preserved.
+
+Drive recovery: https://drive.google.com/drive/folders/1VdgFZvI87pDfb8xQArRlGULdTU-bqpwA . Base1.1GB plus67worktree inventory420uncommittedfiles; archivesSHA/CRC and split restore tested; corrupt/overwrite refusals tested;15remote base sizes/parents matched. Final delta upload/remote-size completion receipt follows this snapshot under FINAL-DELTA.json and COMPLETE.json in Drive/local D:/backups/atlias-2026-10-27. Credentials excluded. Read RESTORE.md.
+
+All benchmark arms already completed and published with qualified aggregates; no new runs. Preserve frozen source, raw records andSTOP; no duplicate jobs. Keep21:20 schedule. No pending code/website work; final backup completion is the last remaining operation.
+
 # October 27 installed relay verification
 
 Relay commits75f1880/39518c4/93699eb installed. Actual installed focus19/19 exit0 and MCP/import frozen-contract checks18/18 exit0 (reports/relay-installed-1027.log, relay-installed-contracts-1027.log). Managed full suite3313/3313 across423suites plus28node tests actual0; nine safety-restricted checks skipped/not counted. Native Windows Echo task completed/resumed/removed itself, actual0. Seven relay actual-line mutants caught; live config unchanged. No paid models. Relay off by default; enable /relay on. Website publication and finalDrive delta still pending; basebackup linked below.
