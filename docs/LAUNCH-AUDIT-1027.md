@@ -1,0 +1,17 @@
+# October 27 launch audit and completion
+
+Ollama onboarding no longer replaces a working engine, endpoint or model when the candidate endpoint is unreachable or the exact model is missing. Candidate settings remain in a separate deferred setup record. Source commit `d570456`; installed primary cherry-pick `3d86165`.
+
+Pass 1: 38 focused onboarding checks, full 3,312 checks across 423 suites, and all nine worker tests passed with actual exit 0. Primary installed focused checks passed. Nine safety-restricted checks were explicitly skipped and remain unverified. Receipts: `reports/finish-1027-full.log`, `finish-1027-full-exit.json`, `ollama-setup-adversarial-1027.json`; primary receipt `D:/atlias-app/reports/finish-1027-installed.log`.
+
+Pass 2: restoring the actual early settings writes in an isolated module caused both missing-model and offline preservation regressions; the verified source passed. No real inference or paid API was used. There is no claim of complete Claude Code command parity or production billing verification.
+
+The native benchmark v4 queue completed at 04:43 UTC October 27. Codex 34/60 and Pi 40/60 qualified after independent audit of 1,158 provider receipts and exact client/model/task/window/cap/budget evidence. Claude Code's completed native run remains measurement-unqualified and excluded. All raw data, historical results, frozen sources, STOP records, guards and retry bounds are preserved. No reruns were launched for this audit. Final read-only cleanup found no active arm, no remaining queue, no central lease and vacant backend port 11435.
+
+The website is verified live at https://atlias.ridelinkmaps.com/evidence.html, deploy `6ae0a0982289a3657205ed41`. One shared chart now includes an actual bar for every displayed harness and the dated Atlias best. Max signup appears in the opening screen and the curl/npm/Bun installation choices explicitly say sub-atlias. Atlo, the wordmark, original blue and flight remain. Three visual research rounds covered Reason Machines, Anthropic and Lusion; private report `D:/atlias-site/research/benchmark-redesign-1027/RESEARCH.md`.
+
+Website verification: build exit 0, 219/219 tests with zero skips, 41 local browser cases, four draft and four production browser cases, 12 live HTTP/function checks, seven actual-line mutants and five CSSOM regressions caught. A no-JavaScript loading overlay and held-delivery batch starvation were fixed. Four existing function digests were preserved exactly; only the reviewed release dispatcher changed. UFS security has zero errors/warnings/low findings; its separate policy audit is not clean because it rejects the required existing blue and reports 31 warnings. Receipts and limitations are in `D:/atlias-site/BENCHMARK-PUBLICATION-1027.md`.
+
+Max remains prelaunch. Resend is configured and its earlier synthetic confirmation was delivered then unsubscribed; no new signup or release email was sent. Real Stripe decline/payment remains unverified until live billing, price, coupon, signing and explicit release settings exist. Do not open checkout or announce release merely because the waitlist is live.
+
+The obsolete one-time `finish-atlias-benchmark-comparisons` relay was deleted after completion. Existing 03:20 and 21:20 schedules and native recovery task remain unchanged. Gev closes the Codex desktop manually. VS Code remains closed; no Git push, automatic desktop quit, PID termination, Discord content, games or RideLink changes were performed.
