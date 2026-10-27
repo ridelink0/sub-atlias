@@ -1,3 +1,7 @@
+# October 27 installed relay verification
+
+Relay commits75f1880/39518c4/93699eb installed. Actual installed focus19/19 exit0 and MCP/import frozen-contract checks18/18 exit0 (reports/relay-installed-1027.log, relay-installed-contracts-1027.log). Managed full suite3313/3313 across423suites plus28node tests actual0; nine safety-restricted checks skipped/not counted. Native Windows Echo task completed/resumed/removed itself, actual0. Seven relay actual-line mutants caught; live config unchanged. No paid models. Relay off by default; enable /relay on. Website publication and finalDrive delta still pending; basebackup linked below.
+
 # October 27 final launch update
 
 Requested optional relay implemented in edaec02/7865b87. Safe full test runner actual exit 0; see reports/launch-final-app-full-1027-final.log/json. Final focused 19/19, actual native Windows Echo relay wake/resume/task removal exit0, seven actual-line mutants caught. Nine existing safety-restricted checks are skipped, not passed. MCP contract now expects all11 exact tool names. Eval/h2h retain25f0280 pin; optional interactive loop pinned7865b87 plus golden benchmark request fingerprints. Relay is opt-in/off and Windows-only; native host chat resume is not claimed.
