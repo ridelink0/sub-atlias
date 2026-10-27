@@ -1,3 +1,29 @@
+## Verified live update — October26 19:10Chicago
+
+Production6adfeb4eb44011e4e3b6b326 is live at https://atlias.ridelinkmaps.com/pricing.html#max-waitlist. Live10-flow receipt exit0: public consent form, invalid signup rejected, checkout/release closed,15minute schedule registered, Resend accepted and DELIVERED confirmation, scannerGET readonly, POST confirmation and unsubscribe/email removal. Additional live adversarial checks rejected foreignorigin403 and replay afterunsubscribe410, email stayedremoved. Exact entitlement digest retained. No real subscribers or payments used. Initial draft deployed without production-only env; corrected all-context Resend env and created/verified/published a new immutable deploy. Initial failed receipts retained.
+
+App b869fa3 functional3310plus9workers,105installedfocused and real interactive connections/help passed; four site mutants and app early-write mutant caught. Website full216/216 exit0,6browser states. UFS policy audit not passed (existing pinned blue brand/game misclassification documented). Real live billing decline remains unverified until Stripe configured; release flag is false. Required launch settings: liveStripe account charges enabled, monthlyUSD1200 price, onceUSD800 coupon, Ed25519privatekey and explicit ATLIAS_MAX_RELEASED=true. Resend is configured. Scheduled dispatcher sends only confirmed users once readiness passes.
+
+Benchmarks19:09Chicago: supervisor waiting, Codex next, no inference, physical~5.7GiB/commit~15.8GiB below8/18GiB reserves. resourceRetries2 and active25101.938/46800seconds unchanged. Completedqualified scores alreadypublic; no newexact60. Preserve source/STOP/caps/retries/lease. Native recovery independent. Gev manually closes desktop only; no automaticquit.
+
+Next21:12:03Chicago continuation (measuredreset21:07:03+5min) must read latestlive receipts and avoid re-running synthetic signup against unsubscribedrecord blindly. Finish remaining requested broad UI/UX/command/engine/decline audit within~23:12target, publish only newqualifiedbenchmarks, savehandoff/receipts. No fullClaudeparity claim. Keep daily03:20/21:20, VSCodeclosed, noPIDkill/paidAPI/Gitpush/Discord/RideLink/games.
+
+# Max waitlist and model setup handoff — October 26
+
+App b869fa3 is installed in both roots. Functional3310/3310 plus9 workers passed (9 PID termination cases skipped); installed105 focused checks and actual interactive connections/help flow exit0. Adversarial early-write mutant caught. Engine/model URL changes stay inactive until validated, credentials remain redacted. README lists common commands without claiming full Claude parity.
+
+Site9cb7eec implements private durable confirmed waitlist, 15-minute release dispatch, unsubscribe, durable idempotent outbox and guarded Stripe readiness. Actual full216/216 exit0; six browser states/real local HTTP flows passed; four actual-line mutants caught. Resend provider test delivered. Key read from ignored local secret.txt, stored in Netlify env, never printed/exported. Free default env scopes used without upgrade. Actual Stripe keys/price/coupon/signing key and explicit Max release flag remain unset: live payment/decline is unverified, fixture declines passed; no release announcements permitted yet.
+
+Draft6adfe957f984a861ffb6b331 is uploading, public production remains6adfc7ca41d0c92610e07fb7 until verified publication. Exact generated entitlement zip SHA48e3dd874a27d906c1e2229610ad8466804fb4d1faca987f4808f5f031e6689f matches existing deployed digest; re-uploaded unchanged when Netlify requested it. Checkout intentionally updated; max-waitlist/status/release added. Private receipts/scripts research/max-launch-1026. Next: inspect draft-state.json/draft.log/session7686; node verify-live.mjs draft; node publish-reviewed.mjs publish; node verify-live.mjs production. These commands must actually succeed before claiming live signup. Production proof must test synthetic delivered@resend.dev signup, scanner-safe GET, POST confirmation/unsubscribe and private email removal, provider metadata, schedule and closed checkout. Never print private confirmation tokens/email lists.
+
+UFS audit is NOT passed: nine policy errors reflect user-pinned existing blue brand, game warnings misclassify website keyboard handlers; one placeholder finding was fixed. Do not claim clean audit or rewrite branding. Preexisting .gitignore change stays unstaged. No push.
+
+Benchmark fresh00:02UTC: native recovery live but NO inference; codex waiting for8GiB physical18GiB commit/9GiB free VRAM for120sec. About5.8GiB physical/15.9GiB commit available. Codex0006 stopped23:08UTC on resource reserve, cleanup completed. resourceRetries2, active work25101.938/46800seconds, completedAtlias/Mini retained, Pi pending. No new complete exact60 result. Preserve all STOP/raw data/frozen source/guards. Site retains dated score-only best45/60 and qualified Mini/OpenCode/Nanobot aggregates.
+
+Measured reset1793066823=21:07:03Chicago; relay21:12:03 must include this request (five-hour target~23:12Chicago). Keep03:20/21:20 wakes unchanged. No VSCode, PID kill, paid API, Discord, RideLink/games changes, heavy concurrent model/CPU load or automatic desktop quit. Save final actual deployment receipts before stopping.
+
+---
+
 ## October26 Gev manual app close and remaining benchmark estimate
 
 Gev clarified Codex means this ChatGPT/Codex desktop app. NativeAtliasBenchmarkRecovery remains alive independently, freshv4waitingstate withallpins/completedreporthashes checked, noleaseorprivateportowner and noinferenceyet. Prior automaticQuit sentshortcut butappremainedresident; failedreceiptpreserved. Itsfinishedreadyquit-task wasexported/unregistered topreventunwantedclosure. Gev willquitmanuallyafterbeing toldsafe; do notautomaticallyclosetheapp.
