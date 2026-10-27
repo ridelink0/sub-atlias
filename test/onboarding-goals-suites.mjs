@@ -50,12 +50,21 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
       { happened: JSON.stringify({ repeated, askedAgain }), why: 'A configured install should not re-run its first-open wizard.', fix: 'Read the onboarding record before asking.' });
 
     const missingFile = path.join(temp('state'), 'missing-model.json');
-    const missingAnswers = ['3', 'http://127.0.0.1:11434', 'not-installed:latest'];
+    const activeLocal = JSON.stringify(['engine', 'ollamaUrl', 'ollamaModel'].map(key => core.config().agent[key]));
+    const missingAnswers = ['3', 'http://127.0.0.1:11436', 'not-installed:latest'];
     let missingInstructions = '';
     const missing = await onboarding.firstOpen({ detect: false, file: missingFile, ask: async () => missingAnswers.shift(), out: (line) => { missingInstructions += line + '\n'; }, fetchImpl: async () => response({ models: [{ name: 'other:latest' }] }) });
     check('a reachable Ollama server without the selected model remains deferred and shows the pull step',
       missing.status === 'deferred' && missing.verification === 'model_not_installed' && /ollama pull not-installed:latest/.test(missingInstructions) && /No inference was run/.test(missingInstructions),
       { happened: JSON.stringify(missing), why: 'Reachability is not model readiness and a failed setup cannot be marked complete.', fix: 'Return deferred and tell the user to pull the exact selected model.' });
+    check('an unavailable local model stays a setup draft and preserves the working connection',
+      activeLocal === JSON.stringify(['engine', 'ollamaUrl', 'ollamaModel'].map(key => core.config().agent[key])) && missing.details.endpoint === 'http://127.0.0.1:11436' && missing.details.model === 'not-installed:latest',
+      { happened: JSON.stringify({ missing, agent: core.config().agent }), why: 'Selecting an absent model must not break a working local connection.', fix: 'Save active Ollama settings only after the exact installed model is verified.' });
+    const offlineAnswers = ['3', 'http://127.0.0.1:11437', 'offline:latest'];
+    const offline = await onboarding.firstOpen({ detect: false, file: path.join(temp('state'), 'offline-ollama.json'), ask: async () => offlineAnswers.shift(), out: () => {}, fetchImpl: async () => { throw Error('offline fixture'); } });
+    check('an unreachable local endpoint preserves active settings and records the candidate separately',
+      offline.status === 'deferred' && offline.verification === 'connection_unverified' && offline.details.endpoint === 'http://127.0.0.1:11437' && activeLocal === JSON.stringify(['engine', 'ollamaUrl', 'ollamaModel'].map(key => core.config().agent[key])),
+      { happened: JSON.stringify(offline), why: 'A failed connectivity check is not permission to replace a working endpoint.', fix: 'Persist only the deferred setup record on failure.' });
     let resumeNotice = '';
     await onboarding.firstOpen({ detect: false, file: missingFile, ask: async () => { throw Error('deferred state must not silently restart'); }, out: (line) => { resumeNotice += line; } });
     check('later first opens show the deferred reason and /onboarding recovery path', /remains deferred/.test(resumeNotice) && /\/onboarding/.test(resumeNotice),
