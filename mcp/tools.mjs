@@ -8,6 +8,7 @@ import * as progress from '../lib/progress.mjs';
 import { syntaxReport } from '../lib/gate.mjs';
 import { doctor, formatDoctor } from '../lib/hosts.mjs';
 import * as bench from '../lib/bench.mjs';
+import * as relay from '../lib/relay.mjs';
 import { doctorRows } from '../lib/hosts-extra.mjs';
 
 const TYPES = new Set(['user', 'feedback', 'project', 'reference']);
@@ -107,6 +108,7 @@ export function verifyText(cwd, paths) {
 }
 
 export const TOOLS = [
+  { name: 'harness_relay', description: 'Opt-in automatic relay for an exact saved Atlias agent session (not a host chat id). status lists this project; schedule saves next_step and at, or a fresh measured reset_at plus five minutes; cancel uses id. Enable agent.relay on first. Same engine/model/permissions, bounded chain, Windows Task Scheduler.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['status','schedule','cancel'] }, session: { type: 'string' }, at: { type: 'string' }, reset_at: { type: 'string' }, next_step: { type: 'string' }, id: { type: 'string' }, cwd: { type: 'string' } }, required: ['action'] } },
   { name: 'harness_recall', description: 'Search the shared memory (all hosts), recent session digests and the knowledge graph for a question. Cheap; use before reading files or asking the user to repeat themselves.', inputSchema: { type: 'object', properties: { query: { type: 'string' }, cwd: { type: 'string', description: 'project directory (defaults to the server cwd)' } }, required: ['query'] } },
   { name: 'harness_remember', description: 'Save one durable fact to the shared memory as a Claude Code memory file (name, type user|feedback|project|reference, description, body) and index it. Use for preferences, corrections, decisions and references, never for what the code already says.', inputSchema: { type: 'object', properties: { name: { type: 'string' }, type: { type: 'string', enum: ['user', 'feedback', 'project', 'reference'] }, description: { type: 'string' }, body: { type: 'string' }, cwd: { type: 'string' } }, required: ['name', 'type', 'description'] } },
   { name: 'harness_progress', description: 'Shared project handoff across all callers, including workers. get: read the parent project note. set: record the shared next step for compaction, crash or resume. Actor-specific hook notes are separate.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['get', 'set'] }, text: { type: 'string' }, cwd: { type: 'string' } }, required: ['action'] } },
@@ -123,6 +125,7 @@ export function callTool(name, args = {}) {
   const cwd = args.cwd || process.cwd();
   const cfg = config();
   switch (name) {
+    case 'harness_relay': return JSON.stringify(relay.relayAction(cwd, args));
     case 'harness_recall': return recall(cwd, args.query, args.limit);
     case 'harness_remember': return remember(cwd, args);
     case 'harness_progress':

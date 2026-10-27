@@ -411,6 +411,19 @@ else switch (cmd) {
     process.exitCode = res.code;
     break;
   }
+  case 'relay': {
+    const relay = await import('../lib/relay.mjs');
+    const action = argv[1] || 'status';
+    try {
+      if (['on','off'].includes(action)) {
+        if (['read-only','plan'].includes(config().agent.permissions)) throw Error('Relay settings cannot change in this permission mode.');
+        settings.set('agent.relay',action); say('Relay '+action); break;
+      }
+      const args = action === 'cancel' ? {action,id:argv[2]} : ['at','after-reset'].includes(action) ? {action:'schedule',session:after('--session'),[action === 'at' ? 'at' : 'reset_at']:argv[2],next_step:after('--next')} : {action:'status'};
+      say(JSON.stringify(relay.relayAction(process.cwd(),args),null,2));
+    } catch(error) { say(error.message); process.exitCode=2; }
+    break;
+  }
   case 'version': say((await import('../lib/update.mjs')).versionLine()); break;
   case 'update': {
     const updater = await import('../lib/update.mjs');
