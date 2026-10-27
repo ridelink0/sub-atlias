@@ -1,3 +1,7 @@
+## October 27: completed benchmark monitor retired
+
+The queued atlias-benchmark-check wake rechecked complete state and the successful live publication receipts. With no remaining arms, removed that completed 03:20 benchmark monitor under its explicit completion rule. Native Atlias Benchmark Recovery and the separate 21:20 continuation were not changed. No benchmark reruns or site mutations.
+
 ## October 27: launch and benchmark publication complete
 
 Read docs/LAUNCH-AUDIT-1027.md before further work. Site live6ae0a0982289a3657205ed41, source9a72a77: unified six bars incl datedAtlias45, Max first-screen waitlist, clearly labeled sub-atlias installers, no-JS loader and held-outbox progress fixes. Final219 site tests,41 local browser cases,4draft+4production flows,12live checks actualpass; seven code/five CSSOM mutants caught. AppOllama preservation d570456/primary3d86165, full3312+9workers actual0;9 safety-restricted checks skipped. Nativev4 queue COMPLETE; newCodex34/Pi40 qualified, Claude remains unqualified. Actual cleanup: no arm/remaining queue/lease/backend; no model reruns. No release messages, liveStripe remainsunconfigured. Deleted obsoleteone-timefinishrelay; preserve03:20/21:20 and native recovery. No VSCode/Gitpush/PIDkill/Discord/RideLink/games/automatic desktopquit. Private source/verification receipts remain in reports and D:/atlias-site/research/benchmark-redesign-1027; UFSbrandpolicy exceptions documented.
