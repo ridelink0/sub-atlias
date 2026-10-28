@@ -45,7 +45,7 @@ export default async function slashCommandSuites({ suite, asyncSuite, check, cor
     for (const want of ['help', 'engine', 'model', 'status', 'cost', 'permissions', 'config', 'diff', 'review', 'undo', 'compact', 'clear', 'sessions', 'resume', 'export', 'plan', 'init', 'memory', 'graph', 'skills', 'recall', 'progress', 'deep-research', 'settings', 'hosts', 'doctor', 'exit']) {
       check(`/${want} is registered`, names.includes(want), { happened: names.join(','), why: 'It is on the list Gev asked for or already existed.', fix: 'Add it to BUILTINS.' });
     }
-    check('/usage is not an Atlias command; provider-account usage stays in the provider', !names.includes('usage'), { happened: names.join(','), why: 'Atlias no longer reads the Usage Limits plugin or presents its account data as Atlias usage.', fix: 'Keep only Atlias-owned token metrics.' });
+    check('/usage exposes labelled connected account allowances separately from session tokens', names.includes('usage'), { happened: names.join(','), why: 'Gev explicitly requested connected engine allowances in the terminal.', fix: 'Keep the read-only allowance command registered.' });
     const p = commands.parseLine;
     check('a slash line splits into a name and its arguments', JSON.stringify(p('/engine ollama')) === '{"name":"engine","args":"ollama"}' && JSON.stringify(p('  /help  ')) === '{"name":"help","args":""}' && p('/a:b x y').name === 'a:b', { happened: JSON.stringify([p('/engine ollama'), p('/help')]), why: 'Everything else rests on it.', fix: 'Check LINE_RE.' });
     check('a path or a sentence is not a command', p('/usr/bin/node why does this fail') === null && p('hello /help') === null && p('/') === null && p('/ x') === null, { happened: JSON.stringify([p('/usr/bin/node why'), p('hello /help')]), why: 'A person pasting a path must not get "unknown command".', fix: 'LINE_RE stops at a second slash.' });
@@ -114,7 +114,8 @@ export default async function slashCommandSuites({ suite, asyncSuite, check, cor
 
     // /cost keeps Atlias own-provider token accounting; plan limits belong to the provider.
     r = ctxFor(cwd);
-    check('there is no /usage command that reads another plugin account', !commands.builtinNames().has('usage'), { happened: [...commands.builtinNames()].filter((name) => /usage/.test(name)).join(', '), why: 'Atlias never reads the Usage Limits plugin or presents its account limits as Atlias limits.', fix: 'Remove the plugin-backed command.' });
+    await commands.dispatch('/usage', r.ctx);
+    check('/usage explains unknown allowances without making model calls', commands.builtinNames().has('usage') && /Account allowances are separate from session tokens/.test(text(r.out)), { happened: text(r.out).slice(-700), why: 'Account allowance and session spending must stay distinct.', fix: 'Label account snapshots and missing data explicitly.' });
     r = ctxFor(cwd, { engine: 'ollama' });
     await commands.dispatch('/cost', r.ctx);
     r.state.cache = { calls: 3, reported: 2, silent: 1, prompt: 1500, cached: 900, source: 'ollama' };
@@ -152,8 +153,14 @@ export default async function slashCommandSuites({ suite, asyncSuite, check, cor
     check('/resume loads a saved session of this folder into the open state, and names one that is not there', /no saved session matches nosuchid/.test(other.out[0]) && other.state.sid === target && other.state.history[0].text === 'remember me', { happened: text(other.out) + ' ' + other.state.sid, why: 'The repl\'s variable must follow.', fix: 'Check the resume entry.' });
     const bare = ctxFor(cwd);
     const bareSid = bare.state.sid;
+    let offered = [];
+    bare.ctx.api.selectSession = async rows => { offered = rows; return target; };
     await commands.dispatch('/resume', bare.ctx);
-    check('/resume with no id carries on a saved session of this folder, not the one already open', bare.state.sid !== bareSid && Boolean(agentMod.loadChat(bare.state.sid, cwd)) && /resumed /.test(text(bare.out)), { happened: bare.state.sid + ' ' + text(bare.out), why: 'No id means the newest other session.', fix: 'The pick skips state.sid.' });
+    check('/resume with no id offers saved sessions and resumes the chosen item', bare.state.sid === target && bare.state.sid !== bareSid && offered.some(s => s.sid === target) && !offered.some(s => s.sid === bareSid) && /resumed /.test(text(bare.out)), { happened: bare.state.sid + ' ' + text(bare.out), why: 'Gev requested explicit session selection.', fix: 'Open the picker before changing state.' });
+    const cancelled = ctxFor(cwd), cancelledSid = cancelled.state.sid;
+    cancelled.ctx.api.selectSession = async () => null;
+    await commands.dispatch('/resume', cancelled.ctx);
+    check('cancelling the session picker preserves the current conversation', cancelled.state.sid === cancelledSid && /cancelled/.test(text(cancelled.out)), { happened: text(cancelled.out), why: 'Opening a picker grants no session change.', fix: 'Return before load/save when cancelled.' });
     const away = ctxFor(project());
     const foreign = ctxFor(cwd);
     foreign.state.history.push({ role: 'user', text: 'x' }, { role: 'assistant', text: 'y' });

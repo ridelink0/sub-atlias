@@ -83,7 +83,7 @@ const HELP = {
   exec: ['usage: atlias exec "<prompt>" [--engine claude-plan|chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)'],
   update: ['usage: atlias update [--check] [--no-fetch]', 'Fast-forwards this git checkout of atlias from its update source (config update.source; empty means the upstream of the current branch) and prints the commits it pulled. Refuses when tracked files are changed, HEAD is detached, no source is set, or the history has diverged. Never resets, merges, rebases or pushes. --check only reports.'],
   import: ['usage: atlias import [--dry-run] [--from claude|codex|gemini|antigravity] [--sessions] [--yes] [--undo]', 'Brings instructions, memory, skills, slash commands and MCP definitions (and with --sessions the saved sessions) from your other tools into the Atlias home. --dry-run prints the plan only. Nothing is copied without a yes; credentials are never read; --undo removes exactly what an import made.'],
-  resume: ['usage: atlias resume [id] [--engine e] [--sandbox] [--plain]   carry on the last agent session in this folder'],
+  resume: ['usage: atlias resume [id] [--engine e] [--sandbox] [--plain]   search and choose a saved agent session in this folder'],
   install: ['usage: atlias install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--extras [ids]|--companions|--shortcut]'],
   uninstall: ['usage: atlias uninstall [--all|--codex|--antigravity|--gemini|--extras|--shortcut]'],
   shortcut: ['usage: atlias shortcut [install|uninstall|status]   the atlias command in any terminal'],
@@ -388,7 +388,7 @@ else switch (cmd) {
     if (result?.ok === false) process.exitCode = 1;
     break;
   }
-  case 'resume': process.exitCode = await agent.repl({ plain: flag('--plain'), engine: after('--engine'), resume: argv[1] && !argv[1].startsWith('--') ? argv[1] : 'last', sandbox: sandboxFlag() }); break;
+  case 'resume': process.exitCode = await agent.repl({ plain: flag('--plain'), engine: after('--engine'), resume: argv[1] && !argv[1].startsWith('--') ? argv[1] : 'pick', sandbox: sandboxFlag() }); break;
   case 'exec': {
     // The prompt is every word that is not a flag or a flag's value; - or a
     // pipe reads it from stdin, as codex exec does.

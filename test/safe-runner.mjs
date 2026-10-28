@@ -14,7 +14,7 @@ const snapshot=homes.map(home=>{
 });
 const env={...process.env,ATLIAS_HOME:path.join(temp,'atlias'),CLAUDE_CONFIG_DIR:path.join(temp,'claude'),CODEX_HOME:path.join(temp,'codex'),GEMINI_CLI_HOME:path.join(temp,'gemini')};
 try{
- for(const args of [['test/run.mjs'],['--test','test/subagent-routing.test.mjs','test/relay.test.mjs','test/config-backup.test.mjs','test/edition.test.mjs']]){
+ for(const args of [['test/run.mjs'],['--test','test/subagent-routing.test.mjs','test/relay.test.mjs','test/config-backup.test.mjs','test/edition.test.mjs','test/account-session.test.mjs']]){
   const result=spawnSync(process.execPath,args,{cwd:root,env,stdio:'inherit',windowsHide:true});
   if(result.status!==0){process.exitCode=result.status??1;break;}
  }
