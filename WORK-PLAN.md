@@ -1,3 +1,11 @@
+## October 28: all formerly restricted checks verified
+
+Gev explicitly authorized the nine previously skipped app checks in test-owned isolated process trees. The existing seven process/time/memory suites passed38/38. Full integration then passed3357/3357 across431suites plus34worker tests, actualexit0, no skips. The separate publisher adversarial fixture passed actualexit0. No owned test processes remained; the pre-existing live publisher stayed running; live Atlias preferences retained the same SHA256. All10 reviewed production/test source files were unchanged. No app fix or new release was needed.
+
+Initial publisher setup stopped before execution because the owned TEMP under D:/harness-work matched its no-real-path guard. Subsequent fixtures used D:/atlias-test-runs with the guard unchanged. A read-only keyword search also caused a false-positive guard alert; direct reads succeeded. Initial failures remain in the receipts.
+
+Receipts: reports/restricted-checks-1028/FINAL.json, full-result.json, full.log, adversarial-result.json, publisher-adversarial-final.log and cleanup.json. This supersedes the earlier nine-unverified caveat. Permission is limited to these test fixtures, not unrelated Windows processes. No VSCode, paid APIs, real publisher requests, benchmark changes or Git push. Verification addendum is saved in the existing current Drive recovery set; see its COMPLETE.json.
+
 
 ## Product repairs complete - October27,2026
 
