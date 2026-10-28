@@ -1,3 +1,9 @@
+# Usage revalidation: October28
+
+Live Codex reading is now95%used, about10 turns at current effort, with reset in2h14m. This is the third consecutive goal turn constrained by Gev below10%remaining stop rule (92%,94%,95%). Do not start remaining checks before the external reset. The20:37 Central continuation and23:05:01 Claude handoff are already saved and verified. The previous turn confirmed241targeted checks/exit0, while the native parent runner40374 is stilllive: both child exit0 receipts exist but parent outcome remainsUNVERIFIED. Goal remains incomplete.
+
+---
+
 # October 28, 2026: current goal checkpoint
 
 Codex stopped at the measured 92% usage boundary under Gev's rule. This goal is INCOMPLETE. Continue after reset with the existing one-time heartbeat at20:37 America/Chicago. The measured reset was1793237516 (20:31:56), so the wake is reset plus5m04s. Its saved automation.toml was read and verified. No new work before allowance permits.
