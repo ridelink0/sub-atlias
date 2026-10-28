@@ -27,6 +27,7 @@ import { logo } from '../lib/logo.mjs';
 import * as bench from '../lib/bench.mjs';
 import * as shortcut from '../lib/shortcut.mjs';
 import * as settings from '../lib/settings.mjs';
+import {editionDefaults} from '../lib/edition.mjs';
 import * as skills from '../lib/skills.mjs';
 import * as subharness from '../lib/subharness.mjs';
 import * as provider from '../lib/provider.mjs';
@@ -99,7 +100,8 @@ HELP.fly = HELP.agent;
 const beforeDashes = argv.slice(1, argv.includes('--') ? argv.indexOf('--') : undefined);
 const helpFor = cmd !== 'help' && beforeDashes.some((a) => a === '--help' || a === '-h') ? cmd : null;
 
-if (helpFor) say(HELP[helpFor] || [`atlias ${helpFor}: no usage of its own; atlias --help lists every command.`]);
+if (cmd === 'help' && editionDefaults()) say([logo(), '', 'Atlias - Claude edition', '', 'atlias                     open your Atlias workspace', 'atlias setup claude        connect your Claude account', 'atlias settings            change your preferences', 'atlias agent --plain       use simple line input', 'atlias --version           show the installed version', '', 'In the workspace: /connect, /help, /settings, /model, /effort, /exit.', 'Atlias runs here. You do not need to open Claude Code.']);
+else if (helpFor) say(HELP[helpFor] || [`atlias ${helpFor}: no usage of its own; atlias --help lists every command.`]);
 else switch (cmd) {
   case 'sub': {
     const split = argv.indexOf('--');
