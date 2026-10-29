@@ -1,3 +1,8 @@
+## 2026-10-29T11:55:49.492Z post-Codex-reset watch active
+
+Fresh official Codex0% (~219-turn estimate), Claude72% (~64 turns). Saved app report remains explicitly FULLY FINISHED IN EVERY ASPECT:NO; added local checks are reported but their newer process exits were not independently inspected by this watch. Vendor1cb3b18 remains. Actual same-chat UI: Extra high, active Stop, current assistant text and Write activity repairing an intermediate test case. Preserve its work; no prompt or duplicate /goal sent. Local work remains, so monitoring is useful; do not treat the intermediate repair as a material blocker or completion.
+Quiet watch restored ACTIVE every30min; stale Codex-reset preamble removed and saved TOML verified. Current report/progress/vendor fingerprints refreshed; no website listing. Next: fresh meters, artifacts/actual receipts first, actual UI only if needed; review completion only after unequivocal fully-finished statement and all3OS/real-tool/Max evidence. Native Mac/real Linux desktop/live providers remain unverified. No app/site source or UI edits, tests or deployments by Codex this wake. Preserve app/UsageLimits/site ownership and separate daily21:20; all local/no push/paid/cloud/live charges.
+
 ## 2026-10-29T10:07:01.750Z watch deferred at Codex budget boundary
 
 Fresh official Codex91% used/9% remaining; binding five-hour reset1793274178=11:42:58Z. Start nothing new under Gev's rule. Fresh Claude meter24% used, xhigh configured; that meter does not prove current chat activity. No app artifacts/UI/tests inspected this wake; current completion/liveness remains unverified. Prior app status in watch-state is historical. Preserve active Claude work; no new prompts or duplicate /goal.
