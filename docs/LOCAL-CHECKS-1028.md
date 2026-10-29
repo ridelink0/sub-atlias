@@ -4,9 +4,11 @@ Gev requested connected-engine usage, explicit session selection, a beginner UI 
 
 Implemented engine account rows with zero, unknown, stale and expired states; `/usage`; searchable arrow-key `/resume`; CLI `atlias resume` selection; explicit `last` remains available. Session token counts are separate from account percentages. Dedicated ChatGPT never borrows Codex's allowance. No credentials or model API calls are needed for account display.
 
-Initial targeted checks: 241/241 across 18 suites. Three new account/session Node tests passed, including 40 sessions, cancellation, unknown providers, zero percent, resize bounds and an invisible-selection guard. Existing actual ConPTY queue/attachment/plain-mode usability check passed with five loopback fixture calls and zero external model requests. New native account/session and full integration runs have separate logs; read their final results before claiming completion.
+## Initial checks (historical)
 
-Local website changes add one-time benchmark bar motion, replay and reduced-motion cancellation without changing scores, scales or recorded values. Motion/billing targeted tests passed 18/18. UFS debug timed out during page loading, so that attempt is incomplete and is not a visual pass. Browser screenshot review remains required.
+Initial targeted checks: 241/241 across 18 suites. Three new account/session Node tests passed, including 40 sessions, cancellation, unknown providers, zero percent, resize bounds and an invisible-selection guard. Existing actual ConPTY queue/attachment/plain-mode usability check passed with five loopback fixture calls and zero external model requests. Later results and their limits are recorded under Continued local verification below.
+
+Local website changes add one-time benchmark bar motion, replay and reduced-motion cancellation without changing scores, scales or recorded values. Motion/billing targeted tests passed 18/18. The initial UFS debug timed out during page loading and was not a visual pass. The subsequent browser checks and screenshot review are recorded below.
 
 Stripe audit reproduced a missing entitlement check before repair: an active subscription could receive a signed Max pass without its price or paid invoice being checked. The local repair requires the configured Max price, one item of quantity one, live mode and an expanded latest paid invoice; trialing and unpaid subscriptions are rejected. Requests are bounded and refuse redirects. Coupon product restrictions are checked for launch readiness. Production remains unconfigured and untested. No charge, subscription, deployment or publication was made.
 

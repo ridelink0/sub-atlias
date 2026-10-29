@@ -1,3 +1,9 @@
+# Gate reconciliation and second-pass review
+
+Re-read listed handoff/research/platform/native-check/render/readiness/checkpoint files. Corrected stale pending-review wording in docs/LOCAL-CHECKS-1028.md by marking initial results historical and pointing to completed later evidence. Fresh account/session functional check actualexit0:5tests,0failures/skips. Four listed JS helpers parse. Existing actual17mutation adversarial run was not missing; the reply omitted its evidence. Full app outcome stillunverified. Possible native-test failure-path cleanup concern needs a deliberate failing fixture after reset before claiming that path verified; successful-path native receipt remains valid. Budget remains below10%; no new feature work. Corrected3desktop scope/schedules and local-only gates unchanged.
+
+---
+
 # Verified wait at budget boundary
 
 Live Codex meter:91% used in binding five-hour window, about28 turns shared across3sessions; below10% remaining, so no new work started. Previous goal turn made progress (local code/research/log commits). This continuation verified the existing full-suite handle1247 is still live and its log advanced to native process fixture receipts; overall exit remains unknown. Do not restart it or claim pass. Read reports/ui-goal-1028/app-suite/receipt.json on the next wake. Existing app commit d46210f, site commits29b5480/7a6d622. Corrected macOS/Windows/Linux brief,23:05:01Claude handoff and01:42:24reset+5minute continuation remain saved and verified. No app site listing before full completion evidence.
