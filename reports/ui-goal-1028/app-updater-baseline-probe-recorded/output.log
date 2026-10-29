@@ -1,0 +1,14 @@
+{
+  "dir": "C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM",
+  "started": true,
+  "appExitedAt": null,
+  "appStillRunning": true,
+  "markerExists": true,
+  "helperExit": {
+    "code": 0,
+    "signal": null
+  },
+  "probe": "",
+  "log": "\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM>set /a n=0 \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM>tasklist /FI \"PID eq 23236\" /NH  1>\"C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM\\process.txt\" 2>nul \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM>find \"23236\" \"C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM\\process.txt\"  1>nul \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM>if errorlevel 1 goto run \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM>ping -n 3 127.0.0.1  1>nul \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM>start \"\" /b \"C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-1FFVHM\\fake-installer.exe\" marker.cjs \r\n",
+  "script": "@echo on\r\nset /a n=0\r\n:wait\r\ntasklist /FI \"PID eq 23236\" /NH > \"%~dp0process.txt\" 2>nul\r\nfind \"23236\" \"%~dp0process.txt\" >nul\r\nif errorlevel 1 goto run\r\nset /a n+=1\r\nif %n% geq 1 goto run\r\nping -n 2 127.0.0.1 >nul\r\ngoto wait\r\n:run\r\nping -n 3 127.0.0.1 >nul\r\nstart \"\" /b \"%~dp0fake-installer.exe\" marker.cjs\r\n"
+}

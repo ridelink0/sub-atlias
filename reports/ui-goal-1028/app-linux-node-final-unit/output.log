@@ -1,0 +1,184 @@
+TAP version 13
+# Subtest: sign-in, purchase through checkout, signed pass bound to account and device
+ok 1 - sign-in, purchase through checkout, signed pass bound to account and device
+  ---
+  duration_ms: 68.445006
+  type: 'test'
+  ...
+# Subtest: one account authorizes separate installations, each revocable on its own
+ok 2 - one account authorizes separate installations, each revocable on its own
+  ---
+  duration_ms: 22.109379
+  type: 'test'
+  ...
+# Subtest: attacks: wrong verifier, code reuse, foreign redirect, stolen refresh token, replayed proof, forged webhook, foreign checkout
+ok 3 - attacks: wrong verifier, code reuse, foreign redirect, stolen refresh token, replayed proof, forged webhook, foreign checkout
+  ---
+  duration_ms: 22.545573
+  type: 'test'
+  ...
+# Subtest: expiry, refund and out-of-order events follow Stripe, not the order events arrive in
+ok 4 - expiry, refund and out-of-order events follow Stripe, not the order events arrive in
+  ---
+  duration_ms: 17.377448
+  type: 'test'
+  ...
+# Subtest: a terminal purchase moves to an account only from the installation that made it
+ok 5 - a terminal purchase moves to an account only from the installation that made it
+  ---
+  duration_ms: 8.627975
+  type: 'test'
+  ...
+# Subtest: not on sale: checkout refuses and charges nothing
+ok 6 - not on sale: checkout refuses and charges nothing
+  ---
+  duration_ms: 5.436421
+  type: 'test'
+  ...
+# Subtest: a message runs the real harness: exact approvals, the harness check, a verified outcome, searchable history
+ok 7 - a message runs the real harness: exact approvals, the harness check, a verified outcome, searchable history
+  ---
+  duration_ms: 1462.709634
+  type: 'test'
+  ...
+# Subtest: denying the edit changes nothing, and the job does not claim success
+ok 8 - denying the edit changes nothing, and the job does not claim success
+  ---
+  duration_ms: 357.955195
+  type: 'test'
+  ...
+# Subtest: stop during a long command ends it and records a stop, not a completion
+ok 9 - stop during a long command ends it and records a stop, not a completion
+  ---
+  duration_ms: 863.065352
+  type: 'test'
+  ...
+# Subtest: the runner and the host refuse work without a genuine pass; an expired pass still reads history
+ok 10 - the runner and the host refuse work without a genuine pass; an expired pass still reads history
+  ---
+  duration_ms: 301.881411
+  type: 'test'
+  ...
+# Subtest: a slash command runs through the real command table; terminal-only commands are refused plainly
+ok 11 - a slash command runs through the real command table; terminal-only commands are refused plainly
+  ---
+  duration_ms: 1163.435586
+  type: 'test'
+  ...
+# Subtest: the account service sends sign-in codes through the mailer its settings select, and a failed send keeps no code
+ok 12 - the account service sends sign-in codes through the mailer its settings select, and a failed send keeps no code
+  ---
+  duration_ms: 92.021562
+  type: 'test'
+  ...
+# Subtest: sends the code as one JSON request with the bearer key
+ok 13 - sends the code as one JSON request with the bearer key
+  ---
+  duration_ms: 10.377449
+  type: 'test'
+  ...
+# Subtest: a provider error or an unreachable provider throws without the key
+ok 14 - a provider error or an unreachable provider throws without the key
+  ---
+  duration_ms: 11.397434
+  type: 'test'
+  ...
+# Subtest: a shell pane runs in the project folder and its output streams to the window
+ok 15 - a shell pane runs in the project folder and its output streams to the window
+  ---
+  duration_ms: 213.505196
+  type: 'test'
+  ...
+# Subtest: an engine sign-in pane runs the Atlias CLI with the exact arguments and this account home
+ok 16 - an engine sign-in pane runs the Atlias CLI with the exact arguments and this account home
+  ---
+  duration_ms: 52.309939
+  type: 'test'
+  ...
+# Subtest: at most MAX_PANES run at once; closing ends the process; unknown kinds and a missing library are refused
+ok 17 - at most MAX_PANES run at once; closing ends the process; unknown kinds and a missing library are refused
+  ---
+  duration_ms: 58.387451
+  type: 'test'
+  ...
+# Subtest: closing a running pane ends its process
+ok 18 - closing a running pane ends its process
+  ---
+  duration_ms: 53.377324
+  type: 'test'
+  ...
+# Subtest: versions compare numerically
+ok 19 - versions compare numerically
+  ---
+  duration_ms: 10.094053
+  type: 'test'
+  ...
+# Subtest: a signed newer manifest is offered; everything else is refused or current
+ok 20 - a signed newer manifest is offered; everything else is refused or current
+  ---
+  duration_ms: 87.709425
+  type: 'test'
+  ...
+# Subtest: the download is kept only when its size and checksum match
+ok 21 - the download is kept only when its size and checksum match
+  ---
+  duration_ms: 49.203984
+  type: 'test'
+  ...
+# Subtest: the Windows install helper waits for the app to exit, then starts the installer
+ok 22 - the Windows install helper waits for the app to exit, then starts the installer
+  ---
+  duration_ms: 2.861758
+  type: 'test'
+  ...
+# Subtest: the Windows install helper reports a missing runtime or launch failure without installing
+ok 23 - the Windows install helper reports a missing runtime or launch failure without installing
+  ---
+  duration_ms: 277.509466
+  type: 'test'
+  ...
+# Subtest: the Windows install helper refuses to install on a live app or a failed process query at its deadline
+ok 24 - the Windows install helper refuses to install on a live app or a failed process query at its deadline
+  ---
+  duration_ms: 0.968285
+  type: 'test'
+  ...
+# Subtest: plan mode: keep planning changes nothing; approve switches to workspace and carries the plan out
+ok 25 - plan mode: keep planning changes nothing; approve switches to workspace and carries the plan out
+  ---
+  duration_ms: 1040.319376
+  type: 'test'
+  ...
+# Subtest: an image attachment reaches the model request and /attachments lists it in that chat
+ok 26 - an image attachment reaches the model request and /attachments lists it in that chat
+  ---
+  duration_ms: 1120.068516
+  type: 'test'
+  ...
+# Subtest: /relay status and /deep-research run through the command table with their real effects
+ok 27 - /relay status and /deep-research run through the command table with their real effects
+  ---
+  duration_ms: 562.554929
+  type: 'test'
+  ...
+# Subtest: a worker sub-agent gets its own conversation, runs its own tool, and its answer returns to the main turn
+ok 28 - a worker sub-agent gets its own conversation, runs its own tool, and its answer returns to the main turn
+  ---
+  duration_ms: 306.881943
+  type: 'test'
+  ...
+# Subtest: provider terminal handoff: the script runs the CLI in the project with this account home; unsafe arguments are refused
+ok 29 - provider terminal handoff: the script runs the CLI in the project with this account home; unsafe arguments are refused
+  ---
+  duration_ms: 27.829296
+  type: 'test'
+  ...
+1..29
+# tests 29
+# suites 0
+# pass 29
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 9383.210304

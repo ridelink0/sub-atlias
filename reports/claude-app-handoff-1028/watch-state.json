@@ -1,9 +1,9 @@
 {
-  "observedAt": "2026-10-29T11:55:49.492Z",
+  "observedAt": "2026-10-29T13:56:56.110Z",
   "session": "54e5574c-72d6-4efe-b3af-6f52a869f45f",
   "model": "Opus 5.5",
   "effort": "xhigh",
-  "activity": "Actual same-chat assistant text and Write activity show ongoing local checks and repair; visible Extra high and active Stop button",
+  "activity": "Observed Claude final budget pause at 07:10 Central, Extra high retained. Existing Windows relay task independently Ready/enabled for09:26:59 Central; no prompt or restart sent. Saved progress is current; a progress file alone is not liveness.",
   "appGoalAcknowledged": true,
   "goalAckFile": "reports/claude-app-handoff-1028/goal-ack.md",
   "harnessCommitRequired": "1cb3b18e42fbefb144f5fecab3fc234426d2993b",
@@ -24,24 +24,26 @@
     "localWebsiteGateOpen": false,
     "declaration": "FULLY FINISHED IN EVERY ASPECT: NO",
     "report": "D:/atlias-max-app/reports/COMPLETION-REPORT.md",
-    "reportSha256": "d1faf5e9569017d2bedf6c73d3616855cc50c70d90a81c782d9150fbb1c93dc7",
-    "handoffCopySha256": "d1faf5e9569017d2bedf6c73d3616855cc50c70d90a81c782d9150fbb1c93dc7",
+    "reportSha256": "0ec3d4ead6af3aedfa0ac250181a79f86e5283eed97222eed0bd0c1b789ef73a",
+    "handoffCopySha256": "0ec3d4ead6af3aedfa0ac250181a79f86e5283eed97222eed0bd0c1b789ef73a",
     "reportCopiesMatch": true
   },
   "watchAutomation": "atlias-finish-local-fixes",
-  "notificationFingerprint": "shared-POSIX-stop-repair-full3370-plus39;app-NO;local-batch-paused;retry042601-after-measured-reset",
+  "notificationFingerprint": "local-app-8c1bcea2c216e17d5c6861598963accaf2a8ed37;two-repairs;win29unit29dev29packaged;linux29unit28xvfb;app-NO;relay-pause",
   "observedReceipts": {
     "windowsPackaged": {
-      "path": "D:/atlias-max-app/reports/e2e-packaged-2026-10-29080505/receipt.txt",
-      "reportedPassed": 21,
-      "reportedFailed": 0,
-      "independentProcessExitVerified": false,
-      "billing": "local test fixture, not live Stripe"
+      "path": "D:/atlias-app/reports/ui-goal-1028/app-windows-node-final-packaged/receipt.json",
+      "passed": 29,
+      "failed": 0,
+      "independentProcessExitVerified": true,
+      "billing": "local fixture, no live Stripe"
     },
     "linux": {
-      "path": "D:/atlias-max-app/reports/linux-20261029T080726Z/receipt.txt",
-      "reportedUnitPassed": 11,
-      "desktopKeyringInstallVerified": false
+      "unitPassed": 29,
+      "windowPassed": 28,
+      "independentProcessExitsVerified": true,
+      "desktopKeyringInstallVerified": false,
+      "path": "D:/atlias-app/reports/ui-goal-1028/app-linux-node-final-e2e/receipt.json"
     },
     "macOS": {
       "nativeVerified": false
@@ -52,10 +54,14 @@
     "D:/atlias-max-app/VENDOR.json": "0bf2326a096d83c819340f5d8a2217b4e8eaebf96b6b2a7f175fa14486d74e62",
     "D:/atlias-max-app/reports/e2e-packaged-2026-10-29080505/receipt.txt": "855886ec7eb938e4d8b42ca9b696f84f8667438bf43e5305de97e55c8f9a803c",
     "D:/atlias-max-app/reports/linux-20261029T080726Z/receipt.txt": "98b768ad449657add61197c0f646893124a7a9712201cacaf6c53815fa6f0f34",
-    "D:/atlias-max-app/reports/COMPLETION-REPORT.md": "d1faf5e9569017d2bedf6c73d3616855cc50c70d90a81c782d9150fbb1c93dc7"
+    "D:/atlias-max-app/reports/COMPLETION-REPORT.md": "d1faf5e9569017d2bedf6c73d3616855cc50c70d90a81c782d9150fbb1c93dc7",
+    "D:\\atlias-max-app\\PROGRESS.md": "bcedb3616b7507e12868d79b3ea672d492422894df0169eba382284b358b77fc",
+    "D:\\atlias-max-app\\reports\\COMPLETION-REPORT.md": "0ec3d4ead6af3aedfa0ac250181a79f86e5283eed97222eed0bd0c1b789ef73a",
+    "D:\\atlias-max-app\\VENDOR.json": "0bf2326a096d83c819340f5d8a2217b4e8eaebf96b6b2a7f175fa14486d74e62",
+    "D:\\atlias-max-app\\docs\\CODEX-LOCAL-QA-1029.md": "8979ccf0effdc9488f1e404424ea68a994fb9d6be4a7340fa5a890421e734099"
   },
-  "status": "in_progress",
-  "statusFingerprint": "app-active-xhigh;vendor1cb3b18;report-NO;local-work-and-test-repair-in-progress",
+  "status": "paused_for_existing_claude_usage_relay",
+  "statusFingerprint": "local-app-8c1bcea2c216e17d5c6861598963accaf2a8ed37;two-repairs;win29unit29dev29packaged;linux29unit28xvfb;app-NO;relay-pause",
   "continuation": {
     "acknowledgement": "ATLIAS-LOCAL-GAPS-1029-ACK",
     "actualAssistantReplyObserved": true,
@@ -146,5 +152,74 @@
     "intermediateTestRepairObserved": true,
     "appProcessExitsIndependentlyVerified": false,
     "newPromptSent": false
+  },
+  "appCommit": "8c1bcea2c216e17d5c6861598963accaf2a8ed37",
+  "localQualification": {
+    "path": "reports/ui-goal-1028/app-local-qualification-1029.json",
+    "appCommit": "8c1bcea2c216e17d5c6861598963accaf2a8ed37",
+    "results": [
+      {
+        "name": "app-unit-node-final",
+        "count": 29,
+        "type": "unit",
+        "exit": 0,
+        "sourceFilesUnchanged": 51,
+        "finished": "2026-10-29T13:39:18.360Z"
+      },
+      {
+        "name": "app-windows-node-final-dev",
+        "count": 29,
+        "type": "window",
+        "exit": 0,
+        "sourceFilesUnchanged": 51,
+        "finished": "2026-10-29T13:41:11.498Z"
+      },
+      {
+        "name": "app-windows-package-node-final",
+        "count": null,
+        "type": "package",
+        "exit": 0,
+        "sourceFilesUnchanged": 51,
+        "finished": "2026-10-29T13:42:05.684Z"
+      },
+      {
+        "name": "app-windows-node-final-packaged",
+        "count": 29,
+        "type": "window",
+        "exit": 0,
+        "sourceFilesUnchanged": 51,
+        "finished": "2026-10-29T13:46:49.834Z"
+      },
+      {
+        "name": "app-linux-node-final-unit",
+        "count": 29,
+        "type": "unit",
+        "exit": 0,
+        "sourceFilesUnchanged": 51,
+        "finished": "2026-10-29T13:42:23.673Z"
+      },
+      {
+        "name": "app-linux-node-final-e2e",
+        "count": 28,
+        "type": "window",
+        "exit": 0,
+        "sourceFilesUnchanged": 51,
+        "finished": "2026-10-29T13:43:32.201Z"
+      }
+    ],
+    "scope": "Local fixture checks only; Linux Xvfb; Windows detached-helper behavior verified; changed helper not tested through a real Squirrel release upgrade",
+    "semanticMutantsRejected": 2
+  },
+  "claudeBudgetRelay": {
+    "ownership": "Usage Limits; read only",
+    "session": "54e5574c-72d6-4efe-b3af-6f52a869f45f",
+    "task": "UsageLimitsRelay-54e5574c-72d6-4efe-b3af-6f52a869f45f-mvtn05jr",
+    "resetsAt": 1793283599991,
+    "wakeAt": 1793284019991,
+    "delayMs": 420000,
+    "taskStateObserved": "Ready",
+    "enabledObserved": true,
+    "nextRunObserved": "2026-10-29T09:26:59-05:00",
+    "continuation": "Read the new PROGRESS and QA note before using older relay steps; never duplicate /goal"
   }
 }

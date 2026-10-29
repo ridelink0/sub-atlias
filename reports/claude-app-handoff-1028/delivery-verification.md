@@ -1,3 +1,11 @@
+## 2026-10-29 local app repairs verified (8c1bcea)
+
+Actual exits verified: Windows unit29/29, dev29/29, package build and packaged29/29; Linux private-copy unit29/29 and Xvfb28/28. All final runs froze51 source/renderer files. Account-service HTTP mailer send-failure retry, Stop, workers, membership gating and terminal workflows passed within local fixture scope. Fixed terminal ANSI contrast (32 samples per platform/build, minimum4.512:1) and detached Windows updater waiting/error/timeout handling. Two actual semantic regressions were caught; bundle restored exactly. See reports/claude-app-handoff-1028/LOCAL-APP-QA-1029.md and app-local-qualification-1029.json. Local app commit 8c1bcea2c216e17d5c6861598963accaf2a8ed37. No push/deploy/charge.
+
+Claude is paused for its existing Usage Limits relay09:26:59 Central (measured reset+420s), verified Ready/enabled; Extra high retained. No new prompt or duplicate goal. Relay ownership preserved; read current app PROGRESS before stale relay details. Keep the useful quiet30-minute watch. Next: observe actual after-relay response/activity, review new local work and remaining platform/provider gates. Full app report remains NO; native macOS, real Linux desktop and live billing/providers remain unverified. Changed update helper has a real marker-installer test but no new real Squirrel release upgrade. Do not list the app on the local site.
+
+Pass1: final Windows/Linux checks and exact-package qualification passed. Pass2: all changed files reread; both intended semantic mutants rejected. Earlier debounce/backdrop and ASAR-key failures were checker errors; Linux bundle raw-hash difference is only the dependency symlink's module-label prefix, proven byte-identical after that exact mapping.
+
 # Verified Claude app handoff
 
 Verified October29,2026 after the01:42Central retry. The original23:05 delivery was delayed by Codex's usage ceiling; this is the actual delivery receipt.

@@ -1,0 +1,16 @@
+TAP version 13
+# Subtest: the Windows install helper refuses to install on a live app or a failed process query at its deadline
+ok 1 - the Windows install helper refuses to install on a live app or a failed process query at its deadline
+  ---
+  duration_ms: 12523.15
+  type: 'test'
+  ...
+1..1
+# tests 1
+# suites 0
+# pass 1
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 13008.3482

@@ -7,8 +7,8 @@ if (!name || !cwd || !args.length) throw new Error('name, cwd, node arguments re
 const out = path.join(import.meta.dirname, name); fs.mkdirSync(out, { recursive: true });
 function hashes() {
   const files = [];
-  const walk = dir => { if (!fs.existsSync(dir)) return; for (const item of fs.readdirSync(dir, { withFileTypes: true })) { const f = path.join(dir, item.name); if (item.isDirectory()) walk(f); else if (/\.(mjs|js|json|css|html)$/.test(f)) files.push([path.relative(cwd, f), crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex')]); } };
-  for (const dir of ['lib', 'bin', 'mcp', 'server', 'src', 'test']) walk(path.join(cwd, dir));
+  const walk = dir => { if (!fs.existsSync(dir)) return; for (const item of fs.readdirSync(dir, { withFileTypes: true })) { const f = path.join(dir, item.name); if (item.isDirectory()) walk(f); else if (/\.(mjs|cjs|js|jsx|json|css|html)$/.test(f)) files.push([path.relative(cwd, f), crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex')]); } };
+  for (const dir of ['lib', 'bin', 'mcp', 'server', 'account-service', 'src', 'test', 'dist']) walk(path.join(cwd, dir));
   return Object.fromEntries(files.sort());
 }
 const before = hashes(), started = new Date().toISOString();

@@ -1,0 +1,31 @@
+PASS window opens on the sign-in screen with the test-build notice
+PASS security: the window has no Node, no require, and a strict CSP - bridge groups: account,app,approvals,clipboard,commands,connections,engines,external,help,jobs,memory,onPush,project,projects,sessions,settings,skills,terminal,updates,usage
+PASS security: forged and malformed requests are refused by main - unknown field, wrong type, oversized and signed-out requests refused
+PASS sign in through the browser flow (PKCE, loopback redirect, email code) - a failed email send shows a retry page and the window keeps waiting; the retry delivers the code through the HTTP mailer; signed in; no membership yet, so the membership screen shows
+PASS membership screen states the price and buys through checkout - checkout opened at https://checkout.stripe.com/c/pay/1bea36...; payment confirmed by the account service
+PASS open a project folder - project added; its npm test check was found
+PASS send a message: the exact edit and check are asked, allowed once, and the outcome is verified - asked: allow edit_file hello.txt? | allow run "npm test"?
+PASS changes pane shows the real diff of hello.txt
+PASS reload the window: the chat, the job and its outcome come back from the journal - one job card, same outcome
+PASS denied command: nothing runs and the job does not claim success - Answered. No files changed.
+PASS stop a running command: the job shows Stopping, then Stopped, and the command ends - showed Stopping, then stopped; no process of the command left
+PASS search all chats finds a chat by a word from its messages and opens it - opened "Make hello.txt say hello world again"
+PASS import a terminal chat explicitly and find it by a word only in it - copied; the terminal file is unchanged
+PASS a slash command runs through the harness command table
+PASS plan mode in the window: the plan card offers approve, keep and change; keeping changes nothing - plan card shown with its three choices; Keep planning ended the turn with no file changed
+PASS attach an image from the project in the window: it reaches the model request - dot.png picked in the window was sent to the model as an image part
+PASS terminal drawer (Ctrl+J): a shell runs in the project, drawn by xterm.js under the strict CSP; the Atlias terminal opens; closing ends the shell - shell ran in the project and drew its output; Ctrl+Shift+C copied "atlias-term-1793281579694"; Atlias terminal drew "Welcome to Atlias. Pick how Atlias reaches an AI model, then just describe what you want b"; both closed; shell pid 21396 ended; no CSP violation
+PASS terminal ANSI text meets 4.5 contrast in both appearances - all 32 rendered ANSI samples meet 4.5:1; minimum 4.512:1
+PASS commands, connections and settings open from the keyboard and list real harness data
+PASS narrow window: the sidebar folds away and nothing scrolls sideways - scrollWidth 380 <= 380
+PASS reduced motion: the spinner stops
+PASS keyboard only: Tab reaches the message box and the main actions with visible focus - 24 distinct stops, all with a visible outline
+PASS accessibility tree: every button and input has a name
+PASS Windows UI Automation (the tree Narrator reads): named controls, none unnamed - 30 named interactive controls (Button 27, Edit 1, ComboBox 1, Hyperlink 1) in "Atlias Max"; none unnamed; read twice, as Chromium builds the tree on first request; Narrator itself was not run
+PASS axe-core audit of the workspace in light and dark (WCAG 2.1 A and AA rules): no critical or serious violation - light: 28 rules pass, no violations; dark: 28 rules pass, no violations
+PASS updates: a manifest signed by another key is refused; a signed one is offered, downloaded, checked and handed to the installer - refused a foreign signature; atlias-max-0.9.0-win32-x64.exe matched its signed size and checksum before the hand-off
+PASS appearance: follows the computer by default; Dark and Light override it; an accent repaints filled controls; the choice survives a reload - system (dark, matching Windows) by default; Dark ground rgb(6, 11, 24); Light ground rgb(243, 245, 250); Gold fill #ffd700; kept after reload; back to the computer setting
+PASS membership ends: the banner says so, new work is refused, saved chats still open - account acct_pWWM8: new work refused (Your Atlias Max membership is not active.); 6 saved chats still open
+PASS sign out removes this computer's sign-in and keeps the chats on disk - 6 chats kept; no secret files left; operations refused
+
+receipt: D:\atlias-max-app\reports\codex-windows-node-final-packaged-1029\receipt.txt

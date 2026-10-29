@@ -1,0 +1,14 @@
+{
+  "dir": "C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi",
+  "started": true,
+  "appExitedAt": null,
+  "appStillRunning": true,
+  "markerExists": true,
+  "helperExit": {
+    "code": 0,
+    "signal": null
+  },
+  "probe": null,
+  "log": "\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi>set /a n=0 \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi>tasklist /FI \"PID eq 10784\" /NH  1>\"C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi\\process.txt\" 2>nul \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi>find \"10784\" \"C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi\\process.txt\"  1>nul \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi>if errorlevel 1 goto run \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi>ping -n 3 127.0.0.1  1>nul \r\n\r\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi>start \"\" /b \"C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-helper-diagnose-dhlkxi\\fake-installer.exe\" marker.cjs \r\n",
+  "script": "@echo on\r\nset /a n=0\r\n:wait\r\ntasklist /FI \"PID eq 10784\" /NH > \"%~dp0process.txt\" 2>nul\r\nfind \"10784\" \"%~dp0process.txt\" >nul\r\nif errorlevel 1 goto run\r\nset /a n+=1\r\nif %n% geq 1 goto run\r\nping -n 2 127.0.0.1 >nul\r\ngoto wait\r\n:run\r\nping -n 3 127.0.0.1 >nul\r\nstart \"\" /b \"%~dp0fake-installer.exe\" marker.cjs\r\n"
+}

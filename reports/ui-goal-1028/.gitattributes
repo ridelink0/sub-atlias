@@ -1,0 +1,3 @@
+# Preserve the indentation in these raw Node assertion transcripts.
+app-unit-after-helper-fix/output.log -whitespace
+app-updater-adversarial/query-error-mutant.log -whitespace

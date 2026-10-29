@@ -1,0 +1,12 @@
+{
+  "positive": {
+    "status": 0,
+    "signal": null
+  },
+  "mutant": {
+    "status": 1,
+    "signal": null
+  },
+  "rejectedForIntendedReason": true,
+  "sourceUnchanged": true
+}

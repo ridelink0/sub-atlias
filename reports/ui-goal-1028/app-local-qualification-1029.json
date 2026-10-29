@@ -1,0 +1,102 @@
+{
+  "checkedAt": "2026-10-29T13:55:35.907Z",
+  "results": [
+    {
+      "name": "app-unit-node-final",
+      "count": 29,
+      "type": "unit",
+      "exit": 0,
+      "sourceFilesUnchanged": 51,
+      "finished": "2026-10-29T13:39:18.360Z"
+    },
+    {
+      "name": "app-windows-node-final-dev",
+      "count": 29,
+      "type": "window",
+      "exit": 0,
+      "sourceFilesUnchanged": 51,
+      "finished": "2026-10-29T13:41:11.498Z"
+    },
+    {
+      "name": "app-windows-package-node-final",
+      "count": null,
+      "type": "package",
+      "exit": 0,
+      "sourceFilesUnchanged": 51,
+      "finished": "2026-10-29T13:42:05.684Z"
+    },
+    {
+      "name": "app-windows-node-final-packaged",
+      "count": 29,
+      "type": "window",
+      "exit": 0,
+      "sourceFilesUnchanged": 51,
+      "finished": "2026-10-29T13:46:49.834Z"
+    },
+    {
+      "name": "app-linux-node-final-unit",
+      "count": 29,
+      "type": "unit",
+      "exit": 0,
+      "sourceFilesUnchanged": 51,
+      "finished": "2026-10-29T13:42:23.673Z"
+    },
+    {
+      "name": "app-linux-node-final-e2e",
+      "count": 28,
+      "type": "window",
+      "exit": 0,
+      "sourceFilesUnchanged": 51,
+      "finished": "2026-10-29T13:43:32.201Z"
+    }
+  ],
+  "contrast": {
+    "codex-windows-node-final-dev-1029": {
+      "samples": 32,
+      "minimum": 4.511906749385432
+    },
+    "codex-windows-node-final-packaged-1029": {
+      "samples": 32,
+      "minimum": 4.511906749385432
+    },
+    "codex-linux-node-final-e2e-1029": {
+      "samples": 32,
+      "minimum": 4.511906749385432
+    }
+  },
+  "packaged": {
+    "src/main/main.mjs": "e6ca422870a5034938310f24b51fb64add9c67787dd40c84d7b3616d8fd33699",
+    "src/main/updates.mjs": "8a30ee300ec2a2df032d2bef4a2c7cf3b87aaeae9c9fa3fd752515e9d588f752",
+    "dist/renderer/app.js": "b39f89b197b92e9ad7e207cd432ee2924c3223fee300c00b2f104cb890a19305",
+    "consoleNodeSha256": "47cd67453da180a39cdf5daedb89862667b8e627e60c116607874633450cd30d"
+  },
+  "linuxBundleMapping": {
+    "rawSha256": "3ddb6e5120b67306203a03e054319a55dcb8663821d4a63ff58b766ddb1def0f",
+    "normalizedSha256": "b39f89b197b92e9ad7e207cd432ee2924c3223fee300c00b2f104cb890a19305",
+    "mapping": "../atlias-max-ci/app/node_modules/ -> node_modules/"
+  },
+  "adversarial": {
+    "terminal": {
+      "exit": 1,
+      "intendedFailure": true,
+      "restored": true,
+      "restoredSha256": "b39f89b197b92e9ad7e207cd432ee2924c3223fee300c00b2f104cb890a19305"
+    },
+    "updater": {
+      "positive": {
+        "status": 0,
+        "signal": null
+      },
+      "mutant": {
+        "status": 1,
+        "signal": null
+      },
+      "rejectedForIntendedReason": true,
+      "sourceUnchanged": true
+    }
+  },
+  "fullAppComplete": false,
+  "macOSNativeVerified": false,
+  "linuxRealDesktopVerified": false,
+  "liveBillingVerified": false
+}

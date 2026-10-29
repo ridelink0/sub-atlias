@@ -1,0 +1,41 @@
+TAP version 13
+# Subtest: versions compare numerically
+ok 1 - versions compare numerically
+  ---
+  duration_ms: 14.886
+  type: 'test'
+  ...
+# Subtest: a signed newer manifest is offered; everything else is refused or current
+ok 2 - a signed newer manifest is offered; everything else is refused or current
+  ---
+  duration_ms: 79.1431
+  type: 'test'
+  ...
+# Subtest: the download is kept only when its size and checksum match
+ok 3 - the download is kept only when its size and checksum match
+  ---
+  duration_ms: 44.4697
+  type: 'test'
+  ...
+# installer started 3.7 s after the app exited
+# Subtest: the Windows install helper waits for the app to exit, then starts the installer
+ok 4 - the Windows install helper waits for the app to exit, then starts the installer
+  ---
+  duration_ms: 6985.9532
+  type: 'test'
+  ...
+# Subtest: the Windows install helper refuses to install on a live app or a failed process query at its deadline
+ok 5 - the Windows install helper refuses to install on a live app or a failed process query at its deadline
+  ---
+  duration_ms: 3959.2117
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 11300.743

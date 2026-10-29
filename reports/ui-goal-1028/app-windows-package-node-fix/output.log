@@ -1,0 +1,10 @@
+file:///D:/atlias-max-app/node_modules/@electron-forge/core-utils/dist/rebuild.js:58
+                reject(pendingError || new Error(`Rebuilder failed with exit code: ${code}`));
+                                       ^
+
+Error: Rebuilder failed with exit code: 1
+    at ChildProcess.<anonymous> (file:///D:/atlias-max-app/node_modules/@electron-forge/core-utils/dist/rebuild.js:58:40)
+    at ChildProcess.emit (node:events:519:28)
+    at ChildProcess._handle.onexit (node:internal/child_process:293:12)
+
+Node.js v22.21.0
