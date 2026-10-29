@@ -309,15 +309,15 @@ export default async function importSuites({ suite, asyncSuite, check, skip, cor
     const src = read('lib/agent.mjs');
     const exec = src.slice(src.indexOf('async function execOnce'), src.indexOf('export const slashApi'));
     check('atlias exec and --once never offer an import: the offer is inside the repl only, and not for --once', !/importer/.test(exec) && /if \(!opts\.once && state\.engine !== 'setup' && !edition\) await importer\.firstRunOffer/.test(src) && (src.match(/importer\.firstRunOffer/g) || []).length === 1, { happened: 'importer referenced in execOnce or twice', why: 'exec is non-interactive and has no one to ask.', fix: 'Call it only in replIn.' });
-    // Gev requested the optional model relay on October 27. Its reviewed
-    // interactive-only source is pinned separately; eval/h2h keep the old pin.
+    // Gev requested optional steering on October 29. Reviewed c54f780 adds
+    // request-boundary input only when a source is passed; eval/h2h keep the old pin.
     // Golden fingerprints still enforce byte-identical benchmark requests.
     const r5 = spawnSync('git', ['diff', '--name-only', '25f0280', '--', 'lib/eval.mjs', 'tools/h2h'], { cwd: ROOT, encoding: 'utf8' });
     if (r5.status === 0) check('git: eval and h2h remain byte-identical to the frozen base 25f0280', r5.stdout.trim() === '', { happened: r5.stdout.trim(), why: 'The relay must not change measured runners or their grader path.', fix: 'Restore the frozen eval/h2h source.' });
     else skip('git diff against 25f0280', 'the base commit is not in this checkout');
-    const relayBase = '7865b87';
+    const relayBase = 'c54f780';
     const loopDiff = spawnSync('git', ['diff', '--name-only', relayBase, '--', 'lib/loop.mjs'], { cwd: ROOT, encoding: 'utf8' });
-    if (loopDiff.status === 0) check('git: loop matches the reviewed optional-relay source; golden requests enforce the benchmark baseline', loopDiff.stdout.trim() === '', { happened: loopDiff.stdout.trim(), why: 'Only the requested optional relay changed the interactive loop; it is off for evals. Any later source change needs a review.', fix: 'Review the loop change, preserve golden fingerprints and pin the reviewed commit explicitly.' });
+    if (loopDiff.status === 0) check('git: loop matches the reviewed optional-input source; golden requests enforce the benchmark baseline', loopDiff.stdout.trim() === '', { happened: loopDiff.stdout.trim(), why: 'Optional steering and interruption sources are absent from evals. Golden checks retain byte-identical benchmark requests. Any later loop change needs a review.', fix: 'Review the loop change, preserve golden fingerprints and pin the reviewed commit explicitly.' });
     else skip('git diff against reviewed relay source', 'the reviewed commit is not in this checkout');
   });
 }
