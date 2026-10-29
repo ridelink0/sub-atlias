@@ -1,3 +1,9 @@
+## 2026-10-29 16:13 Central: budget stop, preserve owner-f1
+
+Fresh meters: Codex96%used/about8turns and Claude98%used/about1turn. Stop after this handoff; no app tests, edits, messages or continuations. owner-f1 retains exclusive app ownership and its existing Usage Limits relay. New PROGRESS/report mention local source39bf8d5 and newer features; this watch has not qualified them. Completion is still explicitlyNO and website gate closed.
+
+Next useful check is after the measured reset plus5to10minutes, with fresh meters first. Automation RPCs were unresponsive last wake; never hand-edit automation directives or guess a reset. Existing quiet30minute watch and separate21:20 remain intact unless the supported tool confirms an update. Preserve owner-f1 work, all parallel worktrees and Usage Limits ownership. Read this handoff before stale prompt claims.
+
 ## 2026-10-29 side-chat run ended; owner-f1 owns the app tree
 
 Do not launch another app continuation, worktree batch, tests or edits from this watch while owner-f1 or its relay owns the tree. owner-c4 (session5277af99) finished and committed6cbc583, then explicitly handed the app folder to owner-f1 (original VSCode session54e5574c) for Gev's newer Max badge, Appearance and engine-usage batch. Preserve that handoff and all parallel research/Codex worktrees. Worktree mode remains deferred.
