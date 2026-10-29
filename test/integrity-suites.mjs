@@ -167,8 +167,10 @@ export default async function integritySuites({ suite, check, core, gate, track,
     const spec = path.join(repo, 'test', 'app.test.js');
     fs.writeFileSync(app, ['export function usedHelper(x) { return x + 1; }', 'export function start() { return usedHelper(1); }'].join(NL) + NL);
     fs.writeFileSync(spec, ["import { start } from '../src/app.js';", "test('start', () => {", '  expect(start()).toBe(2);', "  expect(typeof start).toBe('function');", '});'].join(NL) + NL);
-    git('add', '-A');
-    git('commit', '-q', '-m', 'base');
+    const stagedBase = git('add', '-A');
+    if (!check('the integrity fixture stages its baseline', stagedBase.status === 0, { happened: JSON.stringify({ status: stagedBase.status, error: stagedBase.error?.message, stderr: stagedBase.stderr }), why: 'A missing baseline makes later diff failures ambiguous.', fix: 'Resolve the actual git setup failure before checking the gate.' })) return;
+    const committedBase = git('commit', '-q', '-m', 'base');
+    if (!check('the integrity fixture commits its baseline', committedBase.status === 0, { happened: JSON.stringify({ status: committedBase.status, error: committedBase.error?.message, stderr: committedBase.stderr }), why: 'A failed commit cannot establish a meaningful comparison.', fix: 'Resolve the actual git commit failure before checking the gate.' })) return;
     fs.writeFileSync(app, ['export function usedHelper(x) { return x + 1; }', 'export function start() { return usedHelper(1); }', 'export function wiredNew() { return 3; }', 'start.also = wiredNew;', 'export function unusedFeature() { return 42; }', '// TODO wire this into start', '// ... existing code ...'].join(NL) + NL);
     fs.writeFileSync(spec, ["import { start } from '../src/app.js';", "test.skip('start', () => {", '  expect(start()).toBe(2);', '});'].join(NL) + NL);
     const extra = path.join(repo, 'src', 'extra.js');
@@ -216,6 +218,10 @@ export default async function integritySuites({ suite, check, core, gate, track,
     check('and a git call that timed out marks its check unfinished', partial && partial.incomplete === true && partial.added.some((a) => /brandNewModule/.test(a.text)) && none.length === 0 && grepOut.incomplete === true, { happened: JSON.stringify({ incomplete: partial && partial.incomplete, added: partial ? partial.added.length : null, grep: grepOut }), why: 'Silence from a check that never finished reads exactly like a clean result, which is the bug that let the gate speak twice.', fix: 'Set incomplete in diffFor and findUnwired when status is null.' });
     // A git call that ran and failed is no more a clean answer than one that timed out (audit A5).
     const failed = (code) => () => ({ status: code, stdout: '', stderr: 'fatal: failed', error: null });
+    for (const [label, discovery] of [['failed', failed(128)()], ['empty', { status: 0, stdout: '', stderr: '', error: null }]]) {
+      const unknown = integrity.diffFor(repo, [app], { run: (cmd, args, opts) => args[0] === 'rev-parse' ? discovery : core.run(cmd, args, opts) });
+      check('root discovery that ' + label + ' leaves the integrity check unfinished', unknown?.incomplete === true && unknown.root === null, { happened: JSON.stringify(unknown), why: 'A Git discovery error is not proof that changed files are outside a repository.', fix: 'Record failed root discovery as incomplete and do not cache the failure.' });
+    }
     const diffFailed = integrity.diffFor(repo, [app, spec, extra], { run: (cmd, args, opts) => (args.includes('diff') ? failed(128)() : core.run(cmd, args, opts)) });
     const listFailed = integrity.diffFor(repo, [app, spec, extra], { run: (cmd, args, opts) => (args.includes('ls-files') ? failed(1)() : core.run(cmd, args, opts)) });
     const grepFailed = {};
@@ -233,6 +239,11 @@ export default async function integritySuites({ suite, check, core, gate, track,
     core.run('git', ['add', 'calc.py'], { cwd: fresh });
     const noCommit = integrity.diffFor(fresh, [staged]);
     check('in a repository with no commit yet, a staged file is not reported as a clean, complete diff', noCommit && (noCommit.incomplete === true || noCommit.added.some((a) => /pass/.test(a.text))), { happened: JSON.stringify(noCommit && { incomplete: noCommit.incomplete, added: noCommit.added.length }), why: 'git diff HEAD exits 128 before the first commit; the staged placeholder was invisible and the check said complete.', fix: 'diffFor: incomplete when git diff fails.' });
+    const initializedLater = fs.mkdtempSync(path.join(TMP, 'init-later-'));
+    const beforeInit = integrity.repoRoot(initializedLater);
+    const initResult = core.run('git', ['init', '-q'], { cwd: initializedLater });
+    const afterInit = integrity.repoRoot(initializedLater);
+    check('a folder initialized as a repository later is discovered without restarting', beforeInit === null && initResult.status === 0 && afterInit && integrity.real(afterInit) === integrity.real(initializedLater), { happened: JSON.stringify({ beforeInit, init: initResult.status, afterInit }), why: 'A new project can gain a repository during the same chat.', fix: 'Do not memoize a missing repository for the lifetime of the process.' });
     const s2 = sid('e2e-honest');
     router.prompt({ session_id: s2, cwd: repo, prompt: 'try the change' });
     track.postTool({ session_id: s2, cwd: repo, tool_name: 'Write', tool_input: { file_path: app } });

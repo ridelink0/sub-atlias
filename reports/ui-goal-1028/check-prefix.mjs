@@ -1,0 +1,15 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { spawn } from 'node:child_process';
+const root='D:/atlias-app';
+const source=fs.readFileSync(path.join(root,'test/run.mjs'),'utf8');
+const boundary="await (await import('./subharness-suites.mjs'))";
+if(!source.includes(boundary))throw Error('prefix boundary missing');
+let test=source.slice(0,source.indexOf(boundary))+source.slice(source.lastIndexOf('\nlet failed = 0;'));
+test=test.replace("const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');",'const ROOT = '+JSON.stringify(root)+';');
+test=test.replace(/\bimport\((['"])(\.{1,2}\/[^'"]+)\1\)/g,(full,quote,target)=>'import('+quote+pathToFileURL(path.resolve(root,'test',target)).href+quote+')');
+const child=spawn(process.execPath,['--input-type=module'],{cwd:root,windowsHide:true,env:process.env,stdio:['pipe','inherit','inherit']});
+child.stdin.end(test);
+const exit=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',code=>resolve(code));});
+process.exitCode=exit??1;

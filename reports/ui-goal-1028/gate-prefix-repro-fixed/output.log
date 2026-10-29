@@ -1,0 +1,52 @@
+PASS payload shapes (payload expert): 7 passed, 0 failed
+PASS token efficiency (cache and token expert): 10 passed, 0 failed
+PASS guards (guard expert): 46 passed, 0 failed
+PASS verification gate (gate expert): 8 passed, 0 failed
+PASS progress note (handoff expert): 5 passed, 0 failed
+PASS dream (memory and Dream expert): 10 passed, 0 failed
+PASS host integration (host integration expert): 13 passed, 0 failed
+PASS end to end hooks (dispatcher expert): 10 passed, 0 failed
+PASS mcp server (MCP expert): 8 passed, 0 failed
+PASS logo (ship expert): 8 passed, 0 failed
+PASS regular agent (agent expert): 6 passed, 0 failed
+PASS agent runtime (agent runtime expert): 5 passed, 0 failed
+PASS extra harnesses (extra harness expert): 10 passed, 0 failed
+PASS hook budgets (reliability expert): 8 passed, 0 failed
+PASS bench (measurement expert): 11 passed, 0 failed
+PASS platform assumptions (platform expert): 7 passed, 0 failed
+PASS verification honesty (verification honesty expert): 7 passed, 0 failed
+PASS stale answers (staleness expert): 5 passed, 0 failed
+PASS configuration respected (configuration expert): 4 passed, 0 failed
+PASS long sessions (long session expert): 6 passed, 0 failed
+PASS recall budget (recall budget expert): 4 passed, 0 failed
+PASS live interventions (live count expert): 4 passed, 0 failed
+PASS empty graph answers (empty answer expert): 4 passed, 0 failed
+PASS release numbering (release expert): 6 passed, 0 failed
+PASS edits made outside the tools (shell edit expert): 6 passed, 0 failed
+PASS state preservation (state preservation expert): 5 passed, 0 failed
+PASS two sessions ending at once (concurrency expert): 3 passed, 0 failed
+PASS hook output is never truncated (flush expert): 5 passed, 0 failed
+PASS bounded writes (bounded writes expert): 6 passed, 0 failed
+PASS turns that did nothing (idle turn expert): 5 passed, 0 failed
+PASS each harness is called by its own name (naming expert): 7 passed, 0 failed
+PASS nothing is cut in the middle (truncation expert): 7 passed, 0 failed
+PASS engine handshake (engine handshake expert): 12 passed, 0 failed
+PASS small edges (small edges expert): 5 passed, 0 failed
+PASS host configs survive an update (durable path expert): 13 passed, 0 failed
+PASS settings refuse the wrong type (settings expert): 7 passed, 0 failed
+PASS a turn longer than the window (long turn expert): 4 passed, 0 failed
+PASS the memory index cannot be overwritten (index safety expert): 9 passed, 0 failed
+PASS nothing grows for ever (leak expert): 5 passed, 0 failed
+PASS writes outside the project (blast radius expert): 7 passed, 0 failed
+PASS the launcher stands alone (launcher expert): 5 passed, 0 failed
+PASS the doctor proves what it reports (proof expert): 15 passed, 0 failed
+PASS what a reply claims (claims expert): 3 passed, 0 failed
+PASS reading what a check said (test result expert): 13 passed, 0 failed
+PASS claims against evidence (evidence expert): 26 passed, 0 failed
+PASS reading what changed (diff expert): 4 passed, 0 failed
+PASS stubs and elided code (placeholder expert): 3 passed, 0 failed
+PASS weakened tests (test weakening expert): 4 passed, 0 failed
+PASS code that nothing calls (wiring expert): 4 passed, 0 failed
+PASS the gate on a real repository (end to end integrity expert): 13 passed, 0 failed
+
+408/408 checks passed across 50 suites.

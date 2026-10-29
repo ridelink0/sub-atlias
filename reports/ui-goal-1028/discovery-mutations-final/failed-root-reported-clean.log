@@ -1,0 +1,11 @@
+FAIL the gate on a real repository (end to end integrity expert): 16 passed, 2 failed
+  x root discovery that failed leaves the integrity check unfinished
+    What happened: null
+    Why it matters: A Git discovery error is not proof that changed files are outside a repository.
+    Fix: Record failed root discovery as incomplete and do not cache the failure.
+  x root discovery that empty leaves the integrity check unfinished
+    What happened: null
+    Why it matters: A Git discovery error is not proof that changed files are outside a repository.
+    Fix: Record failed root discovery as incomplete and do not cache the failure.
+
+16/18 checks passed across 1 suites.

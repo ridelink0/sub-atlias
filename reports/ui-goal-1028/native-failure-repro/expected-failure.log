@@ -1,0 +1,9 @@
+file:///D:/atlias-test-runs/native-failure-b4J6OW/probe.mjs:34
+    await word('Resume session (1 of 40)'); throw Error('planted-native-cleanup-failure');
+                                                  ^
+
+Error: planted-native-cleanup-failure
+    at run (file:///D:/atlias-test-runs/native-failure-b4J6OW/probe.mjs:34:51)
+    at async file:///D:/atlias-test-runs/native-failure-b4J6OW/probe.mjs:65:18
+
+Node.js v22.21.0

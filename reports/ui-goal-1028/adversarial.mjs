@@ -4,9 +4,11 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 const app = 'D:/atlias-app', site = 'D:/atlias-site', base = 'D:/atlias-test-runs';
 const folder = fs.mkdtempSync(path.join(base, 'ui-mutations-'));
+console.log(JSON.stringify({ folder }));
 const cases = [];
 const units = ['--test', 'test/account-session.test.mjs'];
 const siteUnits = ['--test', 'test/entitlement.test.mjs', 'test/max-waitlist.test.mjs', 'test/benchmark-motion.test.mjs'];
+const gateUnits = ['test/run.mjs', 'the gate on a real repository'];
 const definitions = [
   ['zero-quota', app, 'lib/account-usage.mjs', 'n >= 0 && n <= 100', 'n > 0 && n <= 100', units],
   ['foreign-account-quota', app, 'lib/account-usage.mjs', "engine === 'codex'", "['codex', 'chatgpt'].includes(engine)", units],
@@ -25,20 +27,33 @@ const definitions = [
   ['wrong-coupon-product', site, 'server/max-waitlist.mjs', 'const eligibleProduct = !coupon.applies_to?.products?.length || coupon.applies_to.products.includes', 'const eligibleProduct = true || coupon.applies_to.products.includes', siteUnits],
   ['missing-chart-motion', site, 'src/scripts/benchmark-motion.js', 'if (reduced()) return;', 'return;', siteUnits],
   ['reduced-motion-ignored', site, 'src/scripts/benchmark-motion.js', 'const reduced = () => media ? media.matches : reduce;', 'const reduced = () => false;', siteUnits],
+  ['cached-missing-repository', app, 'lib/integrity.mjs', 'if (!hasGitAbove(cwd)) return null;', 'if (!hasGitAbove(cwd)) { rootMemo.set(cwd, null); return null; }', gateUnits],
+  ['failed-root-reported-clean', app, 'lib/integrity.mjs', '(why.timedOut || why.failed)', 'why.timedOut', gateUnits],
 ];
+const requested = process.argv.slice(2);
+const chosen = requested.length ? definitions.filter(([name]) => requested.includes(name)) : definitions;
+assert.ok(chosen.length && (!requested.length || chosen.length === new Set(requested).size), 'all requested mutations exist');
 function copy(root, destination) {
-  const dirs = root === app ? ['lib', 'mcp', 'test', 'bin'] : ['server', 'test', 'src/scripts'];
+  const dirs = root === app ? ['lib', 'mcp', 'test', 'bin', 'mods'] : ['server', 'test', 'src/scripts'];
   fs.mkdirSync(destination, { recursive: true });
   fs.copyFileSync(path.join(root, 'package.json'), path.join(destination, 'package.json'));
   for (const dir of dirs) fs.cpSync(path.join(root, dir), path.join(destination, dir), { recursive: true });
+  if (root === app) {
+    // test/run imports source-only helpers outside lib/test even for one suite.
+    const tracked = spawnSync('git', ['ls-files', '-z', '--', '*.mjs', '*.js'], { cwd: root, encoding: 'utf8', windowsHide: true });
+    assert.equal(tracked.status, 0, 'tracked source inventory');
+    for (const file of tracked.stdout.split('\0').filter(Boolean)) { const target = path.join(destination, file); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.copyFileSync(path.join(root, file), target); }
+  }
 }
-for (const [name, root, args] of [['app-positive', app, units], ['site-positive', site, siteUnits]]) {
+const controls = [...new Map(chosen.map(([,root,,,,args]) => [root + JSON.stringify(args), [root,args]])).values()];
+for (const [index, [root,args]] of controls.entries()) {
+  const name = 'positive-' + index;
   const destination = path.join(folder, name); copy(root, destination);
   const result = spawnSync(process.execPath, args, { cwd: destination, encoding: 'utf8', windowsHide: true });
   fs.writeFileSync(path.join(destination, 'result.log'), String(result.stdout || '') + String(result.stderr || ''));
   assert.equal(result.status, 0, name + ' unmodified isolated copy must pass');
 }
-for (const [name, root, file, from, to, args] of definitions) {
+for (const [name, root, file, from, to, args] of chosen) {
   const destination = path.join(folder, name); copy(root, destination);
   const target = path.join(destination, file), original = fs.readFileSync(target, 'utf8');
   assert.ok(original.includes(from), 'mutation anchor exists: ' + name);
@@ -48,7 +63,10 @@ for (const [name, root, file, from, to, args] of definitions) {
   const result = spawnSync(process.execPath, args, { cwd: destination, encoding: 'utf8', windowsHide: true, env: { ...process.env, ATLIAS_HOME: path.join(destination, 'state'), CLAUDE_CONFIG_DIR: path.join(destination, 'claude'), CODEX_HOME: path.join(destination, 'codex'), ATLIAS_NO_DETACH: '1' } });
   fs.writeFileSync(path.join(destination, 'result.log'), String(result.stdout || '') + String(result.stderr || ''));
   assert.equal(result.error, undefined, name + ' process must finish'); assert.notEqual(result.status, 0, name + ' must be caught by a real check');
-  assert.match(result.stdout + result.stderr, /ERR_ASSERTION|AssertionError/, name + ' must fail an assertion, not module loading');
+  const expectedFailure = args === gateUnits
+    ? name === 'cached-missing-repository' ? /x a folder initialized as a repository later/ : /x root discovery that failed/
+    : /ERR_ASSERTION|AssertionError/;
+  assert.match(result.stdout + result.stderr, expectedFailure, name + ' must fail its behavior check, not module loading');
   cases.push({ name, file, syntaxExit: syntax.status, testExit: result.status, detected: true }); console.log(name + ': detected');
 }
 fs.writeFileSync(path.join(folder, 'result.json'), JSON.stringify({ passed: true, cases }, null, 2));

@@ -1,0 +1,7 @@
+FAIL the gate on a real repository (end to end integrity expert): 17 passed, 1 failed
+  x a folder initialized as a repository later is discovered without restarting
+    What happened: {"beforeInit":null,"init":0,"afterInit":null}
+    Why it matters: A new project can gain a repository during the same chat.
+    Fix: Do not memoize a missing repository for the lifetime of the process.
+
+17/18 checks passed across 1 suites.
