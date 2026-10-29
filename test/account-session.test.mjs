@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { EventEmitter } from 'node:events';
-import { accountUsage } from '../lib/account-usage.mjs';
+import { accountUsage, recordAccountTokens } from '../lib/account-usage.mjs';
 import { renderComposer, createTerminalUI, textWidth } from '../lib/terminal-ui.mjs';
 
 test('accountUsage keeps valid zero, separates engines and rejects invalid/stale windows', () => {
@@ -19,6 +19,8 @@ test('accountUsage keeps valid zero, separates engines and rejects invalid/stale
     let rows = accountUsage({ connected, home, env: {}, now });
     assert.equal(rows.length, 8);
     assert.match(rows[0].text, /5h 0% used \/ week 99% used/);
+    assert.match(accountUsage({ connected, home, env: { CLAUDE_CONFIG_DIR: path.join(home, '.claude') }, now })[0].text, /week 99% used/, 'the default config directory uses the native home snapshot');
+    assert.equal(accountUsage({ connected, home, env: { CLAUDE_CONFIG_DIR: path.join(home, 'other-profile') }, now })[0].windows.length, 0, 'custom profiles never borrow the default account reading');
     assert.match(rows.find(r => r.engine === 'codex').text, /5h 24% used/);
     assert.equal(rows.find(r => r.engine === 'codex').windows.length, 1);
     assert.equal(rows.find(r => r.engine === 'chatgpt').text, 'ChatGPT plan: allowance not reported');
@@ -32,14 +34,34 @@ test('accountUsage keeps valid zero, separates engines and rejects invalid/stale
   } finally { fs.rmSync(home, { recursive: true, force: true }); }
 });
 
+test('recordAccountTokens separates switched engines and preserves partial provider accounting', () => {
+  const state = { engine: 'anthropic', promptLog: [90000], outLog: [90000] };
+  recordAccountTokens(state, 'openai', [{ prompt: 100, output: 20 }, { prompt: 0, output: 0 }]);
+  recordAccountTokens(state, 'anthropic', [{ prompt: 300, output: 40 }, { prompt: 10 }, {}]);
+  const resumed = JSON.parse(JSON.stringify(state));
+  const rows = accountUsage({ active: 'anthropic', connected: { openai: true }, state: resumed, home: '/fixture-absent', env: {} });
+  assert.match(rows.find(r => r.engine === 'openai').text, /120 reported session tokens/);
+  assert.match(rows.find(r => r.engine === 'anthropic').text, /350 reported session tokens \(partial\)/);
+  assert.ok(rows.every(r => !r.text.includes('180,000')), 'legacy mixed logs cannot be attributed to a single engine');
+  assert.deepEqual(state.connectionUsage.openai, { tokens: 120, calls: 2, reportedParts: 4, unreportedCalls: 0 });
+  recordAccountTokens(state, 'chatgpt', [{}]);
+  assert.match(accountUsage({ active: 'chatgpt', state, home: '/fixture-absent', env: {} })[0].text, /session tokens not reported/);
+});
+
 const sessions = Array.from({ length: 40 }, (_, i) => ({ sid: `session-${i}`, name: `Project ${i}`, engine: 'echo', saved: 1800000000000 - i, history: [{ role: 'user', text: `Build feature ${i}` }] }));
-function rig() {
+function rig({ rawFails = false } = {}) {
   const input = new EventEmitter(), output = new EventEmitter(), proc = new EventEmitter();
   input.isTTY = output.isTTY = true; input.isRaw = false;
-  input.setRawMode = v => { input.isRaw = v; }; input.isPaused = () => false; input.pause = () => {}; input.resume = () => {};
+  input.setRawMode = v => { if (rawFails) throw Error('raw unavailable'); input.isRaw = v; }; input.isPaused = () => false; input.pause = () => {}; input.resume = () => {};
   output.columns = 80; output.rows = 24; output.write = () => {};
   return { input, output, ui: createTerminalUI({ input, output, proc, env: { NO_COLOR: '1' } }) };
 }
+test('a raw-mode failure returns control for a visible numbered picker instead of asking a blank question', async () => {
+  const r = rig({ rawFails: true });
+  assert.equal(await r.ui.selectSession(sessions), undefined);
+  assert.equal(r.ui.inputMode(), 'line');
+  assert.equal(inputListeners(r), 0); r.ui.close();
+});
 test('session picker searches, scrolls, cancels and never submits a search as a model prompt', async () => {
   const r = rig();
   let pending = r.ui.selectSession(sessions); r.input.emit('data', '\x1b[B\r'); assert.equal(await pending, 'session-1');
@@ -63,4 +85,5 @@ test('allowances stay beside the model and picker frames fit terminal bounds', (
     assert.ok(picker.lines.length <= rows); assert.equal(picker.selected, 39);
   }
   assert.match(renderComposer({ info: { engine: 'claude-opus-5-5', usageRows: ['Claude plan: 5h 0% used / week 99% used'] } }).lines.join('\n'), /Claude plan: 5h 0% used \/ week 99% used/);
+  assert.match(renderComposer({ status: 'Working 3s', info: { usageRows: ['Claude plan: week 99% used'] } }).lines.join('\n'), /Claude plan: week 99% used/);
 });

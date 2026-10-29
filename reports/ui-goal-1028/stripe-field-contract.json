@@ -1,0 +1,43 @@
+{
+  "passed": true,
+  "version": "2026-09-30.endive",
+  "fields": {
+    "price": [
+      "active",
+      "livemode",
+      "currency",
+      "unit_amount",
+      "recurring",
+      "product"
+    ],
+    "coupon": [
+      "valid",
+      "duration",
+      "currency",
+      "amount_off",
+      "applies_to"
+    ],
+    "invoice": [
+      "id",
+      "status",
+      "livemode"
+    ],
+    "subscription": [
+      "livemode",
+      "status",
+      "metadata",
+      "items",
+      "latest_invoice"
+    ],
+    "checkout.session": [
+      "id",
+      "url",
+      "livemode",
+      "client_reference_id",
+      "mode",
+      "status",
+      "payment_status",
+      "subscription"
+    ]
+  }
+}

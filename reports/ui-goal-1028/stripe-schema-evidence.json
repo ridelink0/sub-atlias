@@ -1,0 +1,42 @@
+{
+  "url": "https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.json",
+  "at": "2026-10-29T02:18:54.408Z",
+  "sha256": "7cff4cc46d0654101a36a3302f7544640f5f73e4f3cad6f264f0e23c19fa1776",
+  "version": "2026-09-30.endive",
+  "invoiceFields": [
+    "amount_overpaid",
+    "amount_paid",
+    "amount_paid_off_stripe",
+    "livemode",
+    "status",
+    "status_details",
+    "status_transitions"
+  ],
+  "invoiceStatus": {
+    "description": "The status of the invoice, one of `draft`, `open`, `paid`, `uncollectible`, or `void`. [Learn more](https://docs.stripe.com/billing/invoices/workflow#workflow-overview)",
+    "enum": [
+      "draft",
+      "open",
+      "paid",
+      "uncollectible",
+      "void"
+    ],
+    "nullable": true,
+    "type": "string",
+    "x-stripeBypassValidation": true
+  },
+  "checkoutName": "checkout.session",
+  "checkoutPaymentStatus": {
+    "description": "The payment status of the Checkout Session, one of `paid`, `unpaid`, or `no_payment_required`.\nYou can use this value to decide when to fulfill your customer's order.",
+    "enum": [
+      "no_payment_required",
+      "paid",
+      "unpaid"
+    ],
+    "type": "string"
+  },
+  "subscriptionFields": [
+    "items",
+    "latest_invoice"
+  ]
+}

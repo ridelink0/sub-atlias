@@ -50,6 +50,8 @@ try {
   const chatFile = fs.readdirSync(path.join(home, 'sessions')).find(f => f.endsWith('.chat.json'));
   const state = JSON.parse(fs.readFileSync(path.join(home, 'sessions', chatFile), 'utf8'));
   assert.deepEqual(state.history.filter(h => h.role === 'user').map(h => h.text), ['initial task', 'queued A', 'queued B', 'unsent C']);
+  assert.equal(state.connectionUsage.openai.tokens, 480, 'four reported calls are attributed to the selected provider');
+  assert.equal(state.connectionUsage.openai.calls, 4);
   const historyFile = fs.readdirSync(path.join(home, 'input-history'))[0];
   const inputHistory = JSON.parse(fs.readFileSync(path.join(home, 'input-history', historyFile), 'utf8'));
   assert.ok(inputHistory.includes('queued A') && inputHistory.includes('Describe @"missing image.png"') && !inputHistory.includes('unsent D'));

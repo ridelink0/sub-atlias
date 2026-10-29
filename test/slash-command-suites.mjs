@@ -161,6 +161,17 @@ export default async function slashCommandSuites({ suite, asyncSuite, check, cor
     cancelled.ctx.api.selectSession = async () => null;
     await commands.dispatch('/resume', cancelled.ctx);
     check('cancelling the session picker preserves the current conversation', cancelled.state.sid === cancelledSid && /cancelled/.test(text(cancelled.out)), { happened: text(cancelled.out), why: 'Opening a picker grants no session change.', fix: 'Return before load/save when cancelled.' });
+    const plain = ctxFor(cwd), answers = ['no match at all', 'remember me', '1'];
+    plain.ctx.api.selectSession = async () => undefined;
+    plain.ctx.ask = async () => answers.shift() || '';
+    await commands.dispatch('/resume', plain.ctx);
+    check('unavailable raw input falls back to a numbered searchable list', plain.state.sid === target && /Resume session/.test(text(plain.out)) && /No matching sessions/.test(text(plain.out)), { happened: text(plain.out), why: 'A raw-mode failure must not hide the choices.', fix: 'Use the plain picker when selectSession returns undefined.' });
+    const corrupt = { sid: 'corrupt-saved-chat', cwd, engine: 'echo', history: [null], messages: [] };
+    fs.writeFileSync(agentMod.chatPath(corrupt.sid), JSON.stringify(corrupt));
+    check('corrupt nested history is skipped by the list and direct resume', !agentMod.listChats(cwd, Infinity).some(s => s.sid === corrupt.sid) && agentMod.loadChat(corrupt.sid, cwd) === null, { happened: corrupt.sid, why: 'An unreadable session must not crash the picker.', fix: 'Validate a saved conversation before listing or loading.' });
+    rc.state.connectionUsage = { openai: { tokens: 120, calls: 1, reportedParts: 2, unreportedCalls: 0 } };
+    agentMod.saveChat(rc.state);
+    check('per-engine session token accounting survives saved-session resume', agentMod.loadChat(rc.state.sid, cwd).connectionUsage.openai.tokens === 120, { happened: JSON.stringify(rc.state.connectionUsage), why: 'The bar must not lose accounting on resume.', fix: 'Persist connectionUsage with the conversation.' });
     const away = ctxFor(project());
     const foreign = ctxFor(cwd);
     foreign.state.history.push({ role: 'user', text: 'x' }, { role: 'assistant', text: 'y' });

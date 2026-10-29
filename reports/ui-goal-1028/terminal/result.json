@@ -1,0 +1,49 @@
+{
+  "passed": true,
+  "actualConPTYBytes": true,
+  "fixture": "C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-account-resume-T4cSLP",
+  "cases": [
+    {
+      "name": "footer",
+      "width": 1160,
+      "height": 680,
+      "text": "     ▄██▄        ███  █████ █      ███   ███   ████\n   ▄██████▄     █   █   █   █       █   █   █ █\n   ██ ██ ██     █████   █   █       █   █████  ███\n ▄██████████▄   █   █   █   █       █   █   █     █\n ▀ ████████ ▀   █   █   █   █████  ███  █   █ ████\n   █ █  █ █\n  v4.0.0   Diagnostic: no model\nC:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-account-resume-T4cSLP\\project\n/help commands   / setup and tools\n\n\n> Ask about this project, or describe a change\n\nEnter send   Ctrl+J newline   / commands\nDiagnostic: no model  |  workspace  |  dry run\nClaude plan: 5h 0% used / week 99% used (cached)\nOllama: local; no plan allowance\n\n\n\n\n\n\n\n\n\n\n\n\n"
+    },
+    {
+      "name": "picker",
+      "width": 1160,
+      "height": 680,
+      "text": "C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-account-resume-T4cSLP\\project\n/help commands   / setup and tools\nyou /resume\nResume session (1 of 40)\nSearch: \n> Project 39\n  echo | 0 turns | 10/28/2026, 9:22:28 PM | session-39\n  Project 38\n  echo | 1 turns | 10/28/2026, 9:23:28 PM | session-38\n  Project 37\n  echo | 1 turns | 10/28/2026, 9:24:28 PM | session-37\n  Project 36\n  echo | 1 turns | 10/28/2026, 9:25:28 PM | session-36\n  Project 35\n  echo | 1 turns | 10/28/2026, 9:26:28 PM | session-35\n  Project 34\n  echo | 1 turns | 10/28/2026, 9:27:28 PM | session-34\n  Project 33\n  echo | 1 turns | 10/28/2026, 9:28:28 PM | session-33\n  Project 32\n  echo | 1 turns | 10/28/2026, 9:29:28 PM | session-32\n  Project 31\n  echo | 1 turns | 10/28/2026, 9:30:28 PM | session-31\n  Project 30\n  echo | 1 turns | 10/28/2026, 9:31:28 PM | session-30\n  Project 29\n  echo | 1 turns | 10/28/2026, 9:32:28 PM | session-29\n  Project 28\n  echo | 1 turns | 10/28/2026, 9:33:28 PM | session-28\nUp/Down choose | Enter resume | Esc cancel | Type to search"
+    },
+    {
+      "name": "picker-search",
+      "width": 1160,
+      "height": 680,
+      "text": "C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-account-resume-T4cSLP\\project\n/help commands   / setup and tools\nyou /resume\nResume session (1 of 1)\nSearch: Project 39\n> Project 39\n  echo | 0 turns | 10/28/2026, 9:22:28 PM | session-39\nUp/Down choose | Enter resume | Esc cancel | Type to search\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n"
+    },
+    {
+      "name": "help",
+      "width": 1160,
+      "height": 680,
+      "text": "engine messages (tool calls and results)          0 chars   about      0 tokens (chars / 4, an estimate)\nplan                                              0 chars   about      0 tokens (chars / 4, an estimate)\ntotal                                             0 chars   about      0 tokens\nno token count reported yet\nyou /sessions\nsession-39   \"Project 39\"   echo   0 turns   10/28/2026, 9:22:28 PM\nsession-38   \"Project 38\"   echo   1 turns   10/28/2026, 9:23:28 PM\nsession-37   \"Project 37\"   echo   1 turns   10/28/2026, 9:24:28 PM\nsession-36   \"Project 36\"   echo   1 turns   10/28/2026, 9:25:28 PM\nsession-35   \"Project 35\"   echo   1 turns   10/28/2026, 9:26:28 PM\nsession-34   \"Project 34\"   echo   1 turns   10/28/2026, 9:27:28 PM\nsession-33   \"Project 33\"   echo   1 turns   10/28/2026, 9:28:28 PM\nsession-32   \"Project 32\"   echo   1 turns   10/28/2026, 9:29:28 PM\nsession-31   \"Project 31\"   echo   1 turns   10/28/2026, 9:30:28 PM\nsession-30   \"Project 30\"   echo   1 turns   10/28/2026, 9:31:28 PM\nyou /help resume\n/resume [id or name]          search and choose a saved session of this folder\n  Example: /resume\n\n/help shows every command.\nyou /command-that-does-not-exist                                                                              \nunknown command /command-that-does-not-exist; /help lists the commands                                        \n                                                                                                              \n                                                                                                              \n> Ask about this project, or describe a change                                                                \n                                                                                                              \nEnter send   Ctrl+J newline   / commands                                                                      \nDiagnostic: no model  |  workspace  |  dry run  |  Project 39                                                 \nClaude plan: 5h 0% used / week 99% used (cached)\nOllama: local; no plan allowance"
+    },
+    {
+      "name": "settings",
+      "width": 1160,
+      "height": 680,
+      "text": "session-33   \"Project 33\"   echo   1 turns   10/28/2026, 9:28:28 PM\nsession-32   \"Project 32\"   echo   1 turns   10/28/2026, 9:29:28 PM\nsession-31   \"Project 31\"   echo   1 turns   10/28/2026, 9:30:28 PM\nsession-30   \"Project 30\"   echo   1 turns   10/28/2026, 9:31:28 PM\nyou /help resume\n/resume [id or name]          search and choose a saved session of this folder\n  Example: /resume\n\n/help shows every command.\nyou /command-that-does-not-exist                                                                              \nunknown command /command-that-does-not-exist; /help lists the commands                                        \nyou /settings\nSettings: common (12 of 120; page 1/1)\n 27  Terminal composer  true\n 28  Accent color       \"atlias\"\n 29  Compact welcome    false\n 30  Keyboard hints     true\n 31  Show token usage   false\n 35  Image attachments  true\n 40  Image detail       \"auto\"\n 72  Run mode           \"both\"\n 73  Main connection    \"auto\"\n 78  Worker connection  Follow main connection\n 79  Worker model       Use connection default\n113  Permissions        \"workspace\"\n+-----------------------------------------------------------------------------------------------------------+\n| select number/key; /search; common/all/changed; section <name>; next/prev; reset <key>; q:                | \n|                                                                                                           | \n+-----------------------------------------------------------------------------------------------------------+ \nDiagnostic: no model  |  workspace  |  dry run  |  Project 39"
+    },
+    {
+      "name": "session-recovered",
+      "width": 1160,
+      "height": 680,
+      "text": " 73  Main connection    \"auto\"\n 78  Worker connection  Follow main connection\n 79  Worker model       Use connection default\n113  Permissions        \"workspace\"\nyou q\nyou /rename Beginner review\nsession session-39 is now named \"Beginner review\"; /resume Beginner review brings it back\nyou Hello from the UI review\n\necho: Hello from the UI review\n\nyou /clear\nsaved session-39; new session atlias-47330de5-eb5f-40d4-bf1d-711c8c98902e. /resume session-39 brings the old o\nne back\nyou /resume Beginner review\nresumed session-39 (1 turns, engine echo); the session you left is saved\nyou /rewind\n1. 10:02:03 PM  Hello from the UI review\nyou \nno rewind\nyou /export ui-review-export.md\nwrote ui-review-export.md\n\n\n> Ask about this project, or describe a change\n\nEnter send   Ctrl+J newline   / commands\nDiagnostic: no model  |  workspace  |  dry run  |  Beginner review\nClaude plan: 5h 0% used / week 99% used (cached)\nOllama: local; no plan allowance"
+    },
+    {
+      "name": "narrow",
+      "width": 520,
+      "height": 390,
+      "text": "\n\n> Ask about this project, or describe a c\n\nEnter send   Ctrl+J newline   / commands\nDiagnostic: no model  |  workspace\nClaude plan: 5h 0% used / week 99% used ( \nOllama: local; no plan allowance\n\n\n                                          \n\n                                          \n\n"
+    }
+  ]
+}

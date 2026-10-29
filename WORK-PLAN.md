@@ -1,3 +1,23 @@
+# Saved local verification and desktop scope (2026-10-29T03:12:18.914Z)
+
+Final Deep Research report now fully revised for macOS/Windows/Linux, read by coordinator, with Image Deep Research references and secure local Electron/React/Node recommendation. Nativeplatformresults remain unverified, no iOS app scope. Both automation prompts read back:23:05:01Central Claude delivery preserved; nextlocalverification01:42:24Central October29 = liveCodexreset1793255844+300seconds. Site full242/242actual0andsitebuildactual0/sourceunchanged. App full1247stillpendinginreports/ui-goal-1028/app-suite, no finalpassclaim. Completedreceipts/research/docs saved locally. Sitecommit29b5480. No deployment/push/charge. Check pendingreceiptfirstnextwake; do not duplicateClaude goal ifACKexists. Previouscheckpointbelow has detailed checks and constraints.
+
+---
+
+# October28 local continuation checkpoint (2026-10-29T03:09:09.376Z)
+
+Gev finalized the Max app platforms as macOS, Windows and Linux; NO iOS. Deep Research plus Image Deep Research and UFS required. Authoritative brief docs/CLAUDE-APP-HANDOFF-1028.md and automation atlias-claude-app-handoff both corrected; saved23:05:01Central schedule remains >5minutes after measured Claude reset04:00:00.455539Z. Native macOS/Linux checks must never be guessed. No app advertising until explicit fully-finished-in-every-aspect completion plus evidence review. Local only, no deploy/push/charges. Delivery probe was actually acknowledged in Claude session54e5574c-72d6-4efe-b3af-6f52a869f45f.
+
+Terminal fixes: all connected-engine quota rows, isolated cached allowances, per-engine persisted token accounting including workers, searchable /resume and CLI picker, raw/plain fallback, corrupt-session guard and empty-session recovery. Native ConPTY both-entrypoint+25command sweep actualexit0. Fixed test capture race, freshfiltered1of1 frame now asserted/rendered/viewed. Native queue/attachment/plain actual0. Account5unit+249targeted andMax12 targeted actual0. Source lib/loop.mjs untouched.
+
+Stripe: local client/server contract actual0, no actual provider calls/charges. PinnedcurrentStripe2026-09-30.endive officialschema; removedobsoleteinvoice.paid requirement; paidstatus used. Stablecheckoutidempotency+savedreceipt, strictMaxprice/live/paidinvoice/signingkey checks, boundedrequests,7dayofflinecap, no privateerrors. Realconfiguration/provider readiness unverified; see docs/STRIPE-READINESS-1028.md. Authenticated account service remains Claude app work.
+
+Completed receipt folders reports/ui-goal-1028/: native-ui-search0, terminal-render-search0, browser-motion0, site-suite-final0(242/242,zero skips), adversarial0(17semanticmutants+unmodifiedpositivecontrols), ufs-verify1(11baselinebrand/comingsoonstylefindings +staticAPI404/2slowassetrequests). All7terminalstates and4benchmarkPNGs inspected. Separate broadsite --test actual1 includedhelper, NOT a pass. Oldnativehungparent intentionallycancelled1, fixedrunnernewactual0.
+
+Pending at checkpoint: final fullapp session1247 -> reports/ui-goal-1028/app-suite/receipt.json/output.log; sitebuild83412 -> site-build receipt. Do not claim them passed until actualexit recorded. App sourcehashes may differ ONLY in strengthened native test after fullrun start; compare receipt hashes and rerun only if production/covered tests changed. Research report writer finishing corrected3desktop synthesis; ensure reports/Atlias Max app research.md has NO superseded recommendation before delivery. Preserve research image assets locally. Preserve unrelated site .gitignore/loader/waitlist edits and Usage Limits ownership. Finish readback/checks, local commits and shared progress before budget boundary. Preserve daily21:20 continuation.
+
+---
+
 # Usage revalidation: October28
 
 Live Codex reading is now95%used, about10 turns at current effort, with reset in2h14m. This is the third consecutive goal turn constrained by Gev below10%remaining stop rule (92%,94%,95%). Do not start remaining checks before the external reset. The20:37 Central continuation and23:05:01 Claude handoff are already saved and verified. The previous turn confirmed241targeted checks/exit0, while the native parent runner40374 is stilllive: both child exit0 receipts exist but parent outcome remainsUNVERIFIED. Goal remains incomplete.
