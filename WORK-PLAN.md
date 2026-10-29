@@ -1,3 +1,7 @@
+# Verified shared Stop revision: 1cb3b18e42fbefb144f5fecab3fc234426d2993b
+
+Full3370+39 exit0, zero skips, tested209 source hashes unchanged. Read reports/claude-app-handoff-1028/next-continuation.md at the scheduled04:26:01 Central wake (measured Claude reset+360.837s); do not prompt Claude earlier. This revision must be vendored before final app qualification. App remains explicitly incomplete, Extra high retained, safe local next steps saved, external gates and website hold remain.
+
 ## 2026-10-29T09:11:46.301Z Stop repair fully checked; Claude budget continuation
 
 Full safe runner ACTUAL EXIT0 at09:08:11Z:3370/3370 checks across432 suites plus39/39 Node tests,zero skips,209 source hashes unchanged. Independent Linux red1/4 became Win4/4 and Linux4/4; two syntactically valid planted regressions failed intended assertions after control4/4. Source changes only lib/proc.mjs,test/proc-abort-suites.mjs,test/run.mjs. Native Mac not measured. See docs/LOCAL-CHECKS-1028.md and app-suite-after-posix-abort receipts. Need local commit then record its verified revision for Claude; no source edits or further broad reruns needed.

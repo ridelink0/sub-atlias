@@ -6,13 +6,15 @@
   "activity": "Actual Claude final reply saved a bounded local batch and stopped at its usage boundary; Extra high retained",
   "appGoalAcknowledged": true,
   "goalAckFile": "reports/claude-app-handoff-1028/goal-ack.md",
-  "harnessCommitRequired": "d6c0930c639909187f73222072d29678e9960dac",
+  "harnessCommitRequired": "1cb3b18e42fbefb144f5fecab3fc234426d2993b",
   "lastObservedVendorCommit": "d6c0930c639909187f73222072d29678e9960dac",
   "revisionFollowup": {
-    "state": "applied",
-    "evidence": "VENDOR.json names d6c0930; vendored lib/integrity.mjs bytes match the passing full-suite receipt and committed content after Git line-ending normalization",
+    "state": "pending_after_budget_reset",
+    "requiredCommit": "1cb3b18e42fbefb144f5fecab3fc234426d2993b",
+    "previousAppliedCommit": "d6c0930c639909187f73222072d29678e9960dac",
+    "evidence": "Verified core revision is ready in next-continuation.md; no prompt into the current budget pause",
     "assistantAcknowledgementObserved": false,
-    "vendorRefreshObserved": true
+    "vendorRefreshObserved": false
   },
   "completion": {
     "explicitFullCompletionObserved": false,
@@ -85,7 +87,8 @@
     "skips": 0,
     "sourceUnchanged": true,
     "sourceFiles": 209,
-    "nativeMacOSVerified": false
+    "nativeMacOSVerified": false,
+    "verifiedCommit": "1cb3b18e42fbefb144f5fecab3fc234426d2993b"
   },
   "resumption": {
     "measuredReset": 1793265600163,
@@ -95,6 +98,7 @@
     "localWake": "04:26:01",
     "delaySeconds": 360.837,
     "savedScheduleVerified": true,
-    "restoreQuiet30MinuteWatchAfterWake": true
+    "restoreQuiet30MinuteWatchAfterWake": true,
+    "instructions": "reports/claude-app-handoff-1028/next-continuation.md"
   }
 }
