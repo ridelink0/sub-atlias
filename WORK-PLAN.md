@@ -1,3 +1,8 @@
+## 2026-10-29T09:36:52.679Z after-reset app continuation active
+
+Fresh Codex80%/~47 turns and Claude0% fit this bounded check; continuation delivered after scheduled09:26:01Z in existing chat54e5574c-72d6-4efe-b3af-6f52a869f45f, no /goal duplicate. Actual assistant text confirmed vendored1cb3b18 and unit tests including Stop; live Bash/Write and Extra high observed. VENDOR.json plus normalized proc source independently match verified core revision. Literal ATLIAS-POST-RESET-1029-ACK not yet observed; one receipt-only follow-up submitted, preserve live work and do not resend goal.
+Quiet completion watch restored ACTIVE every30min, dated daily timing preamble removed, saved TOML verified. App still explicitly incomplete; no website listing. Next: progress/completion artifacts and receipt review, then UI/process only if needed. Mailer service/error/window path and remaining local tests are in progress; do not claim their pass from running tools. Shared root3370+39 remains the verified baseline. Respect fresh budget, preserve app/UsageLimits/site ownership; no push/deploy/paid/cloud/live billing. Current root nearing boundary, finish metadata/checkpoint and stop this wake; no new production work.
+
 # Verified shared Stop revision: 1cb3b18e42fbefb144f5fecab3fc234426d2993b
 
 Full3370+39 exit0, zero skips, tested209 source hashes unchanged. Read reports/claude-app-handoff-1028/next-continuation.md at the scheduled04:26:01 Central wake (measured Claude reset+360.837s); do not prompt Claude earlier. This revision must be vendored before final app qualification. App remains explicitly incomplete, Extra high retained, safe local next steps saved, external gates and website hold remain.
