@@ -1,3 +1,7 @@
+## October29 03:07Central quiet app watch
+
+Vendor refresh applied: d6c0930 in VENDOR.json; vendored integrity source exactly matches the passing-suite hash and committed content after LF/CRLF normalization (raw-blob alarm was false). Same Claude chat still working at Extra high; UI showed local app commit23fa9b3. No duplicate goal or interruption. Windows packaged receipt reports21/21, Linux WSL receipt11 unit tests/build; independent process exits not observed by this watch. No completion report; native macOS and full Linux desktop/keyring/install remain unverified. All completion/website gates stay closed. See watch-state.json for report fingerprints; no new notification for ordinary progress. Next watch: completion artifacts first, actual UI only if liveness/finish unclear. Preserve all local-only and concurrent ownership rules.
+
 ## October29 02:47Central completion-watch checkpoint
 
 Local repair committed d6c0930. Full safe runner terminal exit0:3366/3366 across431 suites plus39/39 Node tests,zero skips,208 source hashes unchanged. Website242-test source still matched. Two discovery regressions were caught by planted mutations; native failure cleanup concern was a false alarm (natural expected exit1 in about2 seconds,probe0). Original five transient full-suite failures remain causally unverified.
