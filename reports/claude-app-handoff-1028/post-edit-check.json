@@ -1,0 +1,13 @@
+{
+  "scope": "handoff documents and independent Claude acknowledgement, not application completion",
+  "functional": true,
+  "existingLocalReferences": 5,
+  "adversarialMutationsRejected": [
+    "wrong effort",
+    "missing Linux",
+    "wrong chat",
+    "probe confused with app ACK",
+    "premature completion"
+  ],
+  "passed": true
+}
