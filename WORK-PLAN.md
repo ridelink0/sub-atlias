@@ -1,3 +1,20 @@
+# Steer, Queue, /btw and drafts - 2026-10-29
+
+Work only in D:/harness-work/atlias-steer-1029 on codex/steer-queue-drafts-1029.
+Owner handoff: Claude owner-f1, existing Atlias Max goal. No push, merge,
+deployment, install or model calls. Research read first; implementation rests
+on RESEARCH-FIRST 0a H2/H4 and section 9 authority preservation.
+
+Implemented optional agent.turn steering and structured recovery, TUI follow-up
+setting and alternate key, queue editing/removal, ephemeral no-tool /btw,
+per-project atomic redacted drafts with lifecycle flush and crash tests.
+Functional pass: 203/203, 20 suites (before latest adversarial additions).
+Full npm test started; receipt checks-full.log and checks-full.exit.
+
+Next: inspect full-suite results, complete adversarial review and planted
+breaks, run documented supplemental suites, re-read the research report,
+write STEER-QUEUE-DRAFTS-1029.md with exact receipts, and commit locally.
+
 ## 2026-10-29 14:37 budget continuation acknowledged
 
 Wake arrived early at19:33Z; no continuation was sent before the saved19:37Z floor. Fresh Codex0%/~224turns and Claude0% fit a bounded side-chat batch. Native background command refused the home context before launching; no trust settings were changed. Ordinary existing-session print continuation started19:41:23.628Z. Actual assistant ATLIAS-SIDECHAT-CONTINUE-1029-ACK and subsequent tools verify Opus5.5/xhigh in the same5277af99 session. Live CLI process20484, tool session41382; do not restart it. Its final result/exit are pending, so the raw stdout JSON is not a completed receipt yet. Proof: reports/claude-app-handoff-1028/continuation-1937-ack.json.
