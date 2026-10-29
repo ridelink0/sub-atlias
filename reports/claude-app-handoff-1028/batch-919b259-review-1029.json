@@ -1,0 +1,80 @@
+{
+  "observedAt": "2026-10-29T15:45:28.064Z",
+  "commit": "919b259fdb643869cd207d0843b2084f2ecd096b",
+  "sourceManifest": {
+    "file": "D:/atlias-max-app/reports/fingerprints-20261029T150904.txt",
+    "sha256": "6858adb679d02c13c6284d3b22588510f97128f6d0cb8b454ad97d6c2bac2d78",
+    "currentFilesMatched": 77,
+    "scope": "End manifest matches current files; not a before/after snapshot of producer runs"
+  },
+  "independentWindowsUnit": {
+    "receipt": "D:/atlias-app/reports/ui-goal-1028/app-comparison-919-unit/receipt.json",
+    "passed": 35,
+    "exit": 0,
+    "sourceFilesUnchanged": 52
+  },
+  "producerRecordedChain": [
+    "dev exit 0",
+    "package exit 0",
+    "packaged exit 0",
+    "linux exit 0"
+  ],
+  "producerChecks": [
+    {
+      "name": "dev",
+      "file": "D:/atlias-max-app/reports/e2e-dev-2026-10-29150002/receipt.txt",
+      "passed": 32,
+      "failed": 0,
+      "receiptSha256": "fc6cf45f2a1dd015cdff9944315c950d589e109f9229df11acbaed721d2764aa",
+      "provenance": "Producer receipt inspected; not independently relaunched"
+    },
+    {
+      "name": "packaged",
+      "file": "D:/atlias-max-app/reports/e2e-packaged-2026-10-29150149/receipt.txt",
+      "passed": 32,
+      "failed": 0,
+      "receiptSha256": "33b3a87dea1cb937c21900269977688059404ef7de32a88a19995adcddb5474d",
+      "provenance": "Producer receipt inspected; not independently relaunched"
+    },
+    {
+      "name": "linux",
+      "file": "D:/atlias-max-app/reports/linux-20261029T150311Z/e2e/receipt.txt",
+      "passed": 31,
+      "failed": 0,
+      "receiptSha256": "bc91341e4a9e2c105c1bddfff1fa643f22ce9aa79221c95f8b5b973b597e1124",
+      "provenance": "Producer receipt inspected; not independently relaunched"
+    },
+    {
+      "name": "wt",
+      "file": "D:/atlias-max-app/reports/wt-check-2026-10-29145754/receipt.txt",
+      "passed": 10,
+      "failed": 0,
+      "receiptSha256": "077f2db52b91469be080e6a855d6595cc9bbceb877c8961ee43be5d6f55c32b1",
+      "provenance": "Producer receipt inspected; not independently relaunched"
+    }
+  ],
+  "packagedCodeFilesMatchCurrent": 21,
+  "capturesInspected": [
+    "D:/atlias-max-app/reports/e2e-packaged-2026-10-29150149/24-review-comments.png",
+    "D:/atlias-max-app/reports/e2e-packaged-2026-10-29150149/26-stage-confirm.png",
+    "D:/atlias-max-app/reports/e2e-packaged-2026-10-29150149/08a-filter-running.png"
+  ],
+  "limits": [
+    "Local fixture services/models/billing only",
+    "Linux Xvfb is not a real desktop session",
+    "WT used its own named test window; actual -w0 and real cmd fallback remain unverified",
+    "No native macOS, live providers or billing qualification",
+    "Source hashes after producer tests do not establish a before/after freeze"
+  ],
+  "fullAppComplete": false,
+  "nextWake": {
+    "reset": "2026-10-29T14:29:59.715723-05:00",
+    "wake": "2026-10-29T14:37:00-05:00",
+    "delaySeconds": 420.284277,
+    "reason": "About22Claude xhigh turns left; next coherent feature and verification would not fit while saving at15"
+  },
+  "packagedStyleAndPageMatched": {
+    "dist/renderer/styles.css": "22de3c5bed89ea7aa530f013c8214da0e8d38b40134d8905330169f5f030eaf9",
+    "dist/renderer/index.html": "47e2566d4024b541f2d99631272cba042bd07c54de3bc1789e8cd7eb4d909612"
+  }
+}

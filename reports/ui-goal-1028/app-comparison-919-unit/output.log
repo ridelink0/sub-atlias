@@ -1,0 +1,221 @@
+TAP version 13
+# Subtest: sign-in, purchase through checkout, signed pass bound to account and device
+ok 1 - sign-in, purchase through checkout, signed pass bound to account and device
+  ---
+  duration_ms: 106.4392
+  type: 'test'
+  ...
+# Subtest: one account authorizes separate installations, each revocable on its own
+ok 2 - one account authorizes separate installations, each revocable on its own
+  ---
+  duration_ms: 46.0717
+  type: 'test'
+  ...
+# Subtest: attacks: wrong verifier, code reuse, foreign redirect, stolen refresh token, replayed proof, forged webhook, foreign checkout
+ok 3 - attacks: wrong verifier, code reuse, foreign redirect, stolen refresh token, replayed proof, forged webhook, foreign checkout
+  ---
+  duration_ms: 56.4075
+  type: 'test'
+  ...
+# Subtest: expiry, refund and out-of-order events follow Stripe, not the order events arrive in
+ok 4 - expiry, refund and out-of-order events follow Stripe, not the order events arrive in
+  ---
+  duration_ms: 44.3656
+  type: 'test'
+  ...
+# Subtest: a terminal purchase moves to an account only from the installation that made it
+ok 5 - a terminal purchase moves to an account only from the installation that made it
+  ---
+  duration_ms: 20.5225
+  type: 'test'
+  ...
+# Subtest: not on sale: checkout refuses and charges nothing
+ok 6 - not on sale: checkout refuses and charges nothing
+  ---
+  duration_ms: 13.2146
+  type: 'test'
+  ...
+# Subtest: a message runs the real harness: exact approvals, the harness check, a verified outcome, searchable history
+ok 7 - a message runs the real harness: exact approvals, the harness check, a verified outcome, searchable history
+  ---
+  duration_ms: 3393.2139
+  type: 'test'
+  ...
+# Subtest: denying the edit changes nothing, and the job does not claim success
+ok 8 - denying the edit changes nothing, and the job does not claim success
+  ---
+  duration_ms: 757.0819
+  type: 'test'
+  ...
+# Subtest: stop during a long command ends it and records a stop, not a completion
+ok 9 - stop during a long command ends it and records a stop, not a completion
+  ---
+  duration_ms: 1666.4631
+  type: 'test'
+  ...
+# Subtest: the runner and the host refuse work without a genuine pass; an expired pass still reads history
+ok 10 - the runner and the host refuse work without a genuine pass; an expired pass still reads history
+  ---
+  duration_ms: 540.7398
+  type: 'test'
+  ...
+# Subtest: a slash command runs through the real command table; terminal-only commands are refused plainly
+ok 11 - a slash command runs through the real command table; terminal-only commands are refused plainly
+  ---
+  duration_ms: 2802.6906
+  type: 'test'
+  ...
+# Subtest: the account service sends sign-in codes through the mailer its settings select, and a failed send keeps no code
+ok 12 - the account service sends sign-in codes through the mailer its settings select, and a failed send keeps no code
+  ---
+  duration_ms: 205.5802
+  type: 'test'
+  ...
+# Subtest: sends the code as one JSON request with the bearer key
+ok 13 - sends the code as one JSON request with the bearer key
+  ---
+  duration_ms: 13.6577
+  type: 'test'
+  ...
+# Subtest: a provider error or an unreachable provider throws without the key
+ok 14 - a provider error or an unreachable provider throws without the key
+  ---
+  duration_ms: 16.0599
+  type: 'test'
+  ...
+# Subtest: the diff parser numbers each line, reads names with spaces and renames, and adds no line after the end
+ok 15 - the diff parser numbers each line, reads names with spaces and renames, and adds no line after the end
+  ---
+  duration_ms: 6.1799
+  type: 'test'
+  ...
+# Subtest: stage, unstage and revert act on one file only while it is the change that was shown
+ok 16 - stage, unstage and revert act on one file only while it is the change that was shown
+  ---
+  duration_ms: 14833.2178
+  type: 'test'
+  ...
+# Subtest: a project inside a larger repository is shown the whole diff but changes only its own files
+ok 17 - a project inside a larger repository is shown the whole diff but changes only its own files
+  ---
+  duration_ms: 2790.0035
+  type: 'test'
+  ...
+# Subtest: the permissions setting carries the harness cycle that Shift+Tab follows
+ok 18 - the permissions setting carries the harness cycle that Shift+Tab follows
+  ---
+  duration_ms: 371.3954
+  type: 'test'
+  ...
+# Subtest: Windows: cmd itself runs the handoff script in a folder with spaces and a non-ASCII name
+ok 19 - Windows: cmd itself runs the handoff script in a folder with spaces and a non-ASCII name
+  ---
+  duration_ms: 204.5932
+  type: 'test'
+  ...
+# Subtest: Open in terminal prefers Windows Terminal, and falls back to cmd for a semicolon or a failed start
+ok 20 - Open in terminal prefers Windows Terminal, and falls back to cmd for a semicolon or a failed start
+  ---
+  duration_ms: 10.3942
+  type: 'test'
+  ...
+# Subtest: a shell pane runs in the project folder and its output streams to the window
+ok 21 - a shell pane runs in the project folder and its output streams to the window
+  ---
+  duration_ms: 3155.2983
+  type: 'test'
+  ...
+# Subtest: an engine sign-in pane runs the Atlias CLI with the exact arguments and this account home
+ok 22 - an engine sign-in pane runs the Atlias CLI with the exact arguments and this account home
+  ---
+  duration_ms: 1238.6173
+  type: 'test'
+  ...
+# Subtest: at most MAX_PANES run at once; closing ends the process; unknown kinds and a missing library are refused
+ok 23 - at most MAX_PANES run at once; closing ends the process; unknown kinds and a missing library are refused
+  ---
+  duration_ms: 412.5438
+  type: 'test'
+  ...
+# Subtest: closing a running pane ends its process
+ok 24 - closing a running pane ends its process
+  ---
+  duration_ms: 332.9704
+  type: 'test'
+  ...
+# Subtest: versions compare numerically
+ok 25 - versions compare numerically
+  ---
+  duration_ms: 9.7187
+  type: 'test'
+  ...
+# Subtest: a signed newer manifest is offered; everything else is refused or current
+ok 26 - a signed newer manifest is offered; everything else is refused or current
+  ---
+  duration_ms: 68.5671
+  type: 'test'
+  ...
+# Subtest: the download is kept only when its size and checksum match
+ok 27 - the download is kept only when its size and checksum match
+  ---
+  duration_ms: 60.889
+  type: 'test'
+  ...
+# installer started 3.4 s after the app exited
+# Subtest: the Windows install helper waits for the app to exit, then starts the installer
+ok 28 - the Windows install helper waits for the app to exit, then starts the installer
+  ---
+  duration_ms: 6636.2919
+  type: 'test'
+  ...
+# Subtest: the Windows install helper reports a missing runtime or launch failure without installing
+ok 29 - the Windows install helper reports a missing runtime or launch failure without installing
+  ---
+  duration_ms: 57.2517
+  type: 'test'
+  ...
+# Subtest: the Windows install helper refuses to install on a live app or a failed process query at its deadline
+ok 30 - the Windows install helper refuses to install on a live app or a failed process query at its deadline
+  ---
+  duration_ms: 5295.4649
+  type: 'test'
+  ...
+# Subtest: plan mode: keep planning changes nothing; approve switches to workspace and carries the plan out
+ok 31 - plan mode: keep planning changes nothing; approve switches to workspace and carries the plan out
+  ---
+  duration_ms: 2788.3592
+  type: 'test'
+  ...
+# Subtest: an image attachment reaches the model request and /attachments lists it in that chat
+ok 32 - an image attachment reaches the model request and /attachments lists it in that chat
+  ---
+  duration_ms: 4006.2857
+  type: 'test'
+  ...
+# Subtest: /relay status and /deep-research run through the command table with their real effects
+ok 33 - /relay status and /deep-research run through the command table with their real effects
+  ---
+  duration_ms: 2979.064
+  type: 'test'
+  ...
+# Subtest: a worker sub-agent gets its own conversation, runs its own tool, and its answer returns to the main turn
+ok 34 - a worker sub-agent gets its own conversation, runs its own tool, and its answer returns to the main turn
+  ---
+  duration_ms: 1092.6732
+  type: 'test'
+  ...
+# Subtest: provider terminal handoff: the script runs the CLI in the project with this account home; unsafe arguments are refused
+ok 35 - provider terminal handoff: the script runs the CLI in the project with this account home; unsafe arguments are refused
+  ---
+  duration_ms: 449.651
+  type: 'test'
+  ...
+1..35
+# tests 35
+# suites 0
+# pass 35
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 58913.8877

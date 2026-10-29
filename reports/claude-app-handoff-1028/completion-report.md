@@ -8,6 +8,14 @@ Model: Claude Opus 5.5 at xhigh effort
 
 ## FULLY FINISHED IN EVERY ASPECT: NO
 
+Claude, 2026-10-29 10:10 Central (after the measured reset): the UI comparison's wins 1 to 4 are built (docs/UI-COMPARISON-1029.md), and "Open in terminal" prefers Windows Terminal. All on the final source (fingerprints in `reports/fingerprints-20261029T150904.txt`, 77 files, list sha256 6858adb6...):
+- Windows unit 35 of 35 (`reports/unit-windows-last.log`).
+- Dev window 32 of 32 (`reports/e2e-dev-2026-10-29150002`); fresh test package, packaged window 32 of 32 (`reports/e2e-packaged-2026-10-29150149`).
+- Linux unit 35 of 35, Xvfb window 31 of 31, deb and rpm built (`reports/linux-20261029T150311Z`).
+- Windows Terminal, real: 10 of 10 (`reports/wt-check-2026-10-29145754`).
+
+macOS is still not built or run, so the answer stays NO.
+
 Independent Codex checks at 08:49 Central repaired terminal ANSI contrast and the detached Windows updater helper. Current actual results: Windows unit 29/29, dev window 29/29, fresh test package and packaged window 29/29; Linux unit 29/29 and Xvfb window 28/28. Final receipts freeze 51 source/renderer files. Both planted regressions failed their intended assertions. See `docs/CODEX-LOCAL-QA-1029.md` and `D:/atlias-app/reports/ui-goal-1028/app-local-qualification-1029.json` for scope and raw receipts. These fixture checks do not establish native macOS, a real Linux desktop, live billing/providers or a real release upgrade of the changed helper. The historical checks below retain their original source scope.
 
 The app is built and verified end to end on Windows 11. On Linux:
@@ -65,6 +73,14 @@ The sections below say exactly what is and is not verified. Under the brief's ru
   - Windows Squirrel installer, macOS zip, Linux deb and rpm.
   - Release fuses: the inspector is off; RunAsNode stays on for the harness's own children.
   - Test packages differ only in the inspector fuse and a `max-test.json` marker.
+- **From the UI comparison** (docs/UI-COMPARISON-1029.md, wins 1 to 4):
+  - Shift+Tab in the message box moves through the harness's own permission cycle (workspace, auto-accept, plan, auto); Tab still moves on.
+  - The sidebar filters chats by state: All, Running, Waiting (for you), Done, with counts. A new chat still on its first turn is listed from its jobs and opens from there.
+  - Changes shows line numbers. A comment goes under any line (mouse, or arrow keys and Enter). Comments are kept per project until sent to the open chat as one message naming each file and line.
+  - Stage, Unstage and Revert per file; Stage or Delete for an untracked file. Each asks first, with focus on the question.
+    - The host acts only while the file is still the change that was shown.
+    - It refuses files outside the project folder and treats names literally.
+- **Open in terminal** opens Windows Terminal when it is installed (`wt -w 0 nt -d <folder>`: a new tab in the most recent window, or a new window), with the bundled console node.exe. Otherwise, or for a path with a semicolon, it opens a cmd window as before.
 - **Ledger**: `docs/CAPABILITY-LEDGER.md` traces every harness command, tool and engine to its app route and status.
 
 ## Evidence (receipts under D:/atlias-max-app/reports)
@@ -73,6 +89,10 @@ Source fingerprints after the final edits: `reports/fingerprints-20261029T070842
 
 | Check | Result | Receipt |
 |---|---|---|
+| Unit and integration tests, Windows 11, final source (adds review.test.mjs: parser, stage, unstage, revert, refusals, permission cycle, Windows Terminal choice, cmd in a non-ASCII folder) | 35 of 35 pass, 0 skipped, exit 0 | reports/unit-windows-last.log |
+| End to end, development build and fresh packaged test build, Windows 11, final source | 32 of 32 each, exit 0. New: Waiting and Running filters (an unsaved running chat reopened from the sidebar), Shift+Tab cycle with two quick presses, two diff comments (mouse and keyboard) arriving as one model message, stage, a refused stale revert, revert, untracked delete, axe-core on the review pane and sidebar in light and dark | reports/e2e-dev-2026-10-29150002, reports/e2e-packaged-2026-10-29150149 |
+| Linux (WSL2 Ubuntu 26.04.1), final source | unit 35 of 35; Xvfb e2e 31 of 31 (UI Automation is Windows only); deb 94,126,292 bytes sha256 8716c5e9...; rpm 103,355,982 bytes sha256 4c3158c7... | reports/linux-20261029T150311Z/receipt.txt |
+| Windows Terminal, real | 10 of 10: through platform.openTerminal into its own named window; the CLI ran in a folder with spaces and accents, with this account's home, the chat to resume, a console for input, and the bundled node.exe; that window then closed through UI Automation | reports/wt-check-2026-10-29145754/receipt.txt |
 | Unit and integration tests, Windows 11: account service 6, harness slice 5, workflows 5, mailer 3, updates 4, terminal 4 | 27 of 27 pass, 0 skipped, `npm test` exit 0 | reports/unit-windows-last.log |
 | End to end, packaged test build, Windows 11, final source | 28 of 28 steps pass, exit 0: terminal drawer, appearance and axe-core audit included | reports/e2e-packaged-2026-10-29120414/receipt.txt |
 | Same tests, Linux 6.18 (WSL2 Ubuntu 26.04.1), final source | 27 of 27 pass. The install-helper test checks only the script text there; it runs the helper on Windows | reports/linux-20261029T120341Z/unit.log |
@@ -145,6 +165,11 @@ All billing used the local fake provider with test ids. All email went to local 
     - white on Atlo blue read 3.96:1 in dark mode, so the dark fill is now #2b6be1 (4.56:1).
     It now finds none, in light or dark.
 28. `relay.js` and `usage.js` of Usage Limits, run from Claude Code's shell, picked Codex's window. The first relay was booked 20 minutes out; I cancelled it and re-armed with `--host claude`. Reported for its owner; I did not change its files.
+29. The diff parser dropped every file with a space in its name, so Changes never showed it. It also added an empty line after the last hunk. Both are fixed.
+30. Open in terminal from a folder with a non-ASCII name never started the CLI: cmd reads a script in the console code page and the script is UTF-8. A test that runs cmd itself failed, then passed once the script's first line switched cmd to UTF-8.
+31. In light mode the Changes pane's green "+N" read 4.32:1. The light green is now #0f6e42. The audit had never run with that pane open; it does now.
+32. The new comment list's links read under 4.5:1 in dark mode; they now take the ink colour with an underline. The running and waiting word was cut off at the end of a narrow sidebar row; it now comes first.
+33. With the review pane open, the message box's hint wrapped into a scrollbar. It now ends in an ellipsis on one line.
 
 ## Not verified, or not built (why it is not finished)
 
@@ -172,9 +197,11 @@ All billing used the local fake provider with test ids. All email went to local 
   - The drawer is verified on Windows (dev and packaged) and Linux under Xvfb; not on macOS.
   - The pty library is a beta.
   - A link click opens the native confirm dialog and was not exercised in the e2e.
-  - "Open in terminal" still opens a `cmd` window; preferring Windows Terminal is next.
+  - "Open in terminal" through Windows Terminal ran for real in a named window. The app's own `-w 0` (the most recent window) was not run, so as not to add a tab to a window of Gev's. The cmd fallback is unit-tested with a stand-in; that window was not opened.
   - The provider's own sign-in was not completed.
-- **UI comparison**: comparing the app with other agent UIs (Reason, Claude Code, Codex and similar) is queued in the relay note and not done.
+- **UI comparison**: written (docs/UI-COMPARISON-1029.md); wins 1 to 4 are built.
+  - Still to build: side chat and worktree mode.
+  - The status filter covers the open project, not every project.
 - **Leftovers on this PC from my checks** (deletion was declined):
   - `%LOCALAPPDATA%\atlias_max`: Squirrel's `.dead` residue, which Squirrel removes on the next install;
   - `%APPDATA%\Atlias Max`: Chromium caches created by install-check first runs.
