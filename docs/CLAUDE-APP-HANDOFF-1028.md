@@ -4,6 +4,8 @@ Authorized by Gev on October 28, 2026. Deliver this goal after the measured Clau
 
 Start the Claude message with `/goal` and ask Claude to read this file in full.
 
+Gev's latest instruction: verify Claude is actively working on this goal and use extra-high effort. Set `/effort xhigh` in this chat and verify its acknowledgement and visible Extra high setting. Keep the requested Opus 5.5 model. The original23:05 delivery was delayed by Codex's usage ceiling; the authorized retry is after the measured Codex reset plus five minutes on October29. Start the goal once it is actually delivered and acknowledged; do not wait for the historical delivery time again.
+
 Build a complete Atlias desktop application for macOS, Windows, and Linux, exclusively for the Atlias Max plan. Gev explicitly corrected and finalized these platforms on October 28; iOS is outside the app scope. Use Deep Research, Image-Deep-Research and Ultimate Frontend Skills, including real image/reference research, to study the relevant workflows of Reason, Claude Code, and ChatGPT. Implement their useful quality-of-life capabilities and Atlias's actual tools and features in a coherent app. Research ambiguous product references before deciding what they mean. Keep the Atlias identity and make the experience understandable to someone new to coding with AI.
 
 Use a separate D: project/worktree (prefer D:/atlias-max-app) so Codex's terminal fixes in D:/atlias-app and website work in D:/atlias-site are preserved. Read the shared memory and Atlias research first. Coordinate through files without overwriting other owners' work. Do not edit Usage Limits files owned by another Claude session.
