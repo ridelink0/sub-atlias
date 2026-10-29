@@ -116,5 +116,20 @@
     "instructions": "reports/claude-app-handoff-1028/next-continuation.md",
     "wakeHandledAt": "2026-10-29T09:36:52.679Z",
     "quiet30MinuteWatchRestored": true
+  },
+  "monitorStatus": "deferred_by_codex_budget",
+  "monitorResumption": {
+    "observedAt": "2026-10-29T10:07:01.750Z",
+    "host": "codex",
+    "usedPercent": 91,
+    "remainingPercent": 9,
+    "measuredReset": 1793274178000,
+    "resetUtc": "2026-10-29T11:42:58.000Z",
+    "wakeUtc": "2026-10-29T11:49:00.000Z",
+    "localZone": "America/Chicago",
+    "localWake": "06:49:00",
+    "delaySeconds": 362,
+    "savedScheduleVerified": true,
+    "appInspectedThisWake": false
   }
 }

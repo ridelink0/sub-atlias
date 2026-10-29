@@ -1,3 +1,8 @@
+## 2026-10-29T10:07:01.750Z watch deferred at Codex budget boundary
+
+Fresh official Codex91% used/9% remaining; binding five-hour reset1793274178=11:42:58Z. Start nothing new under Gev's rule. Fresh Claude meter24% used, xhigh configured; that meter does not prove current chat activity. No app artifacts/UI/tests inspected this wake; current completion/liveness remains unverified. Prior app status in watch-state is historical. Preserve active Claude work; no new prompts or duplicate /goal.
+Existing watch moved to06:49:00 Central=11:49:00Z,362s after the measured Codex reset. Saved TOML read back and timezone/delay verified; evidence codex-budget-deferral.json. At that wake read both live meters and saved progress/completion first, inspect UI only if needed, continue only safe idle work within budget. Restore useful quiet30min watch and remove dated preamble after budget continuation. Keep all app website gates and local-only/ownership rules. No deployment/push/paid/cloud/live charges. Only this metadata handoff was changed; app state was not checked or claimed.
+
 ## 2026-10-29T09:36:52.679Z after-reset app continuation active
 
 Fresh Codex80%/~47 turns and Claude0% fit this bounded check; continuation delivered after scheduled09:26:01Z in existing chat54e5574c-72d6-4efe-b3af-6f52a869f45f, no /goal duplicate. Actual assistant text confirmed vendored1cb3b18 and unit tests including Stop; live Bash/Write and Extra high observed. VENDOR.json plus normalized proc source independently match verified core revision. Literal ATLIAS-POST-RESET-1029-ACK not yet observed; one receipt-only follow-up submitted, preserve live work and do not resend goal.
