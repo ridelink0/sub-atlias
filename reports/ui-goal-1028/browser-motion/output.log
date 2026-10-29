@@ -1,0 +1,1 @@
+{"passed":true,"cases":[{"width":360,"motion":"no-preference","rows":7,"bars":21,"passed":true},{"width":360,"motion":"reduce","rows":7,"bars":21,"passed":true},{"width":1440,"motion":"no-preference","rows":7,"bars":21,"passed":true},{"width":1440,"motion":"reduce","rows":7,"bars":21,"passed":true}]}

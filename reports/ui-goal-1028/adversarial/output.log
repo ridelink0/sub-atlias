@@ -1,0 +1,18 @@
+zero-quota: detected
+foreign-account-quota: detected
+mixed-engine-tokens: detected
+wrong-session-selection: detected
+hidden-session-selection: detected
+unlisted-raw-fallback: detected
+usage-hidden-while-working: detected
+wrong-max-price: detected
+unpaid-invoice-access: detected
+test-mode-access: detected
+unbounded-body: detected
+changing-idempotency: detected
+ten-day-offline: detected
+signing-key-mismatch: detected
+wrong-coupon-product: detected
+missing-chart-motion: detected
+reduced-motion-ignored: detected
+{"passed":true,"mutations":17,"folder":"D:\\atlias-test-runs\\ui-mutations-IZv3B3"}

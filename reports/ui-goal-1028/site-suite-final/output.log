@@ -1,0 +1,1462 @@
+TAP version 13
+# Subtest: benchmark bars animate on entry and replay without changing recorded values
+ok 1 - benchmark bars animate on entry and replay without changing recorded values
+  ---
+  duration_ms: 7.1212
+  type: 'test'
+  ...
+# Subtest: reduced motion keeps completed charts visible without an animation
+ok 2 - reduced motion keeps completed charts visible without an animation
+  ---
+  duration_ms: 0.3755
+  type: 'test'
+  ...
+# Subtest: the seeded dataset is valid
+ok 3 - the seeded dataset is valid
+  ---
+  duration_ms: 9.9857
+  type: 'test'
+  ...
+# Subtest: every problem is listed in one error, not just the first
+ok 4 - every problem is listed in one error, not just the first
+  ---
+  duration_ms: 1.2602
+  type: 'test'
+  ...
+# Subtest: refused: a javascript: source, an http source and a markup note
+ok 5 - refused: a javascript: source, an http source and a markup note
+  ---
+  duration_ms: 1.2375
+  type: 'test'
+  ...
+# Subtest: refused: duplicate ids, solved above total, non-finite ratio
+ok 6 - refused: duplicate ids, solved above total, non-finite ratio
+  ---
+  duration_ms: 1.1786
+  type: 'test'
+  ...
+# Subtest: an unmeasured value must be null, never zero or missing
+ok 7 - an unmeasured value must be null, never zero or missing
+  ---
+  duration_ms: 1.0579
+  type: 'test'
+  ...
+# Subtest: checkout validates fixed $4 monthly price, binds mapped customer and idempotency; return grants no entitlement
+ok 8 - checkout validates fixed $4 monthly price, binds mapped customer and idempotency; return grants no entitlement
+  ---
+  duration_ms: 11.4792
+  type: 'test'
+  ...
+# Subtest: checkout refuses origin spoof, arbitrary client prices, malformed JSON, absent auth and live mode
+ok 9 - checkout refuses origin spoof, arbitrary client prices, malformed JSON, absent auth and live mode
+  ---
+  duration_ms: 2.6014
+  type: 'test'
+  ...
+# Subtest: unknown account and Express account are blocked without a verified integration path
+ok 10 - unknown account and Express account are blocked without a verified integration path
+  ---
+  duration_ms: 0.592
+  type: 'test'
+  ...
+# Subtest: checkout rejects an unexpected returned session identity even when its URL looks valid
+ok 11 - checkout rejects an unexpected returned session identity even when its URL looks valid
+  ---
+  duration_ms: 1.2324
+  type: 'test'
+  ...
+# Subtest: signed webhook grants/revokes actual entitlement, deduplicates and reads fresh state
+ok 12 - signed webhook grants/revokes actual entitlement, deduplicates and reads fresh state
+  ---
+  duration_ms: 5.1237
+  type: 'test'
+  ...
+# Subtest: tampered, stale, future, oversized-signature and wrong-mode webhooks do not touch entitlements; failures are retryable
+ok 13 - tampered, stale, future, oversized-signature and wrong-mode webhooks do not touch entitlements; failures are retryable
+  ---
+  duration_ms: 3.5455
+  type: 'test'
+  ...
+# Subtest: wrong price, inactive plan and multi-item subscriptions cannot grant access
+ok 14 - wrong price, inactive plan and multi-item subscriptions cannot grant access
+  ---
+  duration_ms: 121.2345
+  type: 'test'
+  ...
+# Subtest: unconfigured default is closed
+ok 15 - unconfigured default is closed
+  ---
+  duration_ms: 0.2947
+  type: 'test'
+  ...
+# Subtest: every page builds, the output validates, and the static assets are carried over
+ok 16 - every page builds, the output validates, and the static assets are carried over
+  ---
+  duration_ms: 366653.7904
+  type: 'test'
+  ...
+# Subtest: a page with a broken link fails the build and leaves the previous output untouched
+ok 17 - a page with a broken link fails the build and leaves the previous output untouched
+  ---
+  duration_ms: 562288.7601
+  type: 'test'
+  ...
+# Subtest: the validator refuses inline script, inline style, style attributes, emoji and two h1s
+ok 18 - the validator refuses inline script, inline style, style attributes, emoji and two h1s
+  ---
+  duration_ms: 11.7014
+  type: 'test'
+  ...
+# Subtest: the validator accepts the copyright sign and a fragment that exists
+ok 19 - the validator accepts the copyright sign and a fragment that exists
+  ---
+  duration_ms: 12.6581
+  type: 'test'
+  ...
+# Subtest: the ratio of total tokens is taken from the totals kept in the record
+ok 20 - the ratio of total tokens is taken from the totals kept in the record
+  ---
+  duration_ms: 2.1925
+  type: 'test'
+  ...
+# Subtest: tokens per solved task match the numbers in RESEARCH-FIRST 0g
+ok 21 - tokens per solved task match the numbers in RESEARCH-FIRST 0g
+  ---
+  duration_ms: 0.3945
+  type: 'test'
+  ...
+# Subtest: the headline chart draws the screen with both totals and lists the rest as not measured
+ok 22 - the headline chart draws the screen with both totals and lists the rest as not measured
+  ---
+  duration_ms: 208.0688
+  type: 'test'
+  ...
+# Subtest: the dot strip draws the nine 60-task screens, the 20x rule and the pooled ratio
+ok 23 - the dot strip draws the nine 60-task screens, the 20x rule and the pooled ratio
+  ---
+  duration_ms: 117.0798
+  type: 'test'
+  ...
+# Subtest: the history table lists every record and shows unmeasured values as not measured
+ok 24 - the history table lists every record and shows unmeasured values as not measured
+  ---
+  duration_ms: 1.9722
+  type: 'test'
+  ...
+# Subtest: text from the data is escaped before it reaches the markup
+ok 25 - text from the data is escaped before it reaches the markup
+  ---
+  duration_ms: 0.4665
+  type: 'test'
+  ...
+# Subtest: the summary wording never calls the pooled figure a mean
+ok 26 - the summary wording never calls the pooled figure a mean
+  ---
+  duration_ms: 0.7373
+  type: 'test'
+  ...
+# Subtest: the harness chart sorts by solved tasks, marks Atlias, and keeps zero scores visible
+ok 27 - the harness chart sorts by solved tasks, marks Atlias, and keeps zero scores visible
+  ---
+  duration_ms: 4.0692
+  type: 'test'
+  ...
+# Subtest: plain Claude Code recorded run is visible after ranked results, with all three measurements
+ok 28 - plain Claude Code recorded run is visible after ranked results, with all three measurements
+  ---
+  duration_ms: 96.1985
+  type: 'test'
+  ...
+# Subtest: failed baseline cannot be promoted to a qualified result or lose recorded costs
+ok 29 - failed baseline cannot be promoted to a qualified result or lose recorded costs
+  ---
+  duration_ms: 100.6432
+  type: 'test'
+  ...
+# Subtest: the built landing page is wired to the explicit excluded baseline data
+ok 30 - the built landing page is wired to the explicit excluded baseline data
+  ---
+  duration_ms: 0.7339
+  type: 'test'
+  ...
+# Subtest: the contrast formula matches the WCAG reference values
+ok 31 - the contrast formula matches the WCAG reference values
+  ---
+  duration_ms: 4.2885
+  type: 'test'
+  ...
+# Subtest: the threshold is 4.5:1
+ok 32 - the threshold is 4.5:1
+  ---
+  duration_ms: 0.3015
+  type: 'test'
+  ...
+# Subtest: line1: 4.5:1 or better against the real still behind it (measured)
+ok 33 - line1: 4.5:1 or better against the real still behind it (measured)
+  ---
+  duration_ms: 0.208
+  type: 'test'
+  ...
+# Subtest: line1: 4.5:1 or better against the worst-case live canvas ground
+ok 34 - line1: 4.5:1 or better against the worst-case live canvas ground
+  ---
+  duration_ms: 0.354
+  type: 'test'
+  ...
+# Subtest: line2: 4.5:1 or better against the real still behind it (measured)
+ok 35 - line2: 4.5:1 or better against the real still behind it (measured)
+  ---
+  duration_ms: 0.1919
+  type: 'test'
+  ...
+# Subtest: line2: 4.5:1 or better against the worst-case live canvas ground
+ok 36 - line2: 4.5:1 or better against the worst-case live canvas ground
+  ---
+  duration_ms: 0.4981
+  type: 'test'
+  ...
+# Subtest: the dark shade over the film fades with the hero copy, so it does not dim the end card
+ok 37 - the dark shade over the film fades with the hero copy, so it does not dim the end card
+  ---
+  duration_ms: 110.9408
+  type: 'test'
+  ...
+# Subtest: the captions use the full caption colour, and the canvas draws the navy scrim behind them
+ok 38 - the captions use the full caption colour, and the canvas draws the navy scrim behind them
+  ---
+  duration_ms: 3.5944
+  type: 'test'
+  ...
+# Subtest: the ground measurement was taken from the current render inputs (not stale)
+ok 39 - the ground measurement was taken from the current render inputs (not stale)
+  ---
+  duration_ms: 14.3905
+  type: 'test'
+  ...
+# Subtest: the measurement covers the desktop and the phone end states at scroll 3000
+ok 40 - the measurement covers the desktop and the phone end states at scroll 3000
+  ---
+  duration_ms: 0.4346
+  type: 'test'
+  ...
+# Subtest: 1440x900 line1: at least 4.5:1 against the measured ground
+ok 41 - 1440x900 line1: at least 4.5:1 against the measured ground
+  ---
+  duration_ms: 0.313
+  type: 'test'
+  ...
+# Subtest: 1440x900 line2: at least 4.5:1 against the measured ground
+ok 42 - 1440x900 line2: at least 4.5:1 against the measured ground
+  ---
+  duration_ms: 0.1933
+  type: 'test'
+  ...
+# Subtest: 390x844 line1: at least 4.5:1 against the measured ground
+ok 43 - 390x844 line1: at least 4.5:1 against the measured ground
+  ---
+  duration_ms: 0.3838
+  type: 'test'
+  ...
+# Subtest: 390x844 line2: at least 4.5:1 against the measured ground
+ok 44 - 390x844 line2: at least 4.5:1 against the measured ground
+  ---
+  duration_ms: 0.203
+  type: 'test'
+  ...
+# Subtest: end card at 390x844, frame 0: the glyph top clears the nav and everything stays on screen
+ok 45 - end card at 390x844, frame 0: the glyph top clears the nav and everything stays on screen
+  ---
+  duration_ms: 6.7994
+  type: 'test'
+  ...
+# Subtest: end card at 390x844, frame 0: no two layers overlap
+ok 46 - end card at 390x844, frame 0: no two layers overlap
+  ---
+  duration_ms: 0.6586
+  type: 'test'
+  ...
+# Subtest: end card at 390x844, frame 11: the glyph top clears the nav and everything stays on screen
+ok 47 - end card at 390x844, frame 11: the glyph top clears the nav and everything stays on screen
+  ---
+  duration_ms: 0.3168
+  type: 'test'
+  ...
+# Subtest: end card at 390x844, frame 11: no two layers overlap
+ok 48 - end card at 390x844, frame 11: no two layers overlap
+  ---
+  duration_ms: 0.5765
+  type: 'test'
+  ...
+# Subtest: end card at 768x1024, frame 0: the glyph top clears the nav and everything stays on screen
+ok 49 - end card at 768x1024, frame 0: the glyph top clears the nav and everything stays on screen
+  ---
+  duration_ms: 0.817
+  type: 'test'
+  ...
+# Subtest: end card at 768x1024, frame 0: no two layers overlap
+ok 50 - end card at 768x1024, frame 0: no two layers overlap
+  ---
+  duration_ms: 0.2912
+  type: 'test'
+  ...
+# Subtest: end card at 768x1024, frame 11: the glyph top clears the nav and everything stays on screen
+ok 51 - end card at 768x1024, frame 11: the glyph top clears the nav and everything stays on screen
+  ---
+  duration_ms: 0.4878
+  type: 'test'
+  ...
+# Subtest: end card at 768x1024, frame 11: no two layers overlap
+ok 52 - end card at 768x1024, frame 11: no two layers overlap
+  ---
+  duration_ms: 0.2229
+  type: 'test'
+  ...
+# Subtest: end card at 1366x768, frame 0: the glyph top clears the nav and everything stays on screen
+ok 53 - end card at 1366x768, frame 0: the glyph top clears the nav and everything stays on screen
+  ---
+  duration_ms: 0.7102
+  type: 'test'
+  ...
+# Subtest: end card at 1366x768, frame 0: no two layers overlap
+ok 54 - end card at 1366x768, frame 0: no two layers overlap
+  ---
+  duration_ms: 1.0596
+  type: 'test'
+  ...
+# Subtest: end card at 1366x768, frame 11: the glyph top clears the nav and everything stays on screen
+ok 55 - end card at 1366x768, frame 11: the glyph top clears the nav and everything stays on screen
+  ---
+  duration_ms: 0.421
+  type: 'test'
+  ...
+# Subtest: end card at 1366x768, frame 11: no two layers overlap
+ok 56 - end card at 1366x768, frame 11: no two layers overlap
+  ---
+  duration_ms: 0.1968
+  type: 'test'
+  ...
+# Subtest: end card at 1920x1080, frame 0: the glyph top clears the nav and everything stays on screen
+ok 57 - end card at 1920x1080, frame 0: the glyph top clears the nav and everything stays on screen
+  ---
+  duration_ms: 1.8104
+  type: 'test'
+  ...
+# Subtest: end card at 1920x1080, frame 0: no two layers overlap
+ok 58 - end card at 1920x1080, frame 0: no two layers overlap
+  ---
+  duration_ms: 0.1636
+  type: 'test'
+  ...
+# Subtest: end card at 1920x1080, frame 11: the glyph top clears the nav and everything stays on screen
+ok 59 - end card at 1920x1080, frame 11: the glyph top clears the nav and everything stays on screen
+  ---
+  duration_ms: 0.1642
+  type: 'test'
+  ...
+# Subtest: end card at 1920x1080, frame 11: no two layers overlap
+ok 60 - end card at 1920x1080, frame 11: no two layers overlap
+  ---
+  duration_ms: 0.314
+  type: 'test'
+  ...
+# Subtest: end card at 390x844: the glyph is vertically centred in the area below the nav
+ok 61 - end card at 390x844: the glyph is vertically centred in the area below the nav
+  ---
+  duration_ms: 0.3393
+  type: 'test'
+  ...
+# Subtest: end card at 768x1024: the glyph is vertically centred in the area below the nav
+ok 62 - end card at 768x1024: the glyph is vertically centred in the area below the nav
+  ---
+  duration_ms: 0.1438
+  type: 'test'
+  ...
+# Subtest: end card at 1366x768: the glyph is vertically centred in the area below the nav
+ok 63 - end card at 1366x768: the glyph is vertically centred in the area below the nav
+  ---
+  duration_ms: 0.1485
+  type: 'test'
+  ...
+# Subtest: end card at 1920x1080: the glyph is vertically centred in the area below the nav
+ok 64 - end card at 1920x1080: the glyph is vertically centred in the area below the nav
+  ---
+  duration_ms: 0.1575
+  type: 'test'
+  ...
+# Subtest: at scroll 3000 the stage has moved up 300 px: the end card is laid out in the on-screen part, below the nav
+ok 65 - at scroll 3000 the stage has moved up 300 px: the end card is laid out in the on-screen part, below the nav
+  ---
+  duration_ms: 0.5175
+  type: 'test'
+  ...
+# Subtest: the layout uses the measured nav height, not a fixed guess: a taller nav moves the glyph down
+ok 66 - the layout uses the measured nav height, not a fixed guess: a taller nav moves the glyph down
+  ---
+  duration_ms: 0.2452
+  type: 'test'
+  ...
+# Subtest: reduced motion lays the still out below the nav with the canvas off
+ok 67 - reduced motion lays the still out below the nav with the canvas off
+  ---
+  duration_ms: 5.8405
+  type: 'test'
+  ...
+# Subtest: no-JS lays the still out the same way
+ok 68 - no-JS lays the still out the same way
+  ---
+  duration_ms: 0.5284
+  type: 'test'
+  ...
+# Subtest: both functions refuse to run until Stripe and the signing key are set, and validate the install id
+ok 69 - both functions refuse to run until Stripe and the signing key are set, and validate the install id
+  ---
+  duration_ms: 245.1552
+  type: 'test'
+  ...
+# Subtest: checkout opens a Stripe subscription session that carries the install id into the subscription
+ok 70 - checkout opens a Stripe subscription session that carries the install id into the subscription
+  ---
+  duration_ms: 88.8568
+  type: 'test'
+  ...
+# Subtest: a paid subscription gets a signed pass with the paid-through date and the latest invoice
+ok 71 - a paid subscription gets a signed pass with the paid-through date and the latest invoice
+  ---
+  duration_ms: 20.3442
+  type: 'test'
+  ...
+# Subtest: unpaid, canceled, someone else's or long-lapsed subscriptions answer inactive
+ok 72 - unpaid, canceled, someone else's or long-lapsed subscriptions answer inactive
+  ---
+  duration_ms: 16.3289
+  type: 'test'
+  ...
+# Subtest: the pass never outlives what was paid by more than the grace days
+ok 73 - the pass never outlives what was paid by more than the grace days
+  ---
+  duration_ms: 4.6912
+  type: 'test'
+  ...
+# Subtest: Max passes require the Max price, a real paid invoice, live mode and one item
+ok 74 - Max passes require the Max price, a real paid invoice, live mode and one item
+  ---
+  duration_ms: 8.7717
+  type: 'test'
+  ...
+# Subtest: bounded inputs and missing or mismatched signing configuration make no Stripe calls
+ok 75 - bounded inputs and missing or mismatched signing configuration make no Stripe calls
+  ---
+  duration_ms: 90.0928
+  type: 'test'
+  ...
+# Subtest: checkout retries carry the same opaque idempotency key and different attempts are isolated
+ok 76 - checkout retries carry the same opaque idempotency key and different attempts are isolated
+  ---
+  duration_ms: 6.2577
+  type: 'test'
+  ...
+# Subtest: paid checkout receipts avoid eventually consistent search and validate their install binding
+ok 77 - paid checkout receipts avoid eventually consistent search and validate their install binding
+  ---
+  duration_ms: 11.7059
+  type: 'test'
+  ...
+# Subtest: provider failures never echo secret-like provider errors
+ok 78 - provider failures never echo secret-like provider errors
+  ---
+  duration_ms: 2.8317
+  type: 'test'
+  ...
+# Subtest: Skip film is shown until the film is skipped, and Replay takes its place after
+ok 79 - Skip film is shown until the film is skipped, and Replay takes its place after
+  ---
+  duration_ms: 3.8265
+  type: 'test'
+  ...
+# Subtest: the two controls are never both visible
+ok 80 - the two controls are never both visible
+  ---
+  duration_ms: 0.3989
+  type: 'test'
+  ...
+# Subtest: the flight script creates no text objects (no FONT curves, no text operator, no text helper calls)
+ok 81 - the flight script creates no text objects (no FONT curves, no text operator, no text helper calls)
+  ---
+  duration_ms: 3.6086
+  type: 'test'
+  ...
+# Subtest: the manifest records the clean render: 96 frames, zero text objects, rendered by build-flight.py
+ok 82 - the manifest records the clean render: 96 frames, zero text objects, rendered by build-flight.py
+  ---
+  duration_ms: 0.4117
+  type: 'test'
+  ...
+# Subtest: every cruise frame is present and is 960 by 540 (the clean set)
+ok 83 - every cruise frame is present and is 960 by 540 (the clean set)
+  ---
+  duration_ms: 30.6657
+  type: 'test'
+  ...
+# Subtest: tall introduction remains readable, then advances through the entire scroll film
+ok 84 - tall introduction remains readable, then advances through the entire scroll film
+  ---
+  duration_ms: 3.4576
+  type: 'test'
+  ...
+# Subtest: normal introduction preserves the established animation mapping
+ok 85 - normal introduction preserves the established animation mapping
+  ---
+  duration_ms: 0.353
+  type: 'test'
+  ...
+# Subtest: cruise frames run from 1 to 96 and never leave that range
+ok 86 - cruise frames run from 1 to 96 and never leave that range
+  ---
+  duration_ms: 2.5247
+  type: 'test'
+  ...
+# Subtest: the warp maps 0.55 to 0.85 onto the 32 sprites
+ok 87 - the warp maps 0.55 to 0.85 onto the 32 sprites
+  ---
+  duration_ms: 0.8333
+  type: 'test'
+  ...
+# Subtest: the layers come in the spec order at key points
+ok 88 - the layers come in the spec order at key points
+  ---
+  duration_ms: 0.4544
+  type: 'test'
+  ...
+# Subtest: the hero copy is fully visible at the start and gone by flight progress 0.7, so the 20x is not covered
+ok 89 - the hero copy is fully visible at the start and gone by flight progress 0.7, so the 20x is not covered
+  ---
+  duration_ms: 1.0218
+  type: 'test'
+  ...
+# Subtest: the end-card frames step from 2050 to 1979
+ok 90 - the end-card frames step from 2050 to 1979
+  ---
+  duration_ms: 0.5382
+  type: 'test'
+  ...
+# Subtest: damping approaches the target without overshooting and settles in about 300 ms
+ok 91 - damping approaches the target without overshooting and settles in about 300 ms
+  ---
+  duration_ms: 1.0177
+  type: 'test'
+  ...
+# Subtest: scroll progress is 0 at the top of the film and 1 at its end, and never outside that
+ok 92 - scroll progress is 0 at the top of the film and 1 at its end, and never outside that
+  ---
+  duration_ms: 0.5302
+  type: 'test'
+  ...
+# Subtest: asset paths match the files the build produces
+ok 93 - asset paths match the files the build produces
+  ---
+  duration_ms: 0.8434
+  type: 'test'
+  ...
+# Subtest: the star field is seeded, so every visit draws the same sky
+ok 94 - the star field is seeded, so every visit draws the same sky
+  ---
+  duration_ms: 8.9625
+  type: 'test'
+  ...
+# Subtest: every frame the canvas can ask for exists in the built output
+ok 95 - every frame the canvas can ask for exists in the built output
+  ---
+  duration_ms: 38.2735
+  type: 'test'
+  ...
+# Subtest: published aggregates contain only the six qualified common-task measurements
+ok 96 - published aggregates contain only the six qualified common-task measurements
+  ---
+  duration_ms: 13.8274
+  type: 'test'
+  ...
+# Subtest: partial, mismetered and inconsistent measurements refuse publication
+ok 97 - partial, mismetered and inconsistent measurements refuse publication
+  ---
+  duration_ms: 9.2904
+  type: 'test'
+  ...
+# Subtest: public data rejects raw records, local paths and duplicate harnesses
+ok 98 - public data rejects raw records, local paths and duplicate harnesses
+  ---
+  duration_ms: 3.6221
+  type: 'test'
+  ...
+# Subtest: aggregate output stays readable without task tables or private paths
+ok 99 - aggregate output stays readable without task tables or private paths
+  ---
+  duration_ms: 438.3745
+  type: 'test'
+  ...
+# Subtest: the renderer never turns unfinished work into a completed score
+ok 100 - the renderer never turns unfinished work into a completed score
+  ---
+  duration_ms: 2.2015
+  type: 'test'
+  ...
+# Subtest: dated best score never borrows token totals from another Atlias run
+ok 101 - dated best score never borrows token totals from another Atlias run
+  ---
+  duration_ms: 133.5982
+  type: 'test'
+  ...
+# Subtest: every harness including Atlias has a correctly scaled bar on one 60-task axis
+ok 102 - every harness including Atlias has a correctly scaled bar on one 60-task axis
+  ---
+  duration_ms: 253.9036
+  type: 'test'
+  ...
+# Subtest: only curl, npm and bun are offered after Gev removed the unpublished methods
+ok 103 - only curl, npm and bun are offered after Gev removed the unpublished methods
+  ---
+  duration_ms: 14.4193
+  type: 'test'
+  ...
+# Subtest: built install assets are public-only and unavailable history remains excluded
+ok 104 - built install assets are public-only and unavailable history remains excluded
+  ---
+  duration_ms: 7.2359
+  type: 'test'
+  ...
+# Subtest: curl installer preserves arguments, uses a user prefix and propagates npm failure
+ok 105 - curl installer preserves arguments, uses a user prefix and propagates npm failure
+  ---
+  duration_ms: 26363.7225
+  type: 'test'
+  ...
+# Subtest: six harnesses each get three touching independently scaled bars with named values
+ok 106 - six harnesses each get three touching independently scaled bars with named values
+  ---
+  duration_ms: 327.9494
+  type: 'test'
+  ...
+# Subtest: best score shows all three measured values from its own 60-task attempt
+ok 107 - best score shows all three measured values from its own 60-task attempt
+  ---
+  duration_ms: 2.9391
+  type: 'test'
+  ...
+# Subtest: dated Atlias metrics reject omissions and borrowing the newer run totals
+ok 108 - dated Atlias metrics reject omissions and borrowing the newer run totals
+  ---
+  duration_ms: 1.439
+  type: 'test'
+  ...
+# Subtest: missing, partial or invalid aggregate data refuses a chart
+ok 109 - missing, partial or invalid aggregate data refuses a chart
+  ---
+  duration_ms: 1.1325
+  type: 'test'
+  ...
+# Subtest: fresh launch owns an atomic lock and releases it
+ok 110 - fresh launch owns an atomic lock and releases it
+  ---
+  duration_ms: 350.1089
+  type: 'test'
+  ...
+# Subtest: active legacy or locked worker refuses duplicate before mutation
+ok 111 - active legacy or locked worker refuses duplicate before mutation
+  ---
+  duration_ms: 68.0023
+  type: 'test'
+  ...
+# Subtest: concurrent acquisition observes new owner after the first check
+ok 112 - concurrent acquisition observes new owner after the first check
+  ---
+  duration_ms: 62.994
+  type: 'test'
+  ...
+# Subtest: abandoned lock can recover without touching any process
+ok 113 - abandoned lock can recover without touching any process
+  ---
+  duration_ms: 245.6888
+  type: 'test'
+  ...
+# Subtest: cleanup cannot delete a replacement owners lock
+ok 114 - cleanup cannot delete a replacement owners lock
+  ---
+  duration_ms: 358.1788
+  type: 'test'
+  ...
+# Subtest: corrupted ownership fails closed
+ok 115 - corrupted ownership fails closed
+  ---
+  duration_ms: 280.0756
+  type: 'test'
+  ...
+# Subtest: signup is private, durable, consented and case-normalized; duplicate requests do not resend
+ok 116 - signup is private, durable, consented and case-normalized; duplicate requests do not resend
+  ---
+  duration_ms: 292.0459
+  type: 'test'
+  ...
+# Subtest: confirmation GET is read-only; only the correct token POST confirms
+ok 117 - confirmation GET is read-only; only the correct token POST confirms
+  ---
+  duration_ms: 28.0658
+  type: 'test'
+  ...
+# Subtest: unsubscribing removes the email and prevents launch mail; GET does not unsubscribe
+ok 118 - unsubscribing removes the email and prevents launch mail; GET does not unsubscribe
+  ---
+  duration_ms: 117.6851
+  type: 'test'
+  ...
+# Subtest: unreleased, missing, declined and incorrectly priced Stripe setup cannot trigger announcement
+ok 119 - unreleased, missing, declined and incorrectly priced Stripe setup cannot trigger announcement
+  ---
+  duration_ms: 156.8368
+  type: 'test'
+  ...
+# Subtest: release announcement requires confirmed email and both readiness gates, then sends once
+ok 120 - release announcement requires confirmed email and both readiness gates, then sends once
+  ---
+  duration_ms: 47.0652
+  type: 'test'
+  ...
+# Subtest: body bounds, malformed input, cross-origin requests, missing consent and honeypots fail safely
+ok 121 - body bounds, malformed input, cross-origin requests, missing consent and honeypots fail safely
+  ---
+  duration_ms: 10.1327
+  type: 'test'
+  ...
+# Subtest: unknown provider outcomes retry with the same idempotency key and hold beyond its safety window
+ok 122 - unknown provider outcomes retry with the same idempotency key and hold beyond its safety window
+  ---
+  duration_ms: 19.1414
+  type: 'test'
+  ...
+# Subtest: storage errors cannot produce a false signup success
+ok 123 - storage errors cannot produce a false signup success
+  ---
+  duration_ms: 0.9012
+  type: 'test'
+  ...
+# Subtest: conditional writes prevent a stale confirmation from undoing an unsubscribe
+ok 124 - conditional writes prevent a stale confirmation from undoing an unsubscribe
+  ---
+  duration_ms: 6.3265
+  type: 'test'
+  ...
+# Subtest: held deliveries do not block other confirmed people across paginated batches
+ok 125 - held deliveries do not block other confirmed people across paginated batches
+  ---
+  duration_ms: 26.2568
+  type: 'test'
+  ...
+# Subtest: real loopback HTTP keeps checkout closed by default, authenticates account and serves only private entitled release
+ok 126 - real loopback HTTP keeps checkout closed by default, authenticates account and serves only private entitled release
+  ---
+  duration_ms: 2986.4531
+  type: 'test'
+  ...
+# Subtest: webhook state and event receipt survive a server reload; duplicate, revocation, staleness and cross-user isolation fail closed
+ok 127 - webhook state and event receipt survive a server reload; duplicate, revocation, staleness and cross-user isolation fail closed
+  ---
+  duration_ms: 3505.6144
+  type: 'test'
+  ...
+# Subtest: returning Max customer is refreshed from current Stripe state after TTL without a webhook receipt
+ok 128 - returning Max customer is refreshed from current Stripe state after TTL without a webhook receipt
+  ---
+  duration_ms: 1209.1255
+  type: 'test'
+  ...
+# Subtest: stale paid entitlement reports verification outage instead of claiming free when Stripe refresh fails
+ok 129 - stale paid entitlement reports verification outage instead of claiming free when Stripe refresh fails
+  ---
+  duration_ms: 1895.6537
+  type: 'test'
+  ...
+# Subtest: stale subscription refresh revokes cancelled and expired subscriptions from current state
+ok 130 - stale subscription refresh revokes cancelled and expired subscriptions from current state
+  ---
+  duration_ms: 4373.8145
+  type: 'test'
+  ...
+# Subtest: stale subscription refresh refuses a mismatched Stripe customer or a changed price
+ok 131 - stale subscription refresh refuses a mismatched Stripe customer or a changed price
+  ---
+  duration_ms: 2425.9169
+  type: 'test'
+  ...
+# Subtest: concurrent duplicate events serialize to one durable entitlement update and oversized requests receive bounded errors
+ok 132 - concurrent duplicate events serialize to one durable entitlement update and oversized requests receive bounded errors
+  ---
+  duration_ms: 747.469
+  type: 'test'
+  ...
+# Subtest: private release location and digest are checked at configuration and every download
+ok 133 - private release location and digest are checked at configuration and every download
+  ---
+  duration_ms: 48.4833
+  type: 'test'
+  ...
+# Subtest: the plan runs validate and hold the six polyglot tasks in each run
+ok 134 - the plan runs validate and hold the six polyglot tasks in each run
+  ---
+  duration_ms: 6.6084
+  type: 'test'
+  ...
+# Subtest: the plan table shows a lost measurement as not measured and totals only the measured tasks
+ok 135 - the plan table shows a lost measurement as not measured and totals only the measured tasks
+  ---
+  duration_ms: 150.7247
+  type: 'test'
+  ...
+# Subtest: the comparison line uses only the tasks measured in every run
+ok 136 - the comparison line uses only the tasks measured in every run
+  ---
+  duration_ms: 0.9404
+  type: 'test'
+  ...
+# Subtest: plan runs never reach the reduction charts or the history table
+ok 137 - plan runs never reach the reduction charts or the history table
+  ---
+  duration_ms: 13.1325
+  type: 'test'
+  ...
+# Subtest: the schema refuses a bad plan run
+ok 138 - the schema refuses a bad plan run
+  ---
+  duration_ms: 79.3774
+  type: 'test'
+  ...
+# Subtest: the public evidence page keeps scope without publishing internal plan tables
+ok 139 - the public evidence page keeps scope without publishing internal plan tables
+  ---
+  duration_ms: 362695.4519
+  type: 'test'
+  ...
+# Subtest: a bare \#fragment link is checked against its own page, not the home page
+ok 140 - a bare \#fragment link is checked against its own page, not the home page
+  ---
+  duration_ms: 303.4111
+  type: 'test'
+  ...
+# Subtest: the founder note sits between the comparison table and the questions
+ok 141 - the founder note sits between the comparison table and the questions
+  ---
+  duration_ms: 3.5858
+  type: 'test'
+  ...
+# Subtest: the founder heading uses plain text
+ok 142 - the founder heading uses plain text
+  ---
+  duration_ms: 1.5623
+  type: 'test'
+  ...
+# Subtest: the avatar is the RideLink mark, with alt text RideLink and fixed size (no layout shift)
+ok 143 - the avatar is the RideLink mark, with alt text RideLink and fixed size (no layout shift)
+  ---
+  duration_ms: 0.5074
+  type: 'test'
+  ...
+# Subtest: the avatar file exists in public/brand and its bytes are Gev's image, unchanged
+ok 144 - the avatar file exists in public/brand and its bytes are Gev's image, unchanged
+  ---
+  duration_ms: 89.2085
+  type: 'test'
+  ...
+# Subtest: the note states the price from site.config.json and that Max is not on sale yet
+ok 145 - the note states the price from site.config.json and that Max is not on sale yet
+  ---
+  duration_ms: 0.4468
+  type: 'test'
+  ...
+# Subtest: the benchmark cost in the note is the six-task 5-minute run total from data/benchmarks.json
+ok 146 - the benchmark cost in the note is the six-task 5-minute run total from data/benchmarks.json
+  ---
+  duration_ms: 1.4322
+  type: 'test'
+  ...
+# Subtest: the heartfelt paragraph is 60 to 90 words and the note closes with the agreed line
+ok 147 - the heartfelt paragraph is 60 to 90 words and the note closes with the agreed line
+  ---
+  duration_ms: 0.5863
+  type: 'test'
+  ...
+# Subtest: the public output contains no emoji
+ok 148 - the public output contains no emoji
+  ---
+  duration_ms: 46.2882
+  type: 'test'
+  ...
+# Subtest: the validator refuses emoji on every page
+ok 149 - the validator refuses emoji on every page
+  ---
+  duration_ms: 242.3269
+  type: 'test'
+  ...
+# Subtest: the generated public pages explain worker choices without exposing internal screens or tables
+ok 150 - the generated public pages explain worker choices without exposing internal screens or tables
+  ---
+  duration_ms: 83.1927
+  type: 'test'
+  ...
+# Subtest: old history URLs are unavailable through the actual public server
+ok 151 - old history URLs are unavailable through the actual public server
+  ---
+  duration_ms: 1719.3114
+  type: 'test'
+  ...
+# Subtest: public chart descriptions remain accessible and escape dataset text without a hidden table
+ok 152 - public chart descriptions remain accessible and escape dataset text without a hidden table
+  ---
+  duration_ms: 316.0578
+  type: 'test'
+  ...
+# Subtest: unknown paths are served the 404 page with status 404
+ok 153 - unknown paths are served the 404 page with status 404
+  ---
+  duration_ms: 2.0431
+  type: 'test'
+  ...
+# Subtest: the 404 page has one heading and links home and to get-started
+ok 154 - the 404 page has one heading and links home and to get-started
+  ---
+  duration_ms: 3.2931
+  type: 'test'
+  ...
+# Subtest: the security headers keep their values in netlify.toml and in public/_headers
+ok 155 - the security headers keep their values in netlify.toml and in public/_headers
+  ---
+  duration_ms: 8.4654
+  type: 'test'
+  ...
+# Subtest: static assets get the cache rules in both files; scripts and styles always revalidate
+ok 156 - static assets get the cache rules in both files; scripts and styles always revalidate
+  ---
+  duration_ms: 0.6532
+  type: 'test'
+  ...
+# Subtest: every image has alt text, a width and a height, and no alt is a file name
+ok 157 - every image has alt text, a width and a height, and no alt is a file name
+  ---
+  duration_ms: 441.7352
+  type: 'test'
+  ...
+# Subtest: images below the fold load lazily, and the hero film still is high priority
+ok 158 - images below the fold load lazily, and the hero film still is high priority
+  ---
+  duration_ms: 23.1219
+  type: 'test'
+  ...
+# Subtest: each font the stylesheet uses is preloaded with crossorigin, and the preload URLs match the @font-face URLs
+ok 159 - each font the stylesheet uses is preloaded with crossorigin, and the preload URLs match the @font-face URLs
+  ---
+  duration_ms: 33.1751
+  type: 'test'
+  ...
+# Subtest: no script in the head blocks rendering: each one is a data block, a module or deferred
+ok 160 - no script in the head blocks rendering: each one is a data block, a module or deferred
+  ---
+  duration_ms: 649.954
+  type: 'test'
+  ...
+# Subtest: every link has descriptive text: no empty link and no generic label such as click here
+ok 161 - every link has descriptive text: no empty link and no generic label such as click here
+  ---
+  duration_ms: 1260.9656
+  type: 'test'
+  ...
+# Subtest: every internal link and image source resolves to a file, and every fragment to an id on its page
+ok 162 - every internal link and image source resolves to a file, and every fragment to an id on its page
+  ---
+  duration_ms: 5263.4847
+  type: 'test'
+  ...
+# Subtest: every indexable page is reachable from the nav or the footer of the home page
+ok 163 - every indexable page is reachable from the nav or the footer of the home page
+  ---
+  duration_ms: 2.0026
+  type: 'test'
+  ...
+# Subtest: the home page carries Organization, WebSite and SoftwareApplication, and each has its required fields
+ok 164 - the home page carries Organization, WebSite and SoftwareApplication, and each has its required fields
+  ---
+  duration_ms: 313.5288
+  type: 'test'
+  ...
+# Subtest: the home and get-started pages carry SoftwareApplication for three systems with a free offer
+ok 165 - the home and get-started pages carry SoftwareApplication for three systems with a free offer
+  ---
+  duration_ms: 139.2834
+  type: 'test'
+  ...
+# Subtest: the pricing FAQ lists the questions on the page, with answers the page shows
+ok 166 - the pricing FAQ lists the questions on the page, with answers the page shows
+  ---
+  duration_ms: 112.0686
+  type: 'test'
+  ...
+# Subtest: inner pages carry a BreadcrumbList from Home to the page itself
+ok 167 - inner pages carry a BreadcrumbList from Home to the page itself
+  ---
+  duration_ms: 25.615
+  type: 'test'
+  ...
+# Subtest: every script tag is a data block or a file the page loads, so no inline code runs
+ok 168 - every script tag is a data block or a file the page loads, so no inline code runs
+  ---
+  duration_ms: 41.1028
+  type: 'test'
+  ...
+# Subtest: no rating, review or paid price is written into any structured data
+ok 169 - no rating, review or paid price is written into any structured data
+  ---
+  duration_ms: 16.4157
+  type: 'test'
+  ...
+# Subtest: every page has a unique title of 50 to 60 characters that leads with Atlias (Gev, 2026-10-23: the site name is Atlias)
+ok 170 - every page has a unique title of 50 to 60 characters that leads with Atlias (Gev, 2026-10-23: the site name is Atlias)
+  ---
+  duration_ms: 756.3024
+  type: 'test'
+  ...
+# Subtest: every page has a meta description of 140 to 160 characters
+ok 171 - every page has a meta description of 140 to 160 characters
+  ---
+  duration_ms: 12.7113
+  type: 'test'
+  ...
+# Subtest: the home description explains the product and available first steps
+ok 172 - the home description explains the product and available first steps
+  ---
+  duration_ms: 2.3299
+  type: 'test'
+  ...
+# Subtest: every page has one h1, an absolute canonical link and lang="en"
+ok 173 - every page has one h1, an absolute canonical link and lang="en"
+  ---
+  duration_ms: 13.8281
+  type: 'test'
+  ...
+# Subtest: thanks and account are noindex, follow; every other page is index, follow
+ok 174 - thanks and account are noindex, follow; every other page is index, follow
+  ---
+  duration_ms: 10.4551
+  type: 'test'
+  ...
+# Subtest: sitemap.xml lists every indexable page once, with absolute URLs and a build date
+ok 175 - sitemap.xml lists every indexable page once, with absolute URLs and a build date
+  ---
+  duration_ms: 201.6419
+  type: 'test'
+  ...
+# Subtest: robots.txt allows all crawlers, blocks thanks and account, and names the sitemap
+ok 176 - robots.txt allows all crawlers, blocks thanks and account, and names the sitemap
+  ---
+  duration_ms: 88.648
+  type: 'test'
+  ...
+# Subtest: billing runner releases its lock and exits naturally when its port is occupied
+ok 177 - billing runner releases its lock and exits naturally when its port is occupied
+  ---
+  duration_ms: 6577.9702
+  type: 'test'
+  ...
+# Subtest: billing runner rejects invalid ports after lock acquisition and releases the lock
+ok 178 - billing runner rejects invalid ports after lock acquisition and releases the lock
+  ---
+  duration_ms: 13199.7621
+  type: 'test'
+  ...
+# Subtest: the price text is never typed into a template, a script or a style
+ok 179 - the price text is never typed into a template, a script or a style
+  ---
+  duration_ms: 38.3409
+  type: 'test'
+  ...
+# Subtest: the checkout links are read from config, never typed into templates
+ok 180 - the checkout links are read from config, never typed into templates
+  ---
+  duration_ms: 0.3995
+  type: 'test'
+  ...
+# Subtest: the configured price has the shape the pages read
+ok 181 - the configured price has the shape the pages read
+  ---
+  duration_ms: 0.341
+  type: 'test'
+  ...
+# Subtest: the Milky Way panorama files exist at the sizes the flight uses
+ok 182 - the Milky Way panorama files exist at the sizes the flight uses
+  ---
+  duration_ms: 6763.931
+  type: 'test'
+  ...
+# Subtest: the credit and the CC BY 4.0 licence line are on the credits page and in the notices
+ok 183 - the credit and the CC BY 4.0 licence line are on the credits page and in the notices
+  ---
+  duration_ms: 5.4273
+  type: 'test'
+  ...
+# Subtest: the home headline text is the configured headline, with the key phrase marked
+ok 184 - the home headline text is the configured headline, with the key phrase marked
+  ---
+  duration_ms: 2.2011
+  type: 'test'
+  ...
+# Subtest: the key-phrase blue is the wordmark light blue and keeps at least 4.5:1 on the ground
+ok 185 - the key-phrase blue is the wordmark light blue and keeps at least 4.5:1 on the ground
+  ---
+  duration_ms: 0.7597
+  type: 'test'
+  ...
+# Subtest: the headline is smaller: its desktop size tops out at 92 px (was 136 px)
+ok 186 - the headline is smaller: its desktop size tops out at 92 px (was 136 px)
+  ---
+  duration_ms: 0.3282
+  type: 'test'
+  ...
+# Subtest: pricing marks its key phrase and the benchmark destination has a direct title
+ok 187 - pricing marks its key phrase and the benchmark destination has a direct title
+  ---
+  duration_ms: 2.2682
+  type: 'test'
+  ...
+# Subtest: the home headline comes from site.config.json, first sentence plain and the rest in the accent (founder edits reach the page)
+ok 188 - the home headline comes from site.config.json, first sentence plain and the rest in the accent (founder edits reach the page)
+  ---
+  duration_ms: 830.3089
+  type: 'test'
+  ...
+# Subtest: the How-it-works mascot moves with the reader and sticks below the 84px fixed nav
+ok 189 - the How-it-works mascot moves with the reader and sticks below the 84px fixed nav
+  ---
+  duration_ms: 2.12
+  type: 'test'
+  ...
+# Subtest: the mascot box is square and every pose fills it, so nothing is cut at its edges
+ok 190 - the mascot box is square and every pose fills it, so nothing is cut at its edges
+  ---
+  duration_ms: 0.5642
+  type: 'test'
+  ...
+# Subtest: every mascot pose draws inside its own 16-unit viewBox
+ok 191 - every mascot pose draws inside its own 16-unit viewBox
+  ---
+  duration_ms: 186.2118
+  type: 'test'
+  ...
+# Subtest: the nav sits above the loader, so the wordmark is never covered by the sliding halves
+ok 192 - the nav sits above the loader, so the wordmark is never covered by the sliding halves
+  ---
+  duration_ms: 2.7191
+  type: 'test'
+  ...
+# Subtest: the nav is hidden while the opening is still up, and visible during its exit
+ok 193 - the nav is hidden while the opening is still up, and visible during its exit
+  ---
+  duration_ms: 0.5378
+  type: 'test'
+  ...
+# Subtest: the loader waits for real readiness, never less than 900 ms, never more than 4 s
+ok 194 - the loader waits for real readiness, never less than 900 ms, never more than 4 s
+  ---
+  duration_ms: 3.0074
+  type: 'test'
+  ...
+# Subtest: the progress fraction is the share of readiness steps done
+ok 195 - the progress fraction is the share of readiness steps done
+  ---
+  duration_ms: 0.5454
+  type: 'test'
+  ...
+# Subtest: the opening is skipped once it has been shown in this session, and a blocked store never throws
+ok 196 - the opening is skipped once it has been shown in this session, and a blocked store never throws
+  ---
+  duration_ms: 1.2101
+  type: 'test'
+  ...
+# Subtest: magnetic pull is zero beyond 60 px, at most 6 px, and points toward the cursor
+ok 197 - magnetic pull is zero beyond 60 px, at most 6 px, and points toward the cursor
+  ---
+  duration_ms: 1.9041
+  type: 'test'
+  ...
+# Subtest: the year axis runs 2050 to 1979 and holds at the end
+ok 198 - the year axis runs 2050 to 1979 and holds at the end
+  ---
+  duration_ms: 0.3564
+  type: 'test'
+  ...
+# Subtest: the S key skips the film, but not while typing or with a modifier
+ok 199 - the S key skips the film, but not while typing or with a modifier
+  ---
+  duration_ms: 169.8251
+  type: 'test'
+  ...
+# Subtest: nav is solid only past the film on the home page
+ok 200 - nav is solid only past the film on the home page
+  ---
+  duration_ms: 0.5054
+  type: 'test'
+  ...
+# Subtest: each step has its mascot pose, in order
+ok 201 - each step has its mascot pose, in order
+  ---
+  duration_ms: 0.2526
+  type: 'test'
+  ...
+# Subtest: copy reports failure instead of pretending success
+ok 202 - copy reports failure instead of pretending success
+  ---
+  duration_ms: 2.1022
+  type: 'test'
+  ...
+# Subtest: reveals stagger 60 ms per item
+ok 203 - reveals stagger 60 ms per item
+  ---
+  duration_ms: 3.0897
+  type: 'test'
+  ...
+# Subtest: every browser module parses
+ok 204 - every browser module parses
+  ---
+  duration_ms: 34556.5278
+  type: 'test'
+  ...
+# Subtest: every built page carries the full link-preview tag set
+ok 205 - every built page carries the full link-preview tag set
+  ---
+  duration_ms: 596.7824
+  type: 'test'
+  ...
+# Subtest: each og:image file exists and is exactly 1200 by 630 pixels
+ok 206 - each og:image file exists and is exactly 1200 by 630 pixels
+  ---
+  duration_ms: 317.2097
+  type: 'test'
+  ...
+# Subtest: the og:image tag points at the file that was written
+ok 207 - the og:image tag points at the file that was written
+  ---
+  duration_ms: 167.1764
+  type: 'test'
+  ...
+# Subtest: the preview image is not blank: it has light text pixels on the navy ground
+ok 208 - the preview image is not blank: it has light text pixels on the navy ground
+  ---
+  duration_ms: 6101.9186
+  type: 'test'
+  ...
+# Subtest: escaped values are HTML-escaped and raw values are not
+ok 209 - escaped values are HTML-escaped and raw values are not
+  ---
+  duration_ms: 7.8133
+  type: 'test'
+  ...
+# Subtest: a missing key throws instead of printing nothing
+ok 210 - a missing key throws instead of printing nothing
+  ---
+  duration_ms: 1.0339
+  type: 'test'
+  ...
+# Subtest: partials include other partials and see the same context
+ok 211 - partials include other partials and see the same context
+  ---
+  duration_ms: 0.3064
+  type: 'test'
+  ...
+# Subtest: if and inverse if select by truthiness
+ok 212 - if and inverse if select by truthiness
+  ---
+  duration_ms: 0.3504
+  type: 'test'
+  ...
+# Subtest: runaway partial recursion is refused
+ok 213 - runaway partial recursion is refused
+  ---
+  duration_ms: 1.1414
+  type: 'test'
+  ...
+# Subtest: lookup walks nested objects and escapeHtml covers the five characters
+ok 214 - lookup walks nested objects and escapeHtml covers the five characters
+  ---
+  duration_ms: 0.3247
+  type: 'test'
+  ...
+# Subtest: the two big link cards are gone: the page ends with one wheel
+ok 215 - the two big link cards are gone: the page ends with one wheel
+  ---
+  duration_ms: 2.6271
+  type: 'test'
+  ...
+# Subtest: the wheel holds two links: the Atlo mascot to Atlias, and the RideLink logo to RideLink, both named
+ok 216 - the wheel holds two links: the Atlo mascot to Atlias, and the RideLink logo to RideLink, both named
+  ---
+  duration_ms: 1.9747
+  type: 'test'
+  ...
+# Subtest: the ring text runs round the circle: "ATLIAS - RIDELINK - " on a circular path, hidden from assistive tech
+ok 217 - the ring text runs round the circle: "ATLIAS - RIDELINK - " on a circular path, hidden from assistive tech
+  ---
+  duration_ms: 0.8492
+  type: 'test'
+  ...
+# Subtest: the real RideLink logo is Gev's file, copied byte for byte (never redrawn)
+ok 218 - the real RideLink logo is Gev's file, copied byte for byte (never redrawn)
+  ---
+  duration_ms: 4.3544
+  type: 'test'
+  ...
+# Subtest: the wheel is about 260 px across on desktop and 200 px on phones, spins slowly, pauses on hover and under reduced motion
+ok 219 - the wheel is about 260 px across on desktop and 200 px on phones, spins slowly, pauses on hover and under reduced motion
+  ---
+  duration_ms: 0.5691
+  type: 'test'
+  ...
+# Subtest: each half lifts on hover and focus, and both are keyboard reachable with a visible focus ring
+ok 220 - each half lifts on hover and focus, and both are keyboard reachable with a visible focus ring
+  ---
+  duration_ms: 1.8246
+  type: 'test'
+  ...
+# Subtest: the old card styles are gone from the stylesheet
+ok 221 - the old card styles are gone from the stylesheet
+  ---
+  duration_ms: 0.7717
+  type: 'test'
+  ...
+# Subtest: the home page follows the spec order and takes its headline from config
+ok 222 - the home page follows the spec order and takes its headline from config
+  ---
+  duration_ms: 155.8537
+  type: 'test'
+  ...
+# Subtest: the install pill shows the configured command
+ok 223 - the install pill shows the configured command
+  ---
+  duration_ms: 97.1108
+  type: 'test'
+  ...
+# Subtest: the site names Claude Code only with the text lockup and carries the Anthropic disclaimer
+ok 224 - the site names Claude Code only with the text lockup and carries the Anthropic disclaimer
+  ---
+  duration_ms: 178.723
+  type: 'test'
+  ...
+# Subtest: the Max button is disabled while checkout is empty
+ok 225 - the Max button is disabled while checkout is empty
+  ---
+  duration_ms: 158.3564
+  type: 'test'
+  ...
+# Subtest: the price comes from config on every page that shows it
+ok 226 - the price comes from config on every page that shows it
+  ---
+  duration_ms: 30.2607
+  type: 'test'
+  ...
+# Subtest: no payment provider name is written into any page
+ok 227 - no payment provider name is written into any page
+  ---
+  duration_ms: 245.7854
+  type: 'test'
+  ...
+# Subtest: the landing benchmark carries its method and the legacy page redirects
+ok 228 - the landing benchmark carries its method and the legacy page redirects
+  ---
+  duration_ms: 6.6177
+  type: 'test'
+  ...
+# Subtest: the opening screen separates Max signup from the sub-atlias installer
+ok 229 - the opening screen separates Max signup from the sub-atlias installer
+  ---
+  duration_ms: 3.9043
+  type: 'test'
+  ...
+# Subtest: the built public tree never ships the private folders
+ok 230 - the built public tree never ships the private folders
+  ---
+  duration_ms: 1.4489
+  type: 'test'
+  ...
+# Subtest: Netlify publishes only the public tree and has no functions source path
+ok 231 - Netlify publishes only the public tree and has no functions source path
+  ---
+  duration_ms: 136.8967
+  type: 'test'
+  ...
+# Subtest: preview sends the real CSP, refuses private paths and refuses non-read methods
+ok 232 - preview sends the real CSP, refuses private paths and refuses non-read methods
+  ---
+  duration_ms: 369.5709
+  type: 'test'
+  ...
+# Subtest: Stripe test REST adapter sends pinned, server-only protocol for account, price, subscription and Checkout
+ok 233 - Stripe test REST adapter sends pinned, server-only protocol for account, price, subscription and Checkout
+  ---
+  duration_ms: 501.1399
+  type: 'test'
+  ...
+# Subtest: unsafe keys, price substitutions and malformed Checkout inputs fail before transport
+ok 234 - unsafe keys, price substitutions and malformed Checkout inputs fail before transport
+  ---
+  duration_ms: 2.0867
+  type: 'test'
+  ...
+# Subtest: account identity mismatch, redirects, throttling, remote errors and oversized replies fail closed without details
+ok 235 - account identity mismatch, redirects, throttling, remote errors and oversized replies fail closed without details
+  ---
+  duration_ms: 71.1789
+  type: 'test'
+  ...
+# Subtest: short copy changes at the actual count boundaries
+ok 236 - short copy changes at the actual count boundaries
+  ---
+  duration_ms: 2.0024
+  type: 'test'
+  ...
+# Subtest: the real public count is formatted and revealed, including a genuine zero
+ok 237 - the real public count is formatted and revealed, including a genuine zero
+  ---
+  duration_ms: 558.5322
+  type: 'test'
+  ...
+# Subtest: outage and malformed data never display an invented count
+ok 238 - outage and malformed data never display an invented count
+  ---
+  duration_ms: 130.7494
+  type: 'test'
+  ...
+# Subtest: only unique confirmed real members are counted across pages; no private fields escape
+ok 239 - only unique confirmed real members are counted across pages; no private fields escape
+  ---
+  duration_ms: 222.9723
+  type: 'test'
+  ...
+# Subtest: empty is a real zero, HEAD has no body, and writes are refused
+ok 240 - empty is a real zero, HEAD has no body, and writes are refused
+  ---
+  duration_ms: 5.1318
+  type: 'test'
+  ...
+# Subtest: failed storage never becomes a fabricated zero
+ok 241 - failed storage never becomes a fabricated zero
+  ---
+  duration_ms: 2.7663
+  type: 'test'
+  ...
+# Subtest: malformed identities and key aliases do not inflate the count
+ok 242 - malformed identities and key aliases do not inflate the count
+  ---
+  duration_ms: 4.6689
+  type: 'test'
+  ...
+1..242
+# tests 242
+# suites 0
+# pass 242
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 931418.5349

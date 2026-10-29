@@ -1,0 +1,52 @@
+{
+  "results": [
+    {
+      "command": "agent --engine echo",
+      "exit": 0,
+      "selected": "session-39",
+      "sessionCount": 40
+    },
+    {
+      "command": "resume",
+      "exit": 0,
+      "selected": "session-39",
+      "sessionCount": 40
+    },
+    {
+      "command": "agent --engine echo",
+      "exit": 0,
+      "selected": "session-39",
+      "sessionCount": 40,
+      "manualCommands": [
+        "/help all",
+        "/help keys",
+        "/usage",
+        "/connections",
+        "/status",
+        "/cost",
+        "/model",
+        "/effort",
+        "/permissions",
+        "/config ui.showHints",
+        "/agents",
+        "/attachments",
+        "/context",
+        "/sessions",
+        "/help resume",
+        "/command-that-does-not-exist",
+        "/settings",
+        "q",
+        "/rename Beginner review",
+        "Hello from the UI review",
+        "/clear",
+        "/resume Beginner review",
+        "/rewind",
+        "(cancel)",
+        "/export ui-review-export.md"
+      ]
+    }
+  ],
+  "fixture": "C:\\Users\\OWNER\\AppData\\Local\\Temp\\atlias-account-resume-T4cSLP",
+  "externalModelCalls": 0,
+  "accountCacheWritten": false
+}

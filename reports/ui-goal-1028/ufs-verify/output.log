@@ -1,0 +1,291 @@
+{
+  "schema": "ufs-verify/1",
+  "target": "public",
+  "sections": {
+    "audit": {
+      "errors": 11,
+      "warns": 31,
+      "findings": [
+        {
+          "severity": "warning",
+          "text": "404.html: no fetchpriority=\"high\" on the hero image"
+        },
+        {
+          "severity": "error",
+          "text": "404.html: #60a5fa, #3b82f6, #2563eb - the single most recognisable generated-page colour"
+        },
+        {
+          "severity": "warning",
+          "text": "account.html: no fetchpriority=\"high\" on the hero image"
+        },
+        {
+          "severity": "error",
+          "text": "account.html: #60a5fa, #3b82f6, #2563eb - the single most recognisable generated-page colour"
+        },
+        {
+          "severity": "warning",
+          "text": "credits.html: no fetchpriority=\"high\" on the hero image"
+        },
+        {
+          "severity": "error",
+          "text": "credits.html: #60a5fa, #3b82f6, #2563eb - the single most recognisable generated-page colour"
+        },
+        {
+          "severity": "warning",
+          "text": "evidence.html: no fetchpriority=\"high\" on the hero image"
+        },
+        {
+          "severity": "error",
+          "text": "evidence.html: #60a5fa, #3b82f6, #2563eb - the single most recognisable generated-page colour"
+        },
+        {
+          "severity": "warning",
+          "text": "get-started.html: 1 below-the-fold <img> without loading=\"lazy\""
+        },
+        {
+          "severity": "warning",
+          "text": "get-started.html: no fetchpriority=\"high\" on the hero image"
+        },
+        {
+          "severity": "error",
+          "text": "get-started.html: #60a5fa, #3b82f6, #2563eb - the single most recognisable generated-page colour"
+        },
+        {
+          "severity": "warning",
+          "text": "index.html: 6 below-the-fold <img> without loading=\"lazy\""
+        },
+        {
+          "severity": "error",
+          "text": "index.html: 1 piece of scaffold copy still present: \"coming soon\""
+        },
+        {
+          "severity": "error",
+          "text": "index.html: #60a5fa, #3b82f6, #2563eb - the single most recognisable generated-page colour"
+        },
+        {
+          "severity": "warning",
+          "text": "legal.html: no fetchpriority=\"high\" on the hero image"
+        },
+        {
+          "severity": "error",
+          "text": "legal.html: #60a5fa, #3b82f6, #2563eb - the single most recognisable generated-page colour"
+        },
+        {
+          "severity": "warning",
+          "text": "pricing.html: 1 below-the-fold <img> without loading=\"lazy\""
+        },
+        {
+          "severity": "warning",
+          "text": "pricing.html: no fetchpriority=\"high\" on the hero image"
+        },
+        {
+          "severity": "error",
+          "text": "pricing.html: 1 piece of scaffold copy still present: \"coming soon\""
+        },
+        {
+          "severity": "error",
+          "text": "pricing.html: #60a5fa, #3b82f6, #2563eb - the single most recognisable generated-page colour"
+        },
+        {
+          "severity": "warning",
+          "text": "thanks.html: no fetchpriority=\"high\" on the hero image"
+        },
+        {
+          "severity": "error",
+          "text": "thanks.html: #60a5fa, #3b82f6, #2563eb - the single most recognisable generated-page colour"
+        },
+        {
+          "severity": "warning",
+          "text": "10 distinct durations and 3 distinct timing functions: motion without a system reads as assembled. Instead: One token set. [motion-token-sprawl, M7]"
+        },
+        {
+          "severity": "warning",
+          "text": "404.html: movement keys are read from event.key: on AZERTY and Dvorak they are not where WASD is. Read event.code. Instead: event.code. [game-key-not-code, G4]"
+        },
+        {
+          "severity": "warning",
+          "text": "404.html: the game loop never listens for visibilitychange, so the world runs on in a hidden tab. Instead: Pause on visibilitychange. [game-no-visibility-pause, G6]"
+        },
+        {
+          "severity": "warning",
+          "text": "account.html: movement keys are read from event.key: on AZERTY and Dvorak they are not where WASD is. Read event.code. Instead: event.code. [game-key-not-code, G4]"
+        },
+        {
+          "severity": "warning",
+          "text": "account.html: the game loop never listens for visibilitychange, so the world runs on in a hidden tab. Instead: Pause on visibilitychange. [game-no-visibility-pause, G6]"
+        },
+        {
+          "severity": "warning",
+          "text": "credits.html: movement keys are read from event.key: on AZERTY and Dvorak they are not where WASD is. Read event.code. Instead: event.code. [game-key-not-code, G4]"
+        },
+        {
+          "severity": "warning",
+          "text": "credits.html: the game loop never listens for visibilitychange, so the world runs on in a hidden tab. Instead: Pause on visibilitychange. [game-no-visibility-pause, G6]"
+        },
+        {
+          "severity": "warning",
+          "text": "evidence.html: movement keys are read from event.key: on AZERTY and Dvorak they are not where WASD is. Read event.code. Instead: event.code. [game-key-not-code, G4]"
+        },
+        {
+          "severity": "warning",
+          "text": "evidence.html: the game loop never listens for visibilitychange, so the world runs on in a hidden tab. Instead: Pause on visibilitychange. [game-no-visibility-pause, G6]"
+        },
+        {
+          "severity": "warning",
+          "text": "get-started.html: movement keys are read from event.key: on AZERTY and Dvorak they are not where WASD is. Read event.code. Instead: event.code. [game-key-not-code, G4]"
+        },
+        {
+          "severity": "warning",
+          "text": "get-started.html: the game loop never listens for visibilitychange, so the world runs on in a hidden tab. Instead: Pause on visibilitychange. [game-no-visibility-pause, G6]"
+        },
+        {
+          "severity": "warning",
+          "text": "index.html: a scroll progress bar on a page of 918 words. Instead: Only on long reads. [motion-progress-short-page, M3]"
+        },
+        {
+          "severity": "warning",
+          "text": "index.html: movement keys are read from event.key: on AZERTY and Dvorak they are not where WASD is. Read event.code. Instead: event.code. [game-key-not-code, G4]"
+        },
+        {
+          "severity": "warning",
+          "text": "index.html: the game loop never listens for visibilitychange, so the world runs on in a hidden tab. Instead: Pause on visibilitychange. [game-no-visibility-pause, G6]"
+        },
+        {
+          "severity": "warning",
+          "text": "legal.html: movement keys are read from event.key: on AZERTY and Dvorak they are not where WASD is. Read event.code. Instead: event.code. [game-key-not-code, G4]"
+        },
+        {
+          "severity": "warning",
+          "text": "legal.html: the game loop never listens for visibilitychange, so the world runs on in a hidden tab. Instead: Pause on visibilitychange. [game-no-visibility-pause, G6]"
+        },
+        {
+          "severity": "warning",
+          "text": "pricing.html: movement keys are read from event.key: on AZERTY and Dvorak they are not where WASD is. Read event.code. Instead: event.code. [game-key-not-code, G4]"
+        },
+        {
+          "severity": "warning",
+          "text": "pricing.html: the game loop never listens for visibilitychange, so the world runs on in a hidden tab. Instead: Pause on visibilitychange. [game-no-visibility-pause, G6]"
+        },
+        {
+          "severity": "warning",
+          "text": "thanks.html: movement keys are read from event.key: on AZERTY and Dvorak they are not where WASD is. Read event.code. Instead: event.code. [game-key-not-code, G4]"
+        },
+        {
+          "severity": "warning",
+          "text": "thanks.html: the game loop never listens for visibilitychange, so the world runs on in a hidden tab. Instead: Pause on visibilitychange. [game-no-visibility-pause, G6]"
+        }
+      ]
+    },
+    "security": {
+      "errors": 0,
+      "warns": 0,
+      "low": 0,
+      "note": 1,
+      "findings": [
+        {
+          "severity": "note",
+          "text": "_headers: a CSP is configured and the pages carry inline scripts or handlers"
+        }
+      ]
+    },
+    "render": {
+      "errors": 3,
+      "warns": 17,
+      "findings": [
+        {
+          "severity": "error",
+          "text": "network: HTTP 404 http://127.0.0.1:57336/api/max-waitlist-count (Fetch) - at 1440px, 390px; normal and reduced motion"
+        },
+        {
+          "severity": "warning",
+          "text": "1 canvas painted once and never changed - at 1440px, 390px; normal motion"
+        },
+        {
+          "severity": "warning",
+          "text": "3753 KB transferred over 185 requests - at 1440px; normal motion"
+        },
+        {
+          "severity": "warning",
+          "text": "12 distinct type sizes - at 1440px, 390px; normal and reduced motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -69 for body text on a dark ground (the house rule asks for 75) at 14px, though WCAG passes it at 10.9:1: span.cc-mark-term \">_\" - at 1440px, 390px; normal motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -63 for body text on a dark ground (the house rule asks for 75) at 17px, though WCAG passes it at 9.18:1: p \"Atlias checks changes when a proje\" - at 1440px, 390px; normal and reduced motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -63 for body text on a dark ground (the house rule asks for 75) at 12px, though WCAG passes it at 9.84:1: figcaption \"Illustrative terminal example.\" - at 1440px, 390px; normal and reduced motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -63 for body text on a dark ground (the house rule asks for 75) at 17px, though WCAG passes it at 9.18:1: p \"Project memory, handoff notes and \" - at 1440px, 390px; normal and reduced motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -63 for body text on a dark ground (the house rule asks for 75) at 17px, though WCAG passes it at 9.18:1: p \"Use ChatGPT, Gemini, an Anthropic \" - at 1440px, 390px; normal and reduced motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -68 for body text on a dark ground (the house rule asks for 75) at 13px, though WCAG passes it at 10.17:1: p.step-label \"Step 2\" - at 1440px; normal motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -68 for body text on a dark ground (the house rule asks for 75) at 13px, though WCAG passes it at 10.17:1: p.step-label \"Step 3\" - at 1440px; normal motion"
+        },
+        {
+          "severity": "warning",
+          "text": "3751 KB transferred over 184 requests - at 390px; normal motion"
+        },
+        {
+          "severity": "warning",
+          "text": "largest type on the page is 36px - at 390px; normal and reduced motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -68 for body text on a dark ground (the house rule asks for 75) at 13px, though WCAG passes it at 10.17:1: p.kicker \"03 How it works\" - at 390px; normal motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -68 for body text on a dark ground (the house rule asks for 75) at 13px, though WCAG passes it at 10.17:1: span.num \"03\" - at 390px; normal motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -63 for body text on a dark ground (the house rule asks for 75) at 17px, though WCAG passes it at 9.18:1: p \"Ask a question about your project \" - at 390px, 1440px; normal and reduced motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -68 for body text on a dark ground (the house rule asks for 75) at 13px, though WCAG passes it at 10.17:1: p.step-label \"Step 1\" - at 390px; normal motion"
+        },
+        {
+          "severity": "warning",
+          "text": "APCA Lc -68 for body text on a dark ground (the house rule asks for 75) at 13px, though WCAG passes it at 10.17:1: p.step-label \"Step 4\" - at 390px; normal motion"
+        },
+        {
+          "severity": "note",
+          "text": "canvas .film-canvas is not rendered (in a hidden or closed layer); not checked - at 1440px, 390px; reduced motion"
+        },
+        {
+          "severity": "error",
+          "text": "request never resolved after 5734.60791015625ms: http://127.0.0.1:57336/brand/atlias-mascot-look-right.svg (Image) - at 390px; reduced motion"
+        },
+        {
+          "severity": "error",
+          "text": "request never resolved after 5734.43603515625ms: http://127.0.0.1:57336/brand/atlias-mascot-step.svg (Image) - at 390px; reduced motion"
+        }
+      ],
+      "reviewFile": "C:\\Users\\OWNER\\AppData\\Local\\Temp\\webdesign-review-EhisqV\\review.html"
+    }
+  },
+  "totals": {
+    "error": 14,
+    "warning": 48,
+    "low": 0,
+    "note": 2
+  },
+  "env": [],
+  "exitCode": 1
+}
