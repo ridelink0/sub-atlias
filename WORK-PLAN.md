@@ -8,12 +8,21 @@ on RESEARCH-FIRST 0a H2/H4 and section 9 authority preservation.
 Implemented optional agent.turn steering and structured recovery, TUI follow-up
 setting and alternate key, queue editing/removal, ephemeral no-tool /btw,
 per-project atomic redacted drafts with lifecycle flush and crash tests.
-Functional pass: 203/203, 20 suites (before latest adversarial additions).
-Full npm test started; receipt checks-full.log and checks-full.exit.
+Functional pass: 208/208 in 20 suites. Review-pin/follow-up subset: 42/42.
+All twelve supplemental suites exit 0; exact counts and commands are in
+STEER-QUEUE-DRAFTS-1029.md and checks-steer/receipts.json. Research report read
+twice. Functional and adversarial passes include two planted regressions and
+the standalone default mutation. Runtime implementation c54f780, review pin
+2d3740e. No runtime/test hash changes during the fresh final run.
 
-Next: inspect full-suite results, complete adversarial review and planted
-breaks, run documented supplemental suites, re-read the research report,
-write STEER-QUEUE-DRAFTS-1029.md with exact receipts, and commit locally.
+Shared usage reached 89%; save at this boundary under Gev's cutoff rule.
+First npm test: exit 1, 3400/3402 across 437 suites (old loaded agent module
+against later recovery test, plus the source review pin, both addressed).
+Fresh full run: tool session 32947, checks-final-full.log; the PowerShell
+wrapper writes checks-final-full.exit on completion. It was still running.
+Next: collect its exact exit, main suite count and subsequent Node test count;
+fix any failure, update the PENDING receipt row, and commit locally. Do not
+start a new goal or edit/merge/deploy/push the installed app trees.
 
 ## 2026-10-29 14:37 budget continuation acknowledged
 
