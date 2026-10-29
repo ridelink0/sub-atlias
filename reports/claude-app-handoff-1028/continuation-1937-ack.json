@@ -47,8 +47,8 @@
   ],
   "processObserved": 20484,
   "toolSession": 41382,
-  "runnerExitCode": null,
-  "runnerState": "Live; final result and exit not yet available",
+  "runnerExitCode": 0,
+  "runnerState": "Completed; coordinator exit0 and result success verified",
   "mode": "ordinary existing-session print continuation",
   "backgroundAttempt": {
     "exit": 1,
@@ -58,5 +58,6 @@
   "trustSettingsChangedByCodex": false,
   "duplicateGoalSent": false,
   "fullAppComplete": false,
-  "rawFinalResultPending": "continuation-1937-stdout.json"
+  "finished": "2026-10-29T20:21:02.2963090+00:00",
+  "completedResultFile": "D:/atlias-app/reports/claude-app-handoff-1028/continuation-1937-stdout.json"
 }

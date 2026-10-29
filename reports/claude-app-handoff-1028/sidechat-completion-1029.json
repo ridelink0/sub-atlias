@@ -1,0 +1,40 @@
+{
+  "observedAt": "2026-10-29T20:27:09.260Z",
+  "session": "5277af99-8794-4812-8ae0-5a7ef898ebe4",
+  "mode": "existing-session print continuation",
+  "started": "2026-10-29T19:41:23.6281602+00:00",
+  "finished": "2026-10-29T20:21:02.2963090+00:00",
+  "exit": 0,
+  "resultType": "result",
+  "resultSubtype": "success",
+  "isError": false,
+  "stdoutSha256": "0c26bd2a91012c2c0f12cfd6fcf1096eb5a7be9bb9406156ef8f7daa197d5c7d",
+  "appCommit": "6cbc5831b1388712ff4f1a2c77f6f38e10289d06",
+  "reportedWindows": {
+    "unit": 36,
+    "dev": 34,
+    "packaged": 34
+  },
+  "reportedLinux": {
+    "unit": 36,
+    "xvfb": 33
+  },
+  "reportedMutantsRejected": 2,
+  "scope": "Producer final reply and recorded chain reviewed; this watch did not independently rerun the new product suite",
+  "fullAppComplete": false,
+  "sourceOfCompletion": "Completed coordinator receipt and JSON result, not a running-file marker",
+  "handoff": {
+    "fromSession": "5277af99-8794-4812-8ae0-5a7ef898ebe4",
+    "fromAlias": "owner-c4",
+    "toSession": "54e5574c-72d6-4efe-b3af-6f52a869f45f",
+    "toAlias": "owner-f1",
+    "status": "App tree handed back for Gev's newer batch",
+    "pendingWorktree": "Deferred until owner-f1 finishes"
+  },
+  "limits": [
+    "No native macOS or real Linux desktop evidence",
+    "Real providers/email/live billing remain unverified",
+    "Side-copy cache and usage reset has no separate test",
+    "New product results are producer-reported; current source ownership has moved"
+  ]
+}

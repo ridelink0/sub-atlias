@@ -1,3 +1,11 @@
+## 2026-10-29 side-chat run ended; owner-f1 owns the app tree
+
+Do not launch another app continuation, worktree batch, tests or edits from this watch while owner-f1 or its relay owns the tree. owner-c4 (session5277af99) finished and committed6cbc583, then explicitly handed the app folder to owner-f1 (original VSCode session54e5574c) for Gev's newer Max badge, Appearance and engine-usage batch. Preserve that handoff and all parallel research/Codex worktrees. Worktree mode remains deferred.
+
+The coordinator ended20:21:02Z with actualexit0; the final stdout JSON now parses and says result/success/is_errorfalse. The earlier EOF alert was a pending locked stream, which is now a completed document. Review: reports/claude-app-handoff-1028/sidechat-completion-1029.json. Producer reports Windows36unit/34dev/34packaged and Linux36unit/33Xvfb, plus2caughtmutants; this watch did not rerun those product tests. App report still explicitlyNO, website gate closed.
+
+Quiet watch remains ACTIVE every30minutes. An attempted ownership-prompt update had no RPC result; inspect actual TOML before claiming it saved. Current state and this handoff are authoritative for ownership. Next: freshmeters and current owner's saved artifacts/activity; no competing work. Observe only, preserve live checks and Usage Limits ownership. No push/deploy/cloud/paidAPI/livebilling.
+
 ## 2026-10-29 14:37 budget continuation acknowledged
 
 Wake arrived early at19:33Z; no continuation was sent before the saved19:37Z floor. Fresh Codex0%/~224turns and Claude0% fit a bounded side-chat batch. Native background command refused the home context before launching; no trust settings were changed. Ordinary existing-session print continuation started19:41:23.628Z. Actual assistant ATLIAS-SIDECHAT-CONTINUE-1029-ACK and subsequent tools verify Opus5.5/xhigh in the same5277af99 session. Live CLI process20484, tool session41382; do not restart it. Its final result/exit are pending, so the raw stdout JSON is not a completed receipt yet. Proof: reports/claude-app-handoff-1028/continuation-1937-ack.json.

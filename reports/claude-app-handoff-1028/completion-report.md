@@ -8,6 +8,20 @@ Model: Claude Opus 5.5 at xhigh effort
 
 ## FULLY FINISHED IN EVERY ASPECT: NO
 
+Claude, 2026-10-29 15:20 Central: side chat (docs/UI-COMPARISON-1029.md win 5). Its persistence was established in the harness source before building:
+- `agent.turn` changes only the state it is given, and only `saveChat` writes the chat file.
+- The router, the gate and the event log key everything by that state's session id.
+
+A side question runs on a copy of the saved chat under its own session id. It is read-only (plan stays plan), with relay off and no memory distillation, and saves only the copy.
+
+Results on the final source:
+- Windows unit 36 of 36, exit 0 (`reports/unit-windows-last.log`).
+- Dev window 34 of 34 (`reports/e2e-dev-2026-10-29200526`).
+- Fresh test package, packaged window 34 of 34 (`reports/e2e-packaged-2026-10-29200743`).
+- Linux unit 36 of 36, Xvfb window 33 of 33, deb and rpm (`reports/linux-20261029T200941Z`).
+
+Source scope: the last source edit came before this chain started, and none followed. `reports/fingerprints-20261029T201847.txt` (79 files, list sha256 0f0a6dc7...) is an end snapshot taken after the chain, not a before and after freeze. Harness vendor unchanged at 1cb3b18.
+
 Claude, 2026-10-29 10:10 Central (after the measured reset): the UI comparison's wins 1 to 4 are built (docs/UI-COMPARISON-1029.md), and "Open in terminal" prefers Windows Terminal. All on the final source (fingerprints in `reports/fingerprints-20261029T150904.txt`, 77 files, list sha256 6858adb6...):
 - Windows unit 35 of 35 (`reports/unit-windows-last.log`).
 - Dev window 32 of 32 (`reports/e2e-dev-2026-10-29150002`); fresh test package, packaged window 32 of 32 (`reports/e2e-packaged-2026-10-29150149`).
@@ -89,6 +103,8 @@ Source fingerprints after the final edits: `reports/fingerprints-20261029T070842
 
 | Check | Result | Receipt |
 |---|---|---|
+| Side chat persistence, real harness (test/unit/side.test.mjs) | pass. Every file in the Atlias home named by the chat's session id is byte for byte the same across two side questions and a forged one. The side question saw the chat. Its edit was refused while the chat's mode was workspace. The follow-up continued the copy. The forged side job aimed at the chat was refused. Side chats are out of the list and search, and the chat continued with nothing from the side thread. Two planted regressions (no read-only override, no forged-session refusal) each failed it, exit 1 | reports/unit-windows-last.log |
+| Side chat in the window, Windows dev and packaged, Linux Xvfb | 2 steps each, pass. Empty state with focus in the box. Two answers on one side session. Edit refused; chat file hash, transcript, list and search unchanged. "Not run: connect a model first". A command waiting for approval in the side pane, stopped. Esc returns focus to the message box. The thread comes back on reopen. New side chat starts empty. axe-core on the pane in light and dark | e2e receipts above |
 | Unit and integration tests, Windows 11, final source (adds review.test.mjs: parser, stage, unstage, revert, refusals, permission cycle, Windows Terminal choice, cmd in a non-ASCII folder) | 35 of 35 pass, 0 skipped, exit 0 | reports/unit-windows-last.log |
 | End to end, development build and fresh packaged test build, Windows 11, final source | 32 of 32 each, exit 0. New: Waiting and Running filters (an unsaved running chat reopened from the sidebar), Shift+Tab cycle with two quick presses, two diff comments (mouse and keyboard) arriving as one model message, stage, a refused stale revert, revert, untracked delete, axe-core on the review pane and sidebar in light and dark | reports/e2e-dev-2026-10-29150002, reports/e2e-packaged-2026-10-29150149 |
 | Linux (WSL2 Ubuntu 26.04.1), final source | unit 35 of 35; Xvfb e2e 31 of 31 (UI Automation is Windows only); deb 94,126,292 bytes sha256 8716c5e9...; rpm 103,355,982 bytes sha256 4c3158c7... | reports/linux-20261029T150311Z/receipt.txt |
@@ -170,6 +186,10 @@ All billing used the local fake provider with test ids. All email went to local 
 31. In light mode the Changes pane's green "+N" read 4.32:1. The light green is now #0f6e42. The audit had never run with that pane open; it does now.
 32. The new comment list's links read under 4.5:1 in dark mode; they now take the ink colour with an underline. The running and waiting word was cut off at the end of a narrow sidebar row; it now comes first.
 33. With the review pane open, the message box's hint wrapped into a scrollbar. It now ends in an ellipsis on one line.
+34. A side job naming the chat's own session would have saved into the chat. The runner now refuses a side job for any session not marked as a side chat; a planted regression proved the test catches it.
+35. A side copy carried the chat's cache and usage tallies, so a side answer would report the chat's use as well. They are reset on the copy. This one is not separately tested.
+36. The workspace audit now ran while a job card with a Files changed link was open, and in dark mode the accent link read under 4.5:1. Links like it now use the ink colour with an underline.
+37. On Linux, focus reached the message box one frame after the side pane closed. It now moves before the pane goes.
 
 ## Not verified, or not built (why it is not finished)
 
@@ -200,7 +220,12 @@ All billing used the local fake provider with test ids. All email went to local 
   - "Open in terminal" through Windows Terminal ran for real in a named window. The app's own `-w 0` (the most recent window) was not run, so as not to add a tab to a window of Gev's. The cmd fallback is unit-tested with a stand-in; that window was not opened.
   - The provider's own sign-in was not completed.
 - **UI comparison**: written (docs/UI-COMPARISON-1029.md); wins 1 to 4 are built.
-  - Still to build: side chat and worktree mode.
+  - Side chat (win 5) is built.
+    - A side question sees the chat only up to its last finished turn.
+    - A side chat on a chat not yet saved starts without that chat's conversation.
+    - Chats on the claude and codex host engines are refused, with the reason.
+    - The header buttons Side chat and Changes show no pressed look when their pane is open.
+  - Still to build: worktree mode.
   - The status filter covers the open project, not every project.
 - **Leftovers on this PC from my checks** (deletion was declined):
   - `%LOCALAPPDATA%\atlias_max`: Squirrel's `.dead` residue, which Squirrel removes on the next install;
