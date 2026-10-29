@@ -1087,6 +1087,7 @@ await (await import('./context-suites.mjs')).default({ asyncSuite, check, agentM
 await (await import('./editbench-suites.mjs')).default({ asyncSuite, check, skip, TMP, fs, path });
 await (await import('./tier-suites.mjs')).default({ asyncSuite, check, TMP, ROOT, fs, path, spawnSync });
 await (await import('./proc-suites.mjs')).default({ asyncSuite, check, skip, TMP, ROOT, fs, path });
+await (await import('./proc-abort-suites.mjs')).default({ asyncSuite, check, TMP, ROOT, fs, path });
 await (await import('./control-suites.mjs')).default({ suite, asyncSuite, check, TMP, ROOT, fs, path, spawnSync });
 await (await import('./lean-suites.mjs')).default({ suite, check, brief, TMP, ROOT, fs, path });
 await (await import('./gatecheck-suites.mjs')).default({ suite, check, skip, core, gate, router, track, TMP, fs, path });

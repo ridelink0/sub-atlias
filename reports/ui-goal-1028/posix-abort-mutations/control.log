@@ -1,0 +1,5 @@
+PASS interrupt stops simultaneous commands and their descendants, including a POSIX shell
+PASS an interrupted command has no successful status and reports why it stopped
+PASS an unresponsive watchdog is bounded and its recorded command is ended too
+PASS repeated idle interrupts leave the next command and its successful result intact
+{"passed":4,"failed":0}

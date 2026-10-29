@@ -1,0 +1,3 @@
+control: expected exit 0, intended assertion verified
+premature-watchdog-kill: expected exit 1, intended assertion verified
+missing-command-group-cleanup: expected exit 1, intended assertion verified

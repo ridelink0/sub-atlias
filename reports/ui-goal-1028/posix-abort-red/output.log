@@ -1,0 +1,15 @@
+FAIL interrupted commands end their descendants and report failure (process tree expert): 1 passed, 3 failed
+  x interrupt stops simultaneous commands and their descendants, including a POSIX shell
+    What happened: {"ready":true,"gone":false,"files":[{"parent":492,"child":507,"parentActive":true,"childActive":true},{"parent":494,"child":508,"parentActive":true,"childActive":true}]}
+    Why it matters: A stopped job must leave no active command or descendant and must never report success.
+    Fix: Signal the POSIX watchdog before ending it; force cleanup of its recorded command group if it does not respond.
+  x an interrupted command has no successful status and reports why it stopped
+    What happened: [{"status":null,"error":"the watchdog ended without a verdict (exit null, SIGKILL)"},{"status":null,"error":"the watchdog ended without a verdict (exit null, SIGKILL)"}]
+    Why it matters: A stopped job must leave no active command or descendant and must never report success.
+    Fix: Signal the POSIX watchdog before ending it; force cleanup of its recorded command group if it does not respond.
+  x an unresponsive watchdog is bounded and its recorded command is ended too
+    What happened: {"stuckReady":729,"stuckGone":false,"status":null,"error":"the watchdog ended without a verdict (exit null, SIGKILL)"}
+    Why it matters: A stopped job must leave no active command or descendant and must never report success.
+    Fix: Signal the POSIX watchdog before ending it; force cleanup of its recorded command group if it does not respond.
+
+1/4 checks passed across 1 suites.

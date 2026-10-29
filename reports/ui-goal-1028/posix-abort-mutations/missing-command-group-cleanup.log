@@ -1,0 +1,5 @@
+PASS interrupt stops simultaneous commands and their descendants, including a POSIX shell
+PASS an interrupted command has no successful status and reports why it stopped
+FAIL an unresponsive watchdog is bounded and its recorded command is ended too {"happened":"{\"stuckReady\":1134,\"stuckGone\":false,\"status\":null,\"error\":\"the watchdog ended without a verdict (exit null, SIGKILL)\"}","why":"A stopped job must leave no active command or descendant and must never report success.","fix":"Signal the POSIX watchdog before ending it; force cleanup of its recorded command group if it does not respond."}
+PASS repeated idle interrupts leave the next command and its successful result intact
+{"passed":3,"failed":1}

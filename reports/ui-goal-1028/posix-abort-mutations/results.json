@@ -1,0 +1,26 @@
+{
+  "platform": "linux",
+  "receipts": [
+    {
+      "name": "control",
+      "syntaxExit": 0,
+      "exit": 0,
+      "expectedFailure": null,
+      "log": "control.log"
+    },
+    {
+      "name": "premature-watchdog-kill",
+      "syntaxExit": 0,
+      "exit": 1,
+      "expectedFailure": "interrupt stops simultaneous commands and their descendants",
+      "log": "premature-watchdog-kill.log"
+    },
+    {
+      "name": "missing-command-group-cleanup",
+      "syntaxExit": 0,
+      "exit": 1,
+      "expectedFailure": "an unresponsive watchdog is bounded and its recorded command is ended too",
+      "log": "missing-command-group-cleanup.log"
+    }
+  ]
+}
