@@ -1,0 +1,26 @@
+{
+  "observedAt": "2026-10-29T07:47:44Z",
+  "session": "54e5574c-72d6-4efe-b3af-6f52a869f45f",
+  "model": "Opus 5.5",
+  "effort": "xhigh",
+  "activity": "Windows app end-to-end test under repair and rerun; active Stop button",
+  "appGoalAcknowledged": true,
+  "goalAckFile": "reports/claude-app-handoff-1028/goal-ack.md",
+  "harnessCommitRequired": "d6c0930c639909187f73222072d29678e9960dac",
+  "lastObservedVendorCommit": "da75f6ea52c2160a05e6093bc4f3ff6d19a7e6d5",
+  "revisionFollowup": {
+    "state": "queued",
+    "evidence": "Message queued. and You, queued article; composer empty",
+    "assistantAcknowledgementObserved": false,
+    "vendorRefreshObserved": false
+  },
+  "completion": {
+    "explicitFullCompletionObserved": false,
+    "macOSVerified": false,
+    "windowsVerified": false,
+    "linuxVerified": false,
+    "localWebsiteGateOpen": false
+  },
+  "watchAutomation": "atlias-finish-local-fixes",
+  "notificationFingerprint": "local-integrity-d6c0930-passed;app-working-xhigh;revision-update-queued;completion-unverified"
+}

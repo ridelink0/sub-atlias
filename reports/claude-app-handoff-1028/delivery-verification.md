@@ -11,3 +11,9 @@ Verified October29,2026 after the01:42Central retry. The original23:05 delivery 
 - Subsequent actual tool activity read the full brief, final research report, platform/product/visual notes and Stripe readiness document, then inspected the Atlias repository for implementation. UI displayed `Claude is working`, an active Stop button and `Extra high` in this same chat.
 
 Pass1: effort command acknowledgement and actual assistant goal acknowledgement were observed. Pass2: independent acknowledgement-file readback matched the destination, scope and effort; later same-chat tool calls confirmed active work. This proves receipt, current effort and active work, not application completion or platform readiness. Do not add an app listing until the separate fully-finished-in-every-aspect evidence gate is met.
+
+## Verified harness update queued October29
+
+By07:47UTC the same chat visibly displayed `Message queued.` and a separate `You, queued` article containing the Codex update for committed harness revision `d6c0930`. The composer was empty, `Extra high` remained visible and the Stop button was active while Claude repaired and reran the app's Windows end-to-end test. This confirms queue acceptance; a Claude response or completed vendor refresh for this follow-up has not yet been observed. It was a plain follow-up, not another `/goal`, and the active test was preserved.
+
+The message points Claude to the actual3366/3366 plus39/39 full-suite receipt and requires the verified Git discovery repair before final qualification. The last observed `VENDOR.json` still named `da75f6e`; the completion watch must verify the refreshed harness and actual three-desktop evidence. The fulfilled delivery automation was deleted. The existing local-fixes heartbeat now quietly watches app completion every30 minutes. Neither this queue receipt nor the passing terminal suite establishes desktop-app completion or live Stripe readiness.
