@@ -1,3 +1,9 @@
+## 2026-10-29 after-reset continuation observed (5277af99)
+
+The existing Usage Limits relay fired at09:26:59 Central and started a fresh headless continuation because the original VS Code chat54e5574c was idle. Active session is 5277af99-8794-4812-8ae0-5a7ef898ebe4; actual assistant replies from09:30:34 Central onward and current tool activity show claude-opus-5-5 at xhigh. The original VS Code chat still shows Opus5.5 Extra high and Ready for input. Task Running/result267009 is in progress, not an exit or success. No duplicate goal, prompt, restart or Usage Limits edit by Codex. Receipt: reports/claude-app-handoff-1028/after-reset-continuation-1029.json.
+
+App report/progress/vendor/QA fingerprints are unchanged and completion remains NO. Prior qualified source baseline is8c1bcea; new continuation work needs its own actual test receipts. Keep local website gate closed and quiet30-minute watch active. Next: inspect active continuation artifacts/transcript/process, preserve live tests, never rerun the dated paused-checkpoint script to overwrite active status. Local only; no push/deploy/charges.
+
 ## 2026-10-29 local app repairs verified (8c1bcea)
 
 Actual exits verified: Windows unit29/29, dev29/29, package build and packaged29/29; Linux private-copy unit29/29 and Xvfb28/28. All final runs froze51 source/renderer files. Account-service HTTP mailer send-failure retry, Stop, workers, membership gating and terminal workflows passed within local fixture scope. Fixed terminal ANSI contrast (32 samples per platform/build, minimum4.512:1) and detached Windows updater waiting/error/timeout handling. Two actual semantic regressions were caught; bundle restored exactly. See reports/claude-app-handoff-1028/LOCAL-APP-QA-1029.md and app-local-qualification-1029.json. Local app commit 8c1bcea2c216e17d5c6861598963accaf2a8ed37. No push/deploy/charge.
