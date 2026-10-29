@@ -1,0 +1,465 @@
+Sub-atlias with claude
+Model: fixture-model | Your provider API billing
+Describe a task in the host prompt. Use its /help for commands.
+Usage receipts: C:\Users\OWNER\AppData\Local\Temp\atlias-test-WPnYeW\project\native-process-fixture\usage.jsonl
+{"calls":2,"unknownUsage":0,"totalTokens":24,"estimatedCost":{"value":0.000072,"currency":"USD","kind":"estimate"}}
+PASS payload shapes (payload expert): 7 passed, 0 failed
+PASS token efficiency (cache and token expert): 10 passed, 0 failed
+PASS guards (guard expert): 46 passed, 0 failed
+PASS verification gate (gate expert): 8 passed, 0 failed
+PASS progress note (handoff expert): 5 passed, 0 failed
+PASS dream (memory and Dream expert): 10 passed, 0 failed
+PASS host integration (host integration expert): 13 passed, 0 failed
+PASS end to end hooks (dispatcher expert): 10 passed, 0 failed
+PASS mcp server (MCP expert): 8 passed, 0 failed
+PASS logo (ship expert): 8 passed, 0 failed
+PASS regular agent (agent expert): 6 passed, 0 failed
+PASS agent runtime (agent runtime expert): 5 passed, 0 failed
+PASS extra harnesses (extra harness expert): 10 passed, 0 failed
+PASS hook budgets (reliability expert): 8 passed, 0 failed
+PASS bench (measurement expert): 11 passed, 0 failed
+PASS platform assumptions (platform expert): 7 passed, 0 failed
+PASS verification honesty (verification honesty expert): 7 passed, 0 failed
+PASS stale answers (staleness expert): 5 passed, 0 failed
+PASS configuration respected (configuration expert): 4 passed, 0 failed
+PASS long sessions (long session expert): 6 passed, 0 failed
+PASS recall budget (recall budget expert): 4 passed, 0 failed
+PASS live interventions (live count expert): 4 passed, 0 failed
+PASS empty graph answers (empty answer expert): 4 passed, 0 failed
+PASS release numbering (release expert): 6 passed, 0 failed
+PASS edits made outside the tools (shell edit expert): 6 passed, 0 failed
+PASS state preservation (state preservation expert): 5 passed, 0 failed
+PASS two sessions ending at once (concurrency expert): 3 passed, 0 failed
+PASS hook output is never truncated (flush expert): 5 passed, 0 failed
+PASS bounded writes (bounded writes expert): 6 passed, 0 failed
+PASS turns that did nothing (idle turn expert): 5 passed, 0 failed
+PASS each harness is called by its own name (naming expert): 7 passed, 0 failed
+PASS nothing is cut in the middle (truncation expert): 7 passed, 0 failed
+PASS engine handshake (engine handshake expert): 12 passed, 0 failed
+PASS small edges (small edges expert): 5 passed, 0 failed
+PASS host configs survive an update (durable path expert): 13 passed, 0 failed
+PASS settings refuse the wrong type (settings expert): 7 passed, 0 failed
+PASS a turn longer than the window (long turn expert): 4 passed, 0 failed
+PASS the memory index cannot be overwritten (index safety expert): 9 passed, 0 failed
+PASS nothing grows for ever (leak expert): 5 passed, 0 failed
+PASS writes outside the project (blast radius expert): 7 passed, 0 failed
+PASS the launcher stands alone (launcher expert): 5 passed, 0 failed
+PASS the doctor proves what it reports (proof expert): 15 passed, 0 failed
+PASS what a reply claims (claims expert): 3 passed, 0 failed
+PASS reading what a check said (test result expert): 13 passed, 0 failed
+PASS claims against evidence (evidence expert): 26 passed, 0 failed
+PASS reading what changed (diff expert): 4 passed, 0 failed
+PASS stubs and elided code (placeholder expert): 3 passed, 0 failed
+PASS weakened tests (test weakening expert): 4 passed, 0 failed
+PASS code that nothing calls (wiring expert): 4 passed, 0 failed
+FAIL the gate on a real repository (end to end integrity expert): 8 passed, 5 failed
+  x another Windows volume cannot make this repository diff incomplete
+    What happened: null
+    Why it matters: Windows returns an absolute relative-path result across volumes; passing it to git aborts every local integrity check.
+    Fix: Exclude absolute cross-volume paths from this repository diff.
+  x the diff sees tracked edits and untracked files
+    What happened: 0 added lines
+    Why it matters: A new file written this turn is the easiest place for an unwired feature to hide.
+    Fix: Check diffFor: git diff HEAD plus ls-files --others.
+  x one block names every problem at once
+    What happened: atlias gate: 2 things to settle before this reply ends.
+                   
+                   1. The reply says a check passed, but no check ran this turn.
+                   Why it matters: a result that was never produced is a claim, not evidence.
+                   Fix: run the check now and quote its result, or remove the claim.
+                   
+                   2. The second pass: 3 file(s) changed this turn and the reply names only one bug-check.
+                   Changed: src\app.js, test\app.test.js, src\extra.js
+    Why it matters: After a Stop hook blocks the host sets stop_hook_active and the gate never speaks again in that chain, so every finding has to be in the first block.
+    Fix: Collect integrity.check() findings into the single block in gate.stop.
+  x the unwired list names the right functions
+    What happened: 
+    Why it matters: Flagging a function that is called would send the model to wire in code that is already wired.
+    Fix: Count references with git grep -w across the repository.
+  x an honest reply is held only for the code itself, not for its words
+    What happened: not held
+    Why it matters: The placeholders are still real; the claim is not there to hold.
+    Fix: HONEST_RE suppresses the claim checks only.
+PASS transcript recovery: preserve full check identity without promoting unknown results (recovered check identity expert): 5 passed, 0 failed
+PASS what counts as a check in a host session (check recognition expert): 5 passed, 0 failed
+PASS the gate does not buy a round it does not need (gate cost expert): 8 passed, 0 failed
+PASS a check the transcript saw counts when its hook was cancelled (cancelled hook expert): 11 passed, 0 failed
+PASS the brief asks for the fewest rounds (brief rounds expert): 3 passed, 0 failed
+PASS where the command goes (shortcut planning expert): 7 passed, 0 failed
+PASS installing the command (shortcut install expert): 7 passed, 0 failed
+PASS the terminal command follows current installs without a stale plugin downgrade (shortcut resolution expert): 10 passed, 0 failed
+PASS typing atlias actually runs atlias (terminal command expert): 2 passed, 0 failed
+PASS repairing what weak models write (tool call repair expert): 15 passed, 0 failed
+PASS reading in windows (reading expert): 7 passed, 0 failed
+PASS an edit that nearly matches still lands, or is refused for a reason (edit ladder expert): 7 passed, 0 failed
+PASS editing by exact replacement (editing expert): 12 passed, 0 failed
+PASS long output keeps its end (output expert): 4 passed, 0 failed
+PASS a shell command that hangs is stopped with everything it started (timeout expert): 5 passed, 0 failed
+PASS every block in a reply runs in order, and a failed one stops the rest by name (several blocks expert): 8 passed, 0 failed
+PASS apply_patch, the Codex edit format (patch expert): 16 passed, 0 failed
+PASS saved sessions, exec, status, diff and review (session expert): 12 passed, 0 failed
+PASS the harness checks, outlines, permissions and stuck loops (harness check expert): 11 passed, 0 failed
+PASS the agent says when the gate held an answer (held answer expert): 1 passed, 0 failed
+PASS project instruction files and /compact (instructions expert): 7 passed, 0 failed
+PASS a program given by its path (command reading expert): 8 passed, 0 failed
+PASS context stays small (context budget expert): 10 passed, 0 failed
+PASS output is capped where it enters (ingestion expert): 19 passed, 0 failed
+PASS what the provider says it served from cache (cache readout expert): 16 passed, 0 failed
+PASS the plan stays in view (planning expert): 4 passed, 0 failed
+PASS no done without a check (finishing expert): 6 passed, 0 failed
+PASS broken blocks and loops (recovery expert): 4 passed, 0 failed
+PASS the openai engine speaks the real wire format (wire format expert): 12 passed, 0 failed
+PASS OpenAI endpoint boundary (provider boundary expert): 14 passed, 0 failed
+PASS sub-harness, harness, or both (modes expert): 5 passed, 0 failed
+PASS every option can be changed (settings expert): 9 passed, 0 failed
+PASS the command line speaks modes and settings (command line expert): 5 passed, 0 failed
+PASS a task is scored by the check, not the claim (harness scoreboard expert): 18 passed, 0 failed
+PASS a converted task is proved before it is kept (borrowed corpus expert): 11 passed, 0 failed
+PASS a difference between two runs is judged, not eyeballed (paired comparison expert): 12 passed, 0 failed
+PASS a report says the rounds its tasks ran on, and a run can override them (round budget expert): 3 passed, 0 failed
+PASS a failing task says how much of the check passed (partial credit expert): 4 passed, 0 failed
+PASS a comparison says what it could never have detected (small-sample statistics expert): 20 passed, 0 failed
+PASS a score names the code behind it and cannot be bought (eval provenance expert): 26 passed, 0 failed
+PASS workspaces go where they can be made, and a long run keeps what it did (eval workspace expert): 7 passed, 0 failed
+PASS a run counts the engine tokens it spent and what the model was handed (token accounting expert): 9 passed, 0 failed
+PASS toolTrace lists the tools a run used by name, in order, and nothing else (eval expert): 1 passed, 0 failed
+PASS taskState gives every task a fresh state of its own in its own folder (eval expert): 2 passed, 0 failed
+PASS the tool hooks have room, and fire where they do something (hook budget expert): 5 passed, 0 failed
+PASS Codex edits are seen (codex payload expert): 8 passed, 0 failed
+PASS two calls taking turns are stopped in every host (stuck pattern expert): 2 passed, 0 failed
+PASS destructive commands on hosts that cannot ask (approval expert): 7 passed, 0 failed
+PASS host config: installation preserves unreadable or malformed existing JSON (host config expert): 33 passed, 0 failed
+PASS the file and process helpers (file helper expert): 19 passed, 0 failed
+PASS the gate report and syntax report (gate helper expert): 2 passed, 0 failed
+PASS the graph helpers (graph helper expert): 6 passed, 0 failed
+PASS the dream helpers (dream helper expert): 3 passed, 0 failed
+PASS the handoff note helpers (handoff helper expert): 3 passed, 0 failed
+PASS the session brief helpers (brief helper expert): 2 passed, 0 failed
+PASS one copy of each companion, never two (companion expert): 11 passed, 0 failed
+PASS the hook dispatcher (hook dispatch expert): 2 passed, 0 failed
+PASS subagent results are recorded (subagent expert): 1 passed, 0 failed
+PASS Codex install round trip and the doctor (host config expert): 4 passed, 0 failed
+PASS the extra harness helpers (extra harness helper expert): 4 passed, 0 failed
+PASS the integrity helpers (integrity helper expert): 4 passed, 0 failed
+PASS the logo helpers (logo helper expert): 2 passed, 0 failed
+PASS the tool loop helpers (loop helper expert): 5 passed, 0 failed
+PASS the settings helpers (settings helper expert): 3 passed, 0 failed
+PASS the terminal command paths (shortcut path expert): 2 passed, 0 failed
+PASS after a compaction the model is told what the summary left out (compaction expert): 4 passed, 0 failed
+PASS pointer-first: a whole file instead of a graph query (pointer-first expert): 14 passed, 0 failed
+PASS pointer-first: the parts the nudge is made of (pointer-first helper expert): 11 passed, 0 failed
+PASS the skills the hosts already read (skills expert): 17 passed, 0 failed
+PASS skill index: the setting is registered with its three choices and defaults to off (skill index expert): 4 passed, 0 failed
+PASS skill index: off, the default, puts nothing in the system message (skill index expert): 3 passed, 0 failed
+PASS skill index: all is the index exactly as every earlier run built it (skill index expert): 4 passed, 0 failed
+PASS skill index: relevant names only the skills that share words with the request (skill index expert): 8 passed, 0 failed
+PASS skill index: relevant is capped, in lines and in characters (skill index expert): 3 passed, 0 failed
+PASS skill index: the loop reads the setting and an unknown value is off (skill index expert): 4 passed, 0 failed
+PASS the sandbox says no before it pretends (sandbox refusal expert): 12 passed, 0 failed
+PASS a worktree the agent can work in (sandbox worktree expert): 15 passed, 0 failed
+PASS take it or drop it (sandbox decision expert): 14 passed, 0 failed
+PASS the setting and the flag (sandbox wiring expert): 8 passed, 0 failed
+PASS every way out of a run names itself (exit reason expert): 10 passed, 0 failed
+PASS a reply the provider cut off is not run (truncation expert): 2 passed, 0 failed
+PASS replies that produce nothing are counted apart from the rounds (stall expert): 12 passed, 0 failed
+PASS the scoreboard carries the reason (eval stop expert): 2 passed, 0 failed
+PASS the run says what is left and what did not apply (budget and edit expert): 11 passed, 0 failed
+PASS an edit that fails only on its indentation is re-based, not refused (edit repair expert): 16 passed, 0 failed
+PASS a rule survives the cut that drops everything else (standing rule expert): 6 passed, 0 failed
+PASS the model is told how much room it has, and an overflow is an error (context window expert): 15 passed, 0 failed
+PASS CanItEdit converter keeps the tests hidden and proves each task (benchmark expert): 7 passed, 0 failed
+PASS hidden grader files reach the workspace only after the model stops (benchmark expert): 4 passed, 0 failed
+PASS HumanEvalFix converter: visible tests, throwing console.assert, both languages (benchmark expert): 7 passed, 0 failed
+PASS a proof that cannot run says why instead of "no output" (benchmark expert): 4 passed, 0 failed
+PASS a tier is named, reproducible, and honest when it is not here (benchmark tier expert): 10 passed, 0 failed
+PASS a stub that hangs is not asked again three times (conversion cost expert): 2 passed, 0 failed
+PASS the refactor tier grades the AST and proves every task (big-file benchmark expert): 17 passed, 0 failed
+PASS code that never stops is stopped with everything it started (process tree expert): 13 passed, 0 failed
+PASS an eval task ends what its commands left running (process tree expert): 1 passed, 0 failed
+PASS the mini-swe-agent head-to-head runner ends its trees too (process tree expert): 2 passed, 0 failed
+PASS a command that takes too much memory is stopped, and only when a limit is given (process tree expert): 9 passed, 0 failed
+PASS help runs nothing, and an eval stops when whatever started it is gone (command line expert): 3 passed, 0 failed
+PASS a round-five flag is a config key the environment can switch per arm (flag plumbing expert): 10 passed, 0 failed
+PASS every report names its flags, and an arm with a bad flag does not start (flag plumbing expert): 6 passed, 0 failed
+PASS a row counts landed edits, masked results, re-reads and cached tokens (ledger expert): 6 passed, 0 failed
+PASS compare carries the ledger and the flags of both arms (ledger expert): 4 passed, 0 failed
+PASS with every flag off the runner sends and writes what the baseline did (control expert): 9 passed, 0 failed
+PASS the lean brief cuts what every request pays for (lean brief expert): 7 passed, 0 failed
+PASS the brief says when the gate will run the check (lean brief expert): 7 passed, 0 failed
+PASS the skills the plugin ships describe themselves briefly (lean brief expert): 1 passed, 0 failed
+PASS the gate finds the check a project shows (gate check expert): 12 passed, 0 failed
+PASS when the gate wants a check, and how it runs one (gate check expert): 11 passed, 0 failed
+PASS the gate runs the check and holds only on a failure (gate check expert): 10 passed, 0 failed
+PASS the check is stopped at its bound, and off changes nothing (gate check expert): 5 passed, 0 failed
+PASS Codex native evidence is scoped, complete and distinct from printed JSON (Codex compatibility expert): 38 passed, 0 failed
+PASS Codex compatibility preserves memory, compaction, stdin assertions and other owners (Codex compatibility expert): 12 passed, 0 failed
+PASS Codex native MCP verification preserves partial and failed syntax results (Codex compatibility expert): 8 passed, 0 failed
+PASS Codex gate recovers real hook-shaped results without weakening failed or unknown checks (Codex compatibility expert): 7 passed, 0 failed
+PASS Codex native recovery actual-line planted regressions (Codex compatibility expert): 12 passed, 0 failed
+PASS Codex native hook processes accept real interpreter exits and preserve blockers (Codex compatibility expert): 1 passed, 0 failed
+PASS the brief can carry no working rules at all (no working rules expert): 5 passed, 0 failed
+PASS the gate never holds a done reply for the want of a check (quiet done claim expert): 7 passed, 0 failed
+PASS the flag is registered like every round-five flag (same text expert): 1 passed, 0 failed
+PASS an edit that re-sends its own text is steered, not struck (same text expert): 4 passed, 0 failed
+PASS a repeat switches a Python file to its whole def (same text expert): 6 passed, 0 failed
+PASS a repeat elsewhere switches to the whole file (same text expert): 3 passed, 0 failed
+PASS finding a def by its header (same text expert): 8 passed, 0 failed
+PASS the eval row and the comparison carry the share (same text expert): 3 passed, 0 failed
+PASS the flag is registered like every round-five flag (stray tool call expert): 1 passed, 0 failed
+PASS the reader tells a stray tool call from an answer (stray tool call expert): 5 passed, 0 failed
+PASS a mis-named shell call is run instead of ending the task (stray tool call expert): 3 passed, 0 failed
+PASS an unreadable call is answered, counted as a bad reply, and never run (stray tool call expert): 3 passed, 0 failed
+PASS ordinary replies are untouched with the flag on (stray tool call expert): 3 passed, 0 failed
+PASS guard reset: the flag is registered like every round-five flag (guard reset expert): 2 passed, 0 failed
+PASS guard reset: an edit that lands in between lets the same call run again, when the flag is on (guard reset expert): 5 passed, 0 failed
+PASS guard reset: only an edit that really landed clears the record (guard reset expert): 4 passed, 0 failed
+PASS guard reset: the counter counts clears of a record that held something (guard reset expert): 4 passed, 0 failed
+PASS guard reset: the eval row carries guardResets (guard reset expert): 1 passed, 0 failed
+PASS the PreToolUse guard and an edit in between (guard hook reset): 3 passed, 0 failed
+PASS A B A, an edit, B A B (Codex F4) (guard hook alternating): 3 passed, 0 failed
+PASS a search for a word is not the command it names (Codex F5) (guard command positions): 10 passed, 0 failed
+PASS an edit that returns a file to content an earlier edit left it with resets nothing (council 1013b, b05, b06) (guard hook revert): 5 passed, 0 failed
+PASS the stored edit event: flag off is the line before 19b92cb, the marks only under the flag (council 1013b, b03, b05) (guard hook edit record): 4 passed, 0 failed
+PASS subagents apart: the tag is added only with the flag on and a real agent id (subagents apart expert): 1 passed, 0 failed
+PASS subagents apart: a main shell change to a file a subagent also edited is still held (subagents apart expert): 3 passed, 0 failed
+PASS subagents apart: a subagent edit does not hold the main reply (subagents apart expert): 3 passed, 0 failed
+PASS subagents apart: the main session's own edit is still held (subagents apart expert): 2 passed, 0 failed
+PASS subagents apart: flag off stores the edit the old way (subagents apart expert): 2 passed, 0 failed
+PASS subagents apart: the guard tags a subagent's calls, refusals and failed checks (subagents apart expert): 3 passed, 0 failed
+PASS subagents apart: git does not hand back a subagent's file as the main session's (subagents apart expert): 2 passed, 0 failed
+PASS subagents apart: a subagent's check is not the main session's check (subagents apart expert): 2 passed, 0 failed
+PASS subagents apart: parallel guards and oversized events retain their actor (subagents apart expert): 4 passed, 0 failed
+PASS subagents apart: recovered checks, handoffs and companion hints stay with their actor (subagents apart expert): 6 passed, 0 failed
+PASS subagents apart: MCP progress explicitly retains shared project scope (subagents apart expert): 2 passed, 0 failed
+PASS subagents apart: prompt boundaries, checks and exact authority are separate (subagents apart expert): 5 passed, 0 failed
+PASS skill versions: full exact bodies once with every ordered occurrence (skill version expert): 9 passed, 0 failed
+PASS native protocol: local URLs and every retried request have independent accounting (provider boundary expert): 7 passed, 0 failed
+PASS native protocol: reject the whole malformed call set before effects (native protocol expert): 29 passed, 0 failed
+PASS native protocol: response bounds stop once without body echo or retries (provider resource expert): 7 passed, 0 failed
+PASS uncertain discovery never claims no check exists (brief no-check adversary): 6 passed, 0 failed
+PASS no check is named, so the brief says not to write one (brief no-check expert): 11 passed, 0 failed
+PASS the Stop gate gets 45 seconds on every host (stop budget expert): 1 passed, 0 failed
+PASS with every flag off, the brief and the Codex block are the text of commit 0499c78 (flag-off golden expert): 1 passed, 0 failed
+PASS tool set: the setting is registered, defaults to all, and all is the list as it was (tool set expert): 3 passed, 0 failed
+PASS tool set: core offers seven tools and says nothing about the ones it leaves out (tool set expert): 4 passed, 0 failed
+PASS tool set: the loop offers what the setting says, and a tool that is not offered still runs (tool set expert): 3 passed, 0 failed
+PASS red check: the flag is registered like every round-five flag (red check expert): 1 passed, 0 failed
+PASS red check: an answer given while the newest check failed is sent back once, when the flag is on (red check expert): 6 passed, 0 failed
+PASS compaction: the request survives the cut, word for word (context expert): 5 passed, 0 failed
+PASS meter: counting is exact and a table says what was counted (meter expert): 8 passed, 0 failed
+PASS meter: the exact ledger keeps unknown counts unknown and only tool metadata (meter expert): 15 passed, 0 failed
+PASS meter: every hook passes its event on exactly as it arrived (meter expert): 5 passed, 0 failed
+PASS meter: the plugin is declared the way Claude Code reads a mod (meter expert): 3 passed, 0 failed
+PASS unknown or contradictory requests cannot become exact totals (report accounting metadata): 34 passed, 0 failed
+PASS authority: exact requests survive save, resume and repeated compaction (authority expert): 9 passed, 0 failed
+PASS authority: every request is kept for the ledger (Codex F3) (authority expert): 2 passed, 0 failed
+PASS authority: budgets retire evidence rather than requests (authority expert): 5 passed, 0 failed
+PASS efficiency: native placement preserves complete contracts (efficiency expert): 18 passed, 0 failed
+PASS public subharness: profile and pricing contracts (public provider expert): 17 passed, 0 failed
+PASS public subharness: terminal usage parser (public wire expert): 13 passed, 0 failed
+PASS public subharness: exact transport and credential isolation (public transport expert): 8 passed, 0 failed
+PASS public subharness: native command and follow-up routing (public native launcher expert): 4 passed, 0 failed
+PASS public subharness: launcher forwards native follow-ups and records calls (public launcher process expert): 3 passed, 0 failed
+PASS public subharness: exact follow-ups and selected skill retention (public authority expert): 18 passed, 0 failed
+PASS public subharness: concurrent hooks retain every instruction (public concurrent authority expert): 1 passed, 0 failed
+PASS Ultimate execution contracts (execution oracle expert): 7 passed, 0 failed
+PASS the flag is registered like every round-five flag (finish on green expert): 1 passed, 0 failed
+PASS an edit that turns the visible check green ends the run there (finish on green expert): 2 passed, 0 failed
+PASS a failing check adds nothing and the run goes on (finish on green expert): 1 passed, 0 failed
+PASS a round whose edit did not land runs no check (finish on green expert): 1 passed, 0 failed
+PASS without a visible check, and with the flag off or unset, the loop is the loop it was (finish on green expert): 2 passed, 0 failed
+PASS a red check the model never saw does not count as its check (finish on green expert): 2 passed, 0 failed
+PASS the hidden check neither erases nor fakes a check (finish on green adversary): 2 passed, 0 failed
+PASS a check named with dots and hyphens still runs (finish on green expert): 1 passed, 0 failed
+PASS a file name the shell would read as commands is never run (finish on green adversary): 2 passed, 0 failed
+PASS the flag is registered off, described, and switched from the environment (preload small projects): 1 passed, 0 failed
+PASS on, the first message carries every file numbered; off, it is the request alone (preload small projects): 4 passed, 0 failed
+PASS only a small project is shown, and only on the first request of a session (preload small projects): 4 passed, 0 failed
+PASS the flag is registered off, described, and switched from the environment (visible check): 1 passed, 0 failed
+PASS with the flag a top-level check script is the project check; without it there is none (visible check): 2 passed, 0 failed
+PASS on, the loop runs the check after an edit, so a passing fix ends in one call with finishOnGreen (visible check): 2 passed, 0 failed
+PASS with stallStop, the same check failure after three edits in a row stops the run; changing failures and the flag off do not (visible check): 1 passed, 0 failed
+PASS with greenFailShown, a failing check after an edit reaches the model in its next request; off, it does not (visible check): 1 passed, 0 failed
+PASS with verifyStrict, cat tsconfig.json and node dist/latest.js are not checks; real checks still are; off, the older match stands (visible check): 1 passed, 0 failed
+PASS with looseKeepsLines, a loose match whose span holds unnamed lines is refused; a drifted line is still accepted (visible check): 1 passed, 0 failed
+PASS with stallLastLine, a failure whose output changes but whose last line does not stops the run; raw stallStop does not (visible check): 1 passed, 0 failed
+PASS with strayNameArgs, a whole-reply name and arguments object is a tool call; plain JSON data is still an answer (visible check): 1 passed, 0 failed
+PASS with no check atlias can name, the prompt asks for none and the answer is not sent back (quiet no check): 3 passed, 0 failed
+PASS permission modes: the modes are registered, described, and the default is unchanged (permission modes): 3 passed, 0 failed
+PASS permission modes: workspace, auto-accept and plan (permission modes): 8 passed, 0 failed
+PASS permission modes: auto runs routine commands and asks about the risky (permission modes): 8 passed, 0 failed
+PASS permission modes: max never asks, refuses what is catastrophic, and logs it (permission modes): 70 passed, 0 failed
+PASS permission modes: the computer-use hook point, the command, and the other modes leave no trace (permission modes): 7 passed, 0 failed
+PASS permission modes: a whole run in max and in plan (permission modes): 3 passed, 0 failed
+PASS slash commands: one registry, listed by /help (slash registry expert): 33 passed, 0 failed
+PASS slash commands: what each one does (slash behaviour expert): 27 passed, 0 failed
+PASS slash commands: custom commands from markdown files (slash custom commands expert): 9 passed, 0 failed
+PASS deep research: plan, gather, cite, say what is unverified (deep research expert): 11 passed, 0 failed
+PASS slash commands: the repl uses the registry, the benchmark path never does (slash repl and benchmark expert): 4 passed, 0 failed
+PASS first-open provider choices, deferred setup and local Ollama verification (first-open onboarding expert): 28 passed, 0 failed
+PASS project-owned goals with explicit bounds and verified completion (persistent goals expert): 9 passed, 0 failed
+PASS goal aliases expose the persistent project lifecycle (goal commands expert): 1 passed, 0 failed
+PASS copy-on-select changes only an explicitly confirmed supported host setting (copy on select expert): 18 passed, 0 failed
+PASS native provider auth parsing discards credentials and account text (native auth status expert): 3 passed, 0 failed
+PASS claude-plan: one SDK turn, plan login only, Atlias runs the tools (claude plan expert): 13 passed, 0 failed
+PASS claude-plan helpers: transcript, status, install and sign-in (claude plan expert): 12 passed, 0 failed
+PASS engines, effort and the host-harness switch (claude plan expert): 11 passed, 0 failed
+PASS first-open finds what is set up and makes the Claude plan one key (first-open onboarding expert): 10 passed, 0 failed
+PASS Claude status label keeps product names adjacent and existing details (Claude label expert): 3 passed, 0 failed
+PASS Claude status label installation, forwarding and owner-safe removal (Claude label expert): 9 passed, 0 failed
+PASS Claude status label actual-line planted regressions (Claude label expert): 4 passed, 0 failed
+PASS sub-agents: offered only when asked, run together, one level, answer only (sub-agent expert): 10 passed, 0 failed
+PASS cache-aware masking: rare batches, a stable prefix, the eval path unchanged (cache and token expert): 12 passed, 0 failed
+PASS the cache readout counts what was written to the cache as well as what was read (cache and token expert): 3 passed, 0 failed
+PASS interactive turns name the shell; eval and benchmark prompts are unchanged (cache and token expert): 4 passed, 0 failed
+PASS the Anthropic API route marks the system prompt and the last block for the cache (cache and token expert): 3 passed, 0 failed
+PASS functions exported by the 2026-10-23 merge each do what they say (merge expert): 12 passed, 0 failed
+PASS the cache readout also sums output tokens and the provider price when they are reported (merge expert): 2 passed, 0 failed
+PASS h4 G1 and the two web_fetch lows: one-shot runs get no repl tools; 6to4 and pooled sockets cannot slip past the address check (merge expert): 3 passed, 0 failed
+PASS h4 B3: kill, the time limit and the output cap stop the whole tree a background job started (merge expert): 2 passed, 0 failed
+PASS the commands, permissions and research helpers answer as their callers expect (last phase names): 3 passed, 0 failed
+PASS evolution expert and adversary (evolution helper boundaries): 9 passed, 0 failed
+PASS sampling and the terse-request paragraph are real choices (sampling expert): 8 passed, 0 failed
+PASS a bad sampling value never reaches the server (sampling adversary): 10 passed, 0 failed
+PASS native batches validate before effects and preserve uncertain outcomes (native transaction expert): 83 passed, 0 failed
+PASS hot core keeps the common native tools visible and leaves old placements reproducible (native hot core placement): 96 passed, 0 failed
+PASS an unfamiliar native descriptor passes through untouched in every deferral mode (native discovery shapes): 24 passed, 0 failed
+PASS an exact unchanged-file Read notice passes only under its own switch (native unchanged Read notices): 53 passed, 0 failed
+PASS native read views: lossless duplicate content (context expert): 65 passed, 0 failed
+PASS local pipeline: contract packet keeps exact authority, order and evidence (contract expert): 18 passed, 0 failed
+PASS local pipeline: runner calls are bounded, receipted and fail closed (runner expert): 9 passed, 0 failed
+PASS local pipeline: wire options are opt-in and map every receipt back exactly (wire expert): 8 passed, 0 failed
+PASS local pipeline: settings are off by default and refuse what they cannot honour (settings expert): 8 passed, 0 failed
+PASS local pipeline: ledger rows become the exact build payload (ledger expert): 8 passed, 0 failed
+PASS local pipeline: off is a byte-identical pass-through with no transport call (pass-through expert): 6 passed, 0 failed
+PASS local pipeline: enabled facade builds one verified packet and runs calls through the contract (facade expert): 10 passed, 0 failed
+PASS local transport: an ok call is metered with role, usage and a bearer key that never reaches the ledger (local transport expert): 9 passed, 0 failed
+PASS local transport: no key and no reasoning effort are sent when they are not configured (local transport expert): 2 passed, 0 failed
+PASS local transport: a 302 redirect is refused and its target is never requested (local transport expert): 4 passed, 0 failed
+PASS local transport: a 500 is an http-error with unknown usage and no body echo (local transport expert): 3 passed, 0 failed
+PASS local transport: a caller abort and a timeout each stop the call with their own outcome (local transport expert): 3 passed, 0 failed
+PASS local transport: finish_reason length is capped and still returns its text (local transport expert): 2 passed, 0 failed
+PASS local transport: missing usage is unknown and makes TOTAL and the peak null, never zero (local transport expert): 3 passed, 0 failed
+PASS local transport: summarizeLedger counts failures and capped rows and keeps unknown separate (local transport expert): 4 passed, 0 failed
+PASS local transport: a Door budget cap is budget-capped, a failure with no model spend, never ok or zero-cost success (local transport expert): 8 passed, 0 failed
+PASS local transport: port 11435 and forbidPorts are refused with zero network and a refused row (local transport expert): 4 passed, 0 failed
+PASS local transport: non-loopback endpoints are refused unless allowRemote is set, and plain http is never accepted (local transport expert): 3 passed, 0 failed
+PASS local transport: invalid configuration and role or request misuse throw before any attempt (local transport expert): 2 passed, 0 failed
+PASS local transport: an invalid or non-JSON reply is invalid-json with unknown usage (local transport expert): 2 passed, 0 failed
+PASS local transport: an unreachable endpoint is network-error (local transport expert): 1 passed, 0 failed
+PASS local transport: the runner drives the metered transport for both roles with full authority and counts them (local transport expert): 6 passed, 0 failed
+PASS local transport: runner off stays a pass-through and never calls the transport (local transport expert): 1 passed, 0 failed
+PASS local transport: provider chat usage splits cache out of input and never invents zero for missing counts (local transport expert): 4 passed, 0 failed
+PASS local transport: the chat protocol validates and anthropic and responses results are unchanged (local transport expert): 12 passed, 0 failed
+PASS codex authority: a saved and resumed codex session is not marked incomplete (codex authority expert): 2 passed, 0 failed
+PASS codex authority: flag off sends the exact old prompt and never touches the ledger (codex authority expert): 3 passed, 0 failed
+PASS codex authority: flag on carries every request verbatim, in order, never clipped (codex authority expert): 6 passed, 0 failed
+PASS codex authority: flag on carries the exact text of every selected skill (codex authority expert): 2 passed, 0 failed
+PASS codex authority: a gate re-prompt is labelled as Atlias-generated and is never a user request (codex authority expert): 5 passed, 0 failed
+PASS codex authority: missing or unreadable authority is said in one explicit line (codex authority expert): 8 passed, 0 failed
+PASS codex authority: a /review prompt is Atlias-generated and never a user request (lane P3 finding F4) (codex authority expert): 3 passed, 0 failed
+PASS pipeline mod: off registers nothing, so every event passes through identical (pipeline mod expert): 21 passed, 0 failed
+PASS pipeline mod: the original and follow-ups are kept exactly, in order, with repeats (pipeline mod expert): 9 passed, 0 failed
+PASS pipeline mod: each selected skill keeps its exact name and body (pipeline mod expert): 4 passed, 0 failed
+PASS pipeline mod: a check passes only on a numeric exit code of 0 (pipeline mod expert): 16 passed, 0 failed
+PASS pipeline mod: an edit after a pass makes that pass stale; a refused edit does not (pipeline mod expert): 8 passed, 0 failed
+PASS pipeline mod: the evidence record block is one constant, appended, and absent when off (pipeline mod expert): 9 passed, 0 failed
+PASS pipeline mod: a failing store never changes an event (pipeline mod expert): 3 passed, 0 failed
+PASS pipeline mod: overlapping checks never acquire the scope of a later edit (pipeline mod expert): 11 passed, 0 failed
+PASS pipeline mod: a restarted session never extends an earlier record, and every prompt still passes through (pipeline mod expert): 2 passed, 0 failed
+PASS pipeline mod: a missing session id records nothing, never under an invented name (pipeline mod expert): 7 passed, 0 failed
+PASS pipeline mod: a restart restores only what the host transcript confirms (pipeline mod expert): 16 passed, 0 failed
+PASS pipeline mod: a record too large to save is replaced by a marker, so a restart never restores half of it (pipeline mod expert): 3 passed, 0 failed
+PASS pipeline mod: receipts need the original, and a session with no recorded prompt has no receipt (pipeline mod expert): 2 passed, 0 failed
+PASS pipeline mod: a result is executed only when every control field is clean (pipeline mod expert): 13 passed, 0 failed
+PASS pipeline mod: the hooks module makes only the literal calls it may make (pipeline mod expert): 4 passed, 0 failed
+PASS pipeline mod: the plugin is declared the way Claude Code reads a mod (pipeline mod expert): 3 passed, 0 failed
+PASS local helpers: off sends nothing and the turn is byte for byte the same (local helpers expert): 5 passed, 0 failed
+PASS local helpers: every helper request carries the exact original, follow-ups and skill body (local helpers expert): 9 passed, 0 failed
+PASS local helpers: baseUrlEnv reaches the Door of the arm itself, and reasoningEffort is sent (local helpers expert): 2 passed, 0 failed
+PASS local helpers: a Door cap, a failure or bad output adds nothing and is counted (local helpers expert): 4 passed, 0 failed
+PASS local helpers: reportTurn sends a check as pass only with a recorded exit code, and stdout never counts (local helpers expert): 2 passed, 0 failed
+PASS local helpers: reportTurn keeps each check at the scope it ran at, so a check before a later edit is not a pass (local helpers expert): 2 passed, 0 failed
+PASS local helpers: the hooks add the advice and the line on Claude Code only, and off returns the same object (local helpers expert): 4 passed, 0 failed
+PASS usage display:the keys are registered off, described, checked, and settable (usage display): 5 passed, 0 failed
+PASS usage display:colours parse (usage display): 2 passed, 0 failed
+PASS usage display:the numbers come from what the loop already counts (usage display): 4 passed, 0 failed
+PASS usage display:the lines are exact strings (usage display): 5 passed, 0 failed
+PASS usage display:colour and animation are exact, and plain when asked (usage display): 9 passed, 0 failed
+PASS usage display:the writer draws only when asked, and only as much as is safe (usage display): 12 passed, 0 failed
+PASS usage display:the agent prints nothing new unless it is on (usage display): 2 passed, 0 failed
+PASS import: finding what is there, and what is not touched (import expert): 10 passed, 0 failed
+PASS import: the small pieces (import expert): 10 passed, 0 failed
+PASS import: what is copied, with no secret and nothing overwritten (import expert): 15 passed, 0 failed
+PASS import: Claude Code and Codex sessions become Atlias saved sessions (import expert): 10 passed, 0 failed
+PASS import: an imported session carries its digest into the first new turn only (import expert): 3 passed, 0 failed
+PASS import: nothing is copied without a yes, and the question is asked once (import expert): 12 passed, 0 failed
+PASS import: undo removes exactly what the import made (import expert): 7 passed, 0 failed
+PASS import: the /import command, atlias import, and the benchmark path (import expert): 10 passed, 0 failed
+PASS atlias update: fast-forward only, never destructive (update expert): 24 passed, 0 failed
+PASS the update offer at agent start: three answers, once a day, silent otherwise (update offer expert): 20 passed, 0 failed
+PASS versions agree and atlias --version shows the real one (version expert): 5 passed, 0 failed
+PASS @file mentions: inside the project only (mentions expert): 12 passed, 0 failed
+PASS /context, /rename, /release-notes, /update and the long-turn notification (qol commands expert): 20 passed, 0 failed
+PASS none of this is reachable from exec, eval, runLoop or h2h (interactive-only expert): 3 passed, 0 failed
+PASS media inputs: validated formats, bounds and complete content (media input expert): 19 passed, 0 failed
+PASS media inputs: quoted project mentions, reference authority and errors (attachment UX expert): 6 passed, 0 failed
+PASS media inputs: external images require an explicit opt-in and absolute user path (attachment scope adversary): 5 passed, 0 failed
+PASS media inputs: API and subscription request contracts (provider media expert): 5 passed, 0 failed
+PASS media inputs: isolated planted payload and authority regressions are caught (media adversary): 7 passed, 0 failed
+PASS media inputs: user turn through the real HTTP transport (media workflow expert): 3 passed, 0 failed
+PASS customization: searchable settings keep stable identities (customization expert): 8 passed, 0 failed
+PASS customization: real menu filtering, reset and malformed choices (customization adversary): 4 passed, 0 failed
+PASS customization: contextual help and attachment controls (help expert): 6 passed, 0 failed
+PASS terminal raw input stays stable across adjacent prompts (native input expert): 4 passed, 0 failed
+PASS terminal draft stash preserves text and cannot fill permission answers (draft expert): 6 passed, 0 failed
+PASS terminal appearance is optional and respects plain text (appearance expert): 3 passed, 0 failed
+PASS terminal composer matching, width and exact unknown usage (terminal palette expert): 41 passed, 0 failed
+PASS terminal composer keys, paste, prompts and cleanup (terminal input expert): 53 passed, 0 failed
+PASS terminal composer during a turn: Esc and Ctrl+C stop it, questions still ask (TUI-B) (terminal turn expert): 15 passed, 0 failed
+PASS terminal composer integration stays outside model requests (terminal integration expert): 9 passed, 0 failed
+PASS esc esc on an empty prompt sends /rewind, as if typed; one Esc, or Esc after text, does not (terminal input expert): 4 passed, 0 failed
+PASS terminal usability: hidden questions never submit (terminal safety expert): 5 passed, 0 failed
+PASS terminal usability: queue draft and current key state (terminal recovery expert): 6 passed, 0 failed
+PASS terminal usability: inspect before changing a boolean (terminal settings expert): 1 passed, 0 failed
+PASS terminal usability: setup hints and honest keyboard help (terminal orientation expert): 3 passed, 0 failed
+PASS native provider and personal authentication contracts (direct runtime expert): 7 passed, 0 failed
+PASS every feature has a test of its own (coverage expert): 5 passed, 0 failed
+PASS compact focus: the focus is kept word for word in the note the compaction leaves (compact focus expert): 2 passed, 0 failed
+PASS compact focus: without a focus the note is what it was, and a short conversation gets no note (compact focus expert): 2 passed, 0 failed
+PASS project settings: a project file changes ordinary keys and nothing that decides security (project settings expert): 4 passed, 0 failed
+PASS project settings: a broken or odd file is reported and changes nothing (project settings expert): 3 passed, 0 failed
+PASS exec stream-json: one JSON object per line, from start to done (exec format expert): 3 passed, 0 failed
+PASS exec text and json: the default output is what it was (exec format expert): 2 passed, 0 failed
+PASS exec --permissions: a named mode is used for the run, and bad values are refused (exec format expert): 3 passed, 0 failed
+PASS plan approval: the three choices, and an unclear answer keeps planning (plan approval expert): 4 passed, 0 failed
+PASS plan approval: approve switches to workspace and carries the plan out; keep changes nothing (plan approval expert): 3 passed, 0 failed
+PASS rewind: the last turns are listed, newest first, with the first sixty characters (rewind expert): 2 passed, 0 failed
+PASS rewind: back to a turn cuts the conversation; code comes back only when asked (rewind expert): 3 passed, 0 failed
+PASS rewind: a turn that is not there changes nothing; an undo stack that no longer reaches the turn says so (rewind expert): 2 passed, 0 failed
+PASS rewind after compaction (F3a): a turn that /compact dropped is refused; a turn it kept goes back to the right place (rewind round two expert): 3 passed, 0 failed
+PASS rewind after compaction (F3a): a turn the compaction kept goes back to its own place, after the shift (rewind round two expert): 1 passed, 0 failed
+PASS rewind after resume (F3b): checkpoints are saved with the session and listed again after resume (rewind round two expert): 2 passed, 0 failed
+PASS web_fetch: local names, private addresses and non-web schemes are refused before any request (web_fetch expert): 3 passed, 0 failed
+PASS web_fetch: the connection goes to the address that was checked, even if the name answers differently later (rebinding, W1) (web_fetch expert): 1 passed, 0 failed
+PASS web_fetch: a real connection goes to the pinned address (the name does not resolve), with the name as Host (web_fetch expert): 1 passed, 0 failed
+PASS web_fetch: IPv6 is public only in global unicast space (W2); fetched text is marked as data (W3) (web_fetch expert): 3 passed, 0 failed
+PASS web_fetch: html becomes readable text; scripts, styles and entities are handled; the cache holds for fifteen minutes (web_fetch expert): 3 passed, 0 failed
+PASS web_fetch: long pages come in windows with an offset; the size cap, bad answers and binary types are reported (web_fetch expert): 6 passed, 0 failed
+PASS web_fetch: every redirect is checked again, and the next hop is connected to its own checked address (web_fetch expert): 2 passed, 0 failed
+PASS background shell: the id and the output file come back at once, and poll reports the finished job (background shell expert): 4 passed, 0 failed
+PASS background shell: poll returns the last 4,000 characters of a long output, and a spawn that fails is reported (background shell expert): 2 passed, 0 failed
+PASS background shell, B1: a command the guard refuses is never started, and no job is counted (background shell expert): 1 passed, 0 failed
+PASS background shell, B2: at most four jobs run at once; kill stops a job; the time limit and the output cap stop a job (background shell expert): 7 passed, 0 failed
+PASS interactive tools: with no extra the tool list is the base list; each new tool is offered only when named (interactive tools expert): 2 passed, 0 failed
+PASS interactive tools: an eval run refuses web_fetch; an interactive run runs it and refuses a local address before any connection (interactive tools expert): 2 passed, 0 failed
+PASS interactive tools, B1: a background command takes the shell guard and the permission check; nothing refused starts (interactive tools expert): 2 passed, 0 failed
+PASS eval path: a run without interactive sends the base tool list and no interactive text; interactive adds only the two tools (interactive tools expert): 4 passed, 0 failed
+PASS project settings, F2a: a project file cannot route keys or the update source; only listed keys apply (review fixes expert): 2 passed, 0 failed
+PASS exec, F2b and F2c: --flag=value is read, and a valued flag with no value exits 2 instead of falling back (review fixes expert): 3 passed, 0 failed
+PASS exec, F2d: an empty = value exits 2; project numbers outside their range are refused (review fixes round two, F2d and F2e): 4 passed, 0 failed
+PASS private edition first-open defaults preserve user configuration and ordinary hosts (private edition expert): 4 passed, 0 failed
+PASS the Max gate: hidden install id, signed passes, stop on not paid (subscription expert): 12 passed, 0 failed
+PASS a model must be one the engine offers; anything else is refused with real choices (model check expert): 3 passed, 0 failed
+
+3356/3361 checks passed across 431 suites.

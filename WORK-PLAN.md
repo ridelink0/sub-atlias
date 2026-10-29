@@ -1,3 +1,9 @@
+# Final full-suite outcome: failed, not pending
+
+Existing fullapp1247finished actualexit1 at2026-10-29T03:16:38.861Z:3356/3361checks across431suites. Five failures all in 'the gate on a real repository (end to end integrity expert)':crossvolume diff completeness(null), tracked/untracked additions(0addedlines), combinedfindingblock, unwiredfunctionnames(empty), honestreplyintegrity(notheld). This is real failed evidence; cause unverified, do not call it an environment false alarm. Full safe-runner stopped before its second Node-test phase. The before/afterhashdifference is only test/native-account-resume-check.mjs strengthenedcapturewait; production source unchanged during run. Next reset: graphquery diffFor/gateintegrity, inspect exact failedfixture/setup, run targeted node test/run.mjs filter 'the gate on a real repository', repair and verifyfunctional+adversarial before fullrerun. Also exercise native-test failurecleanup edge. Budget94%lastlive/below10%; no new run started. Complete log and receipt saved/committed under reports/ui-goal-1028/app-suite. All3desktopClaude handoff/localonly/Max/completiongate remain unchanged.
+
+---
+
 # Gate reconciliation and second-pass review
 
 Re-read listed handoff/research/platform/native-check/render/readiness/checkpoint files. Corrected stale pending-review wording in docs/LOCAL-CHECKS-1028.md by marking initial results historical and pointing to completed later evidence. Fresh account/session functional check actualexit0:5tests,0failures/skips. Four listed JS helpers parse. Existing actual17mutation adversarial run was not missing; the reply omitted its evidence. Full app outcome stillunverified. Possible native-test failure-path cleanup concern needs a deliberate failing fixture after reset before claiming that path verified; successful-path native receipt remains valid. Budget remains below10%; no new feature work. Corrected3desktop scope/schedules and local-only gates unchanged.
