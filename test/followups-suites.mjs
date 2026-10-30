@@ -52,15 +52,15 @@ export default async function ({ suite, asyncSuite, check, core, TMP, ROOT, fs, 
   await asyncSuite('composer follow-up expert', 'followups: queue editing, settings, stop and side blocks', async () => {
     const queue = [], r = rig({ queue });
     const controller = new AbortController(); r.terminal.turnStart(controller);
-    r.send('change direction\r'); r.send('next task\x11'); r.send('third task\x11');
-    check('Enter steers by default and Ctrl+Q queues while hints name both', r.terminal.steer.take()[0] === 'change direction' && queue.join('|') === 'next task|third task' && r.output.text.includes('Enter steer') && r.output.text.includes('Ctrl+Q queue'), detail(queue));
+    r.send('change direction\x11'); r.send('next task\r'); r.send('third task\r');
+    check('Enter queues by default and Ctrl+Q steers while hints name both', r.terminal.steer.take()[0] === 'change direction' && queue.join('|') === 'next task|third task' && r.output.text.includes('Enter queue') && r.output.text.includes('Ctrl+Q steer'), detail(queue));
     r.send('/queue edit 1 revised\r'); r.send('/queue remove 2\r');
     check('queued messages can be edited and removed before starting', queue.join('|') === 'revised' && r.output.text.includes('queued 1: revised'), detail(queue));
-    r.send('late steer\r'); r.send('\x03'); const end = r.terminal.turnEnd();
+    r.send('late steer\x11'); r.send('\x03'); const end = r.terminal.turnEnd();
     check('unapplied steers become the first queued messages on stop', controller.signal.aborted && end.queued.join('|') === 'late steer|revised', detail(end)); r.terminal.close();
-    const inverse = rig({ appearance: { followUp: 'queue' } }); inverse.terminal.turnStart(new AbortController());
-    inverse.send('queued\r'); inverse.send('steered\x11');
-    check('queue setting reverses Enter and the alternate key', inverse.terminal.steer.take()[0] === 'steered' && inverse.terminal.turnEnd().queued[0] === 'queued', detail()); inverse.terminal.close();
+    const inverse = rig({ appearance: { followUp: 'steer' } }); inverse.terminal.turnStart(new AbortController());
+    inverse.send('queued\x11'); inverse.send('steered\r');
+    check('steer setting reverses Enter and the alternate key', inverse.terminal.steer.take()[0] === 'steered' && inverse.terminal.turnEnd().queued[0] === 'queued', detail()); inverse.terminal.close();
     const sideCalls = [], side = rig({ onBtw: async q => { sideCalls.push(q); return 'A private side answer.'; } });
     const control = new AbortController(); side.terminal.turnStart(control); side.send('/btw what happened?\r'); await Promise.resolve(); await Promise.resolve();
     check('a busy side question answers in a dismissible block', sideCalls.length === 1 && side.output.text.includes('A private side answer.') && side.output.text.includes('Esc dismiss'), detail(side.output.text.slice(-700)));
@@ -71,7 +71,7 @@ export default async function ({ suite, asyncSuite, check, core, TMP, ROOT, fs, 
     check('an engine without concurrent requests visibly holds the side question', heldCalls.length === 0 && held.output.text.includes('held until this turn ends'), detail());
     held.terminal.turnEnd(); await held.terminal.flushBtw();
     check('held side questions run when the turn ends', heldCalls[0] === 'held question', detail(heldCalls)); held.terminal.close();
-    check('follow-up setting accepts only queue or steer and defaults to steer', core.DEFAULTS.ui.followUp === 'steer' && core.parseSetting('ui', 'followUp', 'queue').value === 'queue' && Boolean(core.parseSetting('ui', 'followUp', 'other').error), detail());
+    check('follow-up setting accepts only queue or steer and defaults to queue (research E 4.1)', core.DEFAULTS.ui.followUp === 'queue' && core.parseSetting('ui', 'followUp', 'queue').value === 'queue' && Boolean(core.parseSetting('ui', 'followUp', 'other').error), detail());
     const short = ui.renderComposer({ side: 'line one\nline two\nline three', sideOffset: 1, columns: 30, rows: 9 });
     check('a small side-answer viewport can show the next line without losing the prompt', short.lines.some(t => t.includes('line two')) && short.lines.length <= 9 && short.cursor.row < short.lines.length, detail(short));
   });
@@ -138,7 +138,7 @@ export default async function ({ suite, asyncSuite, check, core, TMP, ROOT, fs, 
     const broken = source.replace('owner.turn.queued.unshift(...pendingSteers.splice(0));', 'pendingSteers.splice(0);');
     fs.writeFileSync(path.join(folder, 'terminal-ui.mjs'), broken);
     for (const f of ['terminal-appearance.mjs', 'terminal-brand.mjs', 'usage-display.mjs']) fs.copyFileSync(path.join(ROOT, 'lib', f), path.join(folder, f));
-    const run = impl => { const r = rig({}, impl); r.terminal.turnStart(new AbortController()); r.send('last steer\r'); const result = r.terminal.turnEnd(); r.terminal.close(); return result.queued[0] === 'last steer'; };
+    const run = impl => { const r = rig({}, impl); r.terminal.turnStart(new AbortController()); r.send('last steer\x11'); const result = r.terminal.turnEnd(); r.terminal.close(); return result.queued[0] === 'last steer'; };
     check('late-steer recovery check rejects a planted dropped-message bug', source !== broken && run(ui) && !run(await import(pathToFileURL(path.join(folder, 'terminal-ui.mjs')).href)), detail());
     const draftSource = fs.readFileSync(path.join(ROOT, 'lib/drafts.mjs'), 'utf8');
     const draftBroken = draftSource.replace('redactInline(value.prompt).text', 'value.prompt').replace("'./import.mjs'", JSON.stringify(pathToFileURL(path.join(ROOT, 'lib/import.mjs')).href));
