@@ -101,13 +101,18 @@ test('installed setup command names the actual script and CLI auth reaches the n
   const setupScript = fileURLToPath(new URL('../scripts/setup-chatgpt-personal.mjs', import.meta.url));
   assert.equal(chatgpt.PREPARE_COMMAND, `"${process.execPath}" "${setupScript}" --personal`);
   const bin = path.join(home, 'fixture-bin'); fs.mkdirSync(bin);
-  fs.writeFileSync(path.join(bin, 'fixture-cli.mjs'), `if (process.argv.includes('--version')) console.log('synthetic CLI'); else if (process.argv.slice(2).join(' ') === 'auth status --json') console.log(JSON.stringify({loggedIn:true,authMethod:'claude.ai'})); else process.exitCode=1;`);
+  fs.writeFileSync(path.join(bin, 'fixture-cli.mjs'), `if (process.argv.includes('--version')) console.log('synthetic CLI'); else if (process.argv.slice(2).join(' ') === 'auth status --json') console.log(JSON.stringify({loggedIn:true,authMethod:'claude.ai'})); else if (process.argv.slice(2).join(' ') === 'login status') console.log('Logged in using ChatGPT'); else process.exitCode=1;`);
   if (process.platform === 'win32') fs.writeFileSync(path.join(bin, 'claude.cmd'), '"%dp0%\\fixture-cli.mjs" %*');
   else fs.writeFileSync(path.join(bin, 'claude'), `#!${process.execPath}\nimport './fixture-cli.mjs';`, { mode: 0o755 });
   const env = { ...process.env, ATLIAS_HOME: home, PATH: bin };
   delete env.Path;
-  const result = spawnSync(process.execPath, [cliPath, 'auth', 'claude', 'status'], { cwd: home, env, encoding: 'utf8', windowsHide: true });
+  if (process.platform === 'win32') fs.writeFileSync(path.join(bin, 'codex.cmd'), '"%dp0%\\fixture-cli.mjs" %*');
+  else fs.writeFileSync(path.join(bin, 'codex'), `#!${process.execPath}\nimport './fixture-cli.mjs';`, { mode: 0o755 });
+  // An installed package without the founders manifest is the release: it has no Claude route (Gev, 2026-10-30).
+  const refused = spawnSync(process.execPath, [cliPath, 'auth', 'claude', 'status'], { cwd: home, env, encoding: 'utf8', windowsHide: true });
+  assert.match(refused.stdout, /only in the founders edition/);
+  const result = spawnSync(process.execPath, [cliPath, 'auth', 'codex', 'status'], { cwd: home, env, encoding: 'utf8', windowsHide: true });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /claude: authenticated; subscription sign-in reported/);
+  assert.match(result.stdout, /codex: authenticated; subscription sign-in reported/);
   assert.ok(!/unavailable/.test(result.stdout));
 });

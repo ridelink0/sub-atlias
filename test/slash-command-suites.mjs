@@ -7,6 +7,7 @@ import { spawn } from 'node:child_process';
 import * as commands from '../lib/commands.mjs';
 import * as research from '../lib/research.mjs';
 import * as settings from '../lib/settings.mjs';
+import { offerClaudeForTests } from '../lib/edition.mjs';
 
 export default async function slashCommandSuites({ suite, asyncSuite, check, core, agentMod, TMP, ROOT, fs, path }) {
   const NL = String.fromCharCode(10);
@@ -81,7 +82,9 @@ export default async function slashCommandSuites({ suite, asyncSuite, check, cor
     r.state.messages = [{ role: 'user', content: 'x' }];
     await commands.dispatch('/engine ollama', r.ctx);
     const switched = r.state.engine === 'ollama' && r.state.messages.length === 0;
-    await commands.dispatch('/engine claude', r.ctx);
+    // The claude host is founders-only (Gev, 2026-10-30); here it is offered but not detected.
+    offerClaudeForTests(true);
+    try { await commands.dispatch('/engine claude', r.ctx); } finally { offerClaudeForTests(false); }
     check('/engine switches to an available engine, starts a fresh conversation, and refuses one that is not there', switched && r.state.engine === 'ollama' && /claude is not available/.test(text(r.out)), { happened: r.state.engine + ' ' + text(r.out), why: 'A different engine cannot read the old one\'s messages.', fix: 'Check the engine entry.' });
 
     // /model

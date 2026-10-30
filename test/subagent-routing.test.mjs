@@ -8,6 +8,8 @@ import { pathToFileURL } from 'node:url';
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-workers-'));
 process.env.ATLIAS_HOME = path.join(root, 'home');
 process.env.ATLIAS_NO_DETACH = '1';
+// Workers on claude-plan and anthropic are founders-only (Gev, 2026-10-30); test/edition-suites.mjs checks the release refuses them.
+(await import('../lib/edition.mjs')).offerClaudeForTests(true);
 const core = await import('../lib/core.mjs');
 const loop = await import('../lib/loop.mjs');
 const agent = await import('../lib/agent.mjs');

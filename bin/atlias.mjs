@@ -27,7 +27,7 @@ import { logo } from '../lib/logo.mjs';
 import * as bench from '../lib/bench.mjs';
 import * as shortcut from '../lib/shortcut.mjs';
 import * as settings from '../lib/settings.mjs';
-import {editionDefaults, claudeOffered} from '../lib/edition.mjs';
+import {editionDefaults, claudeOffered, offeredEngines, CLAUDE_FOUNDERS_ONLY} from '../lib/edition.mjs';
 import * as skills from '../lib/skills.mjs';
 import * as subharness from '../lib/subharness.mjs';
 import * as provider from '../lib/provider.mjs';
@@ -54,6 +54,8 @@ const readOr = (p, fallback) => { try { return fs.readFileSync(p, 'utf8'); } cat
 const shortcutInstall = () => { writeLauncher(ROOT); return shortcut.installShortcut().lines; };
 const shortcutUninstall = () => { const r = shortcut.uninstallShortcut(); return r.length ? r.map((f) => `removed ${f}`) : ['terminal command: nothing of ours to remove']; };
 
+// The --engine list of atlias agent and atlias exec; the release names no anthropic or claude engine (Gev, 2026-10-30).
+const AGENT_ENGINES = offeredEngines(['chatgpt', 'responses', 'anthropic', 'gemini', 'openai', 'ollama', 'claude', 'codex', 'echo']).join('|');
 // `atlias <command> --help` prints that command's usage and runs nothing. It
 // used to be read as one more flag: `atlias eval --help` started a real eval on
 // the default model and left five workspaces behind.
@@ -79,8 +81,8 @@ const HELP = {
   polyglot: ['usage: atlias polyglot <path to a polyglot-benchmark clone> [--lang python] [--out <dir>] [--limit N] [--only name,name]'],
   editbench: ['usage: atlias editbench <rows.jsonl> --bench canitedit|humanevalfix [--variant lazy|descriptive] [--lang python|js] [--out <dir>] [--limit N] [--only id,id] [--rounds N]'],
   refactorbench: ['usage: atlias refactorbench <path to refactor-benchmark/refactor-benchmark> [--out <dir>] [--limit N] [--only name,name] [--max-bytes 40960] [--rounds 16]'],
-  agent: ['usage: atlias agent [--plain] [--engine chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--once "<prompt>"] [--resume [id]] [--sandbox]'],
-  get exec() { return [`usage: atlias exec "<prompt>" [--engine ${claudeOffered() ? 'claude-plan|' : ''}chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)`]; },
+  agent: [`usage: atlias agent [--plain] [--engine ${AGENT_ENGINES}] [--once "<prompt>"] [--resume [id]] [--sandbox]`],
+  get exec() { return [`usage: atlias exec "<prompt>" [--engine ${offeredEngines(['claude-plan', 'chatgpt', 'responses', 'anthropic', 'gemini', 'openai', 'ollama', 'claude', 'codex', 'echo']).join('|')}] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)`]; },
   update: ['usage: atlias update [--check] [--no-fetch]', 'Fast-forwards this git checkout of atlias from its update source (config update.source; empty means the upstream of the current branch) and prints the commits it pulled. Refuses when tracked files are changed, HEAD is detached, no source is set, or the history has diverged. Never resets, merges, rebases or pushes. --check only reports.'],
   import: ['usage: atlias import [--dry-run] [--from claude|codex|gemini|antigravity] [--sessions] [--yes] [--undo]', 'Brings instructions, memory, skills, slash commands and MCP definitions (and with --sessions the saved sessions) from your other tools into the Atlias home. --dry-run prints the plan only. Nothing is copied without a yes; credentials are never read; --undo removes exactly what an import made.'],
   resume: ['usage: atlias resume [id] [--engine e] [--sandbox] [--plain]   search and choose a saved agent session in this folder'],
@@ -379,7 +381,7 @@ else switch (cmd) {
     break;
   }
   case 'setup': {
-    if (argv[1] !== 'claude') { say('usage: atlias setup claude   (installs the Claude Agent SDK, signs you in through Anthropic, then asks for the model and reasoning effort)'); process.exitCode = 2; break; }
+    if (argv[1] !== 'claude') { say(claudeOffered() ? 'usage: atlias setup claude   (installs the Claude Agent SDK, signs you in through Anthropic, then asks for the model and reasoning effort)' : CLAUDE_FOUNDERS_ONLY); process.exitCode = 2; break; }
     const onboarding = await import('../lib/onboarding.mjs');
     const rl = (await import('node:readline/promises')).createInterface({ input: process.stdin, output: process.stdout });
     try { const row = await onboarding.setupClaudePlan({ ask: (q) => rl.question(q + ' '), out: say, resolve: agent.resolveCommand }); process.exitCode = row.status === 'complete' ? 0 : 1; }
@@ -400,7 +402,7 @@ else switch (cmd) {
     for (let i = 1; i < argv.length; i++) { if (valued.has(argv[i])) { i++; continue; } if (!argv[i].startsWith('--')) words.push(argv[i]); }
     let prompt = words.join(' ').trim();
     if (prompt === '-' || (!prompt && !process.stdin.isTTY)) { prompt = ''; for await (const chunk of process.stdin) prompt += chunk; prompt = prompt.trim(); }
-    if (!prompt) { say('usage: atlias exec "<prompt>" [--engine chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)'); process.exitCode = 2; break; }
+    if (!prompt) { say(`usage: atlias exec "<prompt>" [--engine ${AGENT_ENGINES}] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)`); process.exitCode = 2; break; }
     // A valued flag with no value exits 2 (it used to fall back silently); --flag=value is read as well.
     const bare = ['--output-format', '--permissions'].find((f) => { const i = argv.indexOf(f); return (i !== -1 && (i + 1 >= argv.length || argv[i + 1].startsWith('--'))) || argv.includes(f + '='); });
     if (bare) { say(`${bare} needs a value, for example ${bare}=text`); process.exitCode = 2; break; }
@@ -555,5 +557,5 @@ else switch (cmd) {
     break;
   }
   default:
-    say([logo(), '', 'atlias                             by mode: ask (both), status (sub), the agent (standalone)', 'agent [--engine chatgpt|responses|anthropic|gemini|openai|ollama|claude|codex|echo] [--once "<prompt>"] [--resume [id]] [--sandbox]', 'exec "<prompt>" [--engine e] [--resume [id]] [--sandbox] [--json]   one prompt, no questions; - or a pipe reads stdin', '  --sandbox                        work in a throwaway git worktree, show the diff at the end, and change the project only if you take it', 'resume [id]                        search and choose a saved agent session in this folder', 'import [--dry-run] [--from tool] [--sessions] [--undo]   bring memory, skills, commands and sessions over from Claude Code, Codex, Gemini CLI, Antigravity', 'update [--check]                   fast-forward this git checkout from its update source', 'mode [both|sub|standalone]         what atlias is on this machine', 'settings [list]                    every option, with what it does', 'install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--extras [ids]|--companions|--shortcut]', 'uninstall [--all|--codex|--antigravity|--gemini|--extras|--shortcut]', 'shortcut [install|uninstall|status]  the atlias command in any terminal', 'tiers                              the benchmark tiers, which are on this machine, and how to get the rest', 'eval [--tier smoke|main|big] [--sample N [--seed s]] [--engine e] [--repeat k] [--save f]   score tasks; the check decides', 'compare <a.json> <b.json>          two saved runs, paired, with what the corpus could never have shown', 'doctor | status | brief [--host codex] | test | bench [question...] | version | logo', 'auth chatgpt [login|status|logout|models|use]   personal dedicated plan sign-in; no API billing fallback', 'skills [name]                      the skills installed here, or one of them in full', 'recall <query> | remember <name> <type> <description> -- <body>', 'relay [on|off|status|cancel <id>]    optional automatic saved-session continuations (Windows)', 'progress [set <next step>] | dream [ack|distil <session>] | graph query|affected|explain|update <arg>', 'config [set <section.key> <value>]']);
+    say([logo(), '', 'atlias                             by mode: ask (both), status (sub), the agent (standalone)', `agent [--engine ${AGENT_ENGINES}] [--once "<prompt>"] [--resume [id]] [--sandbox]`, 'exec "<prompt>" [--engine e] [--resume [id]] [--sandbox] [--json]   one prompt, no questions; - or a pipe reads stdin', '  --sandbox                        work in a throwaway git worktree, show the diff at the end, and change the project only if you take it', 'resume [id]                        search and choose a saved agent session in this folder', 'import [--dry-run] [--from tool] [--sessions] [--undo]   bring memory, skills, commands and sessions over from Claude Code, Codex, Gemini CLI, Antigravity', 'update [--check]                   fast-forward this git checkout from its update source', 'mode [both|sub|standalone]         what atlias is on this machine', 'settings [list]                    every option, with what it does', 'install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--extras [ids]|--companions|--shortcut]', 'uninstall [--all|--codex|--antigravity|--gemini|--extras|--shortcut]', 'shortcut [install|uninstall|status]  the atlias command in any terminal', 'tiers                              the benchmark tiers, which are on this machine, and how to get the rest', 'eval [--tier smoke|main|big] [--sample N [--seed s]] [--engine e] [--repeat k] [--save f]   score tasks; the check decides', 'compare <a.json> <b.json>          two saved runs, paired, with what the corpus could never have shown', 'doctor | status | brief [--host codex] | test | bench [question...] | version | logo', 'auth chatgpt [login|status|logout|models|use]   personal dedicated plan sign-in; no API billing fallback', 'skills [name]                      the skills installed here, or one of them in full', 'recall <query> | remember <name> <type> <description> -- <body>', 'relay [on|off|status|cancel <id>]    optional automatic saved-session continuations (Windows)', 'progress [set <next step>] | dream [ack|distil <session>] | graph query|affected|explain|update <arg>', 'config [set <section.key> <value>]']);
 }

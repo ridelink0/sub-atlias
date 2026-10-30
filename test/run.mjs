@@ -1152,7 +1152,7 @@ await (await import('./features-1022-background-suites.mjs')).default({ asyncSui
 await (await import('./features-1022-tools-suites.mjs')).default({ asyncSuite, check, TMP });
 await (await import('./features-1022-review-fix-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
 await (await import('./features-1022-review-fix2-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
-await (await import('./edition-suites.mjs')).default({ suite, check, TMP, fs, path });
+await (await import('./edition-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./license-suites.mjs')).default({ asyncSuite, check, TMP, ROOT, fs, path });
 await (await import('./model-check-suites.mjs')).default({ asyncSuite, check });
 
