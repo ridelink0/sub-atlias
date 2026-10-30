@@ -8,8 +8,15 @@ import * as onboarding from '../lib/onboarding.mjs';
 import * as commands from '../lib/commands.mjs';
 import * as settings from '../lib/settings.mjs';
 import { authCommand } from '../lib/auth-command.mjs';
+import { offerClaudeForTests } from '../lib/edition.mjs';
 
-export default async function claudePlanSuites({ asyncSuite, suite, check, core, agentMod, TMP, fs, path }) {
+// These suites cover the founders edition, the only one with the Claude engine (Gev, 2026-10-29);
+// test/edition-suites.mjs covers the release, which has none.
+export default async function claudePlanSuites(args) {
+  offerClaudeForTests(true);
+  try { await founderSuites(args); } finally { offerClaudeForTests(false); }
+}
+async function founderSuites({ asyncSuite, suite, check, core, agentMod, TMP, fs, path }) {
   let n = 0;
   const temp = (name) => { const d = path.join(TMP, 'claude-plan', `${name}-${++n}`); fs.mkdirSync(d, { recursive: true }); return d; };
   // A stand-in SDK: records the options and replays a scripted message stream.
