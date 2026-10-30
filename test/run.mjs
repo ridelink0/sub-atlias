@@ -1116,6 +1116,7 @@ await (await import('./onboarding-goals-suites.mjs')).default({ suite, asyncSuit
 await (await import('./claude-plan-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./claude-label-suites.mjs')).default({ suite, asyncSuite, check, TMP, fs, path, ROOT });
 await (await import('./loop-subagent-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
+await (await import('./subagent-ledger-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./cache-mask-suites.mjs')).default({ suite, asyncSuite, check, TMP, fs, path });
 await (await import('./merge-1023-suites.mjs')).default({ asyncSuite, check });
 (await import('./merge-1023-suites.mjs')).costSuite({ suite, check, loop: await import('../lib/loop.mjs') });
