@@ -1,3 +1,11 @@
+## 2026-10-30 01:43 Central: new owner batch in progress; Stop repair retained
+
+Current owner session237e7d50 remains on Opus5.5/xhigh with actual tools at06:45:14Z and native process9288. It is repairing Linux membership/sign-in after relaunch; preserve the active run, tests, Usage Limits and reserved owner-f1/original54e5574c ownership. No prompt, app edit or product test by this watch. Read watch-state.activeTranscript for current activity; never resume completed5277af99.
+
+Three tracked app artifacts changed: PROGRESS, VENDOR and COMPLETION-REPORT. Current vendor584a7cdd89729cdb0c824844a98275d9eb8162de descends from verified1cb3b18; its lib/proc.mjs Git object is identical and the vendored file SHA matches the manifest. This verifies Stop helper retention only. New product checks remain unqualified by this watch. Producer report lists Windows61unit,13founder and46packaged, release-dev45/46 with exit1, and unfinished SECOND_CHAIN_RESULT/LINUX_RESULT placeholders; Claude is actively repairing the Linux issue. App completion remains explicitly NO, website gate closed. The root handoff report copy is older and was preserved; state now records its hash mismatch.
+
+Fresh Codex6% five-hour/88% weekly has about194 reported binding turns. Claude meter estimates65% five-hour including post-snapshot spend,50% weekly, about63 xhigh turns. Keep useful quiet30-minute watch; fresh budgets/artifacts first and actual owner records only as needed. Preserve live work and concurrent site/report changes; current ownership guard supersedes stale automation sessions, earlier prompt update unconfirmed. No push/deploy/paidAPI/cloud/livebilling.
+
 ## 2026-10-30 01:13 Central: actual owner continuation after relay
 
 Existing owner relay ran at00:56:59 Central and opened fresh session237e7d50-2e15-4f99-a404-16b78bfcb82a in D:/harness-work/atlias-lookalikes-1029. Actual assistant reply06:00:11.808Z and recent tools verify claude-opus-5-5/xhigh; native process9288 and task Running/result267009 were observed. Running is not completion. Read watch-state.activeTranscript for current activity; primaryOwnerContinuation and its budgetPause are historical. No new prompt or duplicate /goal by this watch. Owner-f1/original54e5574c retains reserved app ownership; preserve current session, delegated work/tests and Usage Limits relays, and never resume completed5277af99.

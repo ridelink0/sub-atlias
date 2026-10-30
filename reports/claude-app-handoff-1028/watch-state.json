@@ -1,13 +1,13 @@
 {
-  "observedAt": "2026-10-30T06:16:58.990Z",
+  "observedAt": "2026-10-30T06:48:58.762Z",
   "session": "54e5574c-72d6-4efe-b3af-6f52a869f45f",
   "model": "Opus 5.5",
   "effort": "xhigh",
-  "activity": "Existing reserved-owner relay opened a fresh continuation in the lookalikes workspace. Actual assistant replies and recent tools confirm Opus 5.5/xhigh. This watch sent no prompt or duplicate goal; current app artifacts are unchanged and incomplete.",
+  "activity": "Current owner is actively diagnosing the Linux membership/sign-in failure at Opus 5.5/xhigh. New app progress, vendor and completion artifacts are observed, with unfinished report placeholders. This watch qualifies only retention of the previously verified process helper, not the new product checks.",
   "appGoalAcknowledged": true,
   "goalAckFile": "reports/claude-app-handoff-1028/goal-ack.md",
   "harnessCommitRequired": "1cb3b18e42fbefb144f5fecab3fc234426d2993b",
-  "lastObservedVendorCommit": "1cb3b18e42fbefb144f5fecab3fc234426d2993b",
+  "lastObservedVendorCommit": "584a7cdd89729cdb0c824844a98275d9eb8162de",
   "revisionFollowup": {
     "state": "applied",
     "requiredCommit": "1cb3b18e42fbefb144f5fecab3fc234426d2993b",
@@ -24,9 +24,9 @@
     "localWebsiteGateOpen": false,
     "declaration": "FULLY FINISHED IN EVERY ASPECT: NO",
     "report": "D:/atlias-max-app/reports/COMPLETION-REPORT.md",
-    "reportSha256": "7c1283607b98589dcedf9d8530241588b5b37aa7d53d7e0f0f827e5d04bf837e",
+    "reportSha256": "1205a14bd93b14b693fdd5521970dd6ce41f00db27b194154c3485222901b8ed",
     "handoffCopySha256": "7c1283607b98589dcedf9d8530241588b5b37aa7d53d7e0f0f827e5d04bf837e",
-    "reportCopiesMatch": true
+    "reportCopiesMatch": false
   },
   "watchAutomation": "atlias-finish-local-fixes",
   "notificationFingerprint": "local-app-8c1bcea2c216e17d5c6861598963accaf2a8ed37;two-repairs;win29unit29dev29packaged;linux29unit28xvfb;app-NO;relay-pause",
@@ -50,11 +50,11 @@
     }
   },
   "reportFingerprints": {
-    "D:/atlias-max-app/PROGRESS.md": "e7188f8b49192b736df9f767eddf379200a839a127e86796e6f43ab87c41f9e7",
-    "D:/atlias-max-app/VENDOR.json": "0bf2326a096d83c819340f5d8a2217b4e8eaebf96b6b2a7f175fa14486d74e62",
+    "D:/atlias-max-app/PROGRESS.md": "ef8c76acce406f6a37dfc2654a2939f7ce9907757dfa9e939abbc51bbb8333c2",
+    "D:/atlias-max-app/VENDOR.json": "d168b64759262bdf8b39e8fde5d5329dfe61a5025e61a121b94790374d5ee9e5",
     "D:/atlias-max-app/reports/e2e-packaged-2026-10-29080505/receipt.txt": "855886ec7eb938e4d8b42ca9b696f84f8667438bf43e5305de97e55c8f9a803c",
     "D:/atlias-max-app/reports/linux-20261029T080726Z/receipt.txt": "98b768ad449657add61197c0f646893124a7a9712201cacaf6c53815fa6f0f34",
-    "D:/atlias-max-app/reports/COMPLETION-REPORT.md": "7c1283607b98589dcedf9d8530241588b5b37aa7d53d7e0f0f827e5d04bf837e",
+    "D:/atlias-max-app/reports/COMPLETION-REPORT.md": "1205a14bd93b14b693fdd5521970dd6ce41f00db27b194154c3485222901b8ed",
     "D:/atlias-max-app/docs/CODEX-LOCAL-QA-1029.md": "8979ccf0effdc9488f1e404424ea68a994fb9d6be4a7340fa5a890421e734099"
   },
   "status": "observing_primary_owner_active",
@@ -281,28 +281,39 @@
     "duplicateGoalSent": false,
     "completionConfirmed": false
   },
-  "lastObservationDisposition": "Quiet: actual reserved-owner continuation active at xhigh; app completion remains unproven and website gate closed.",
+  "lastObservationDisposition": "Quiet: new local batch and Linux repair in progress; full completion remains explicitly NO.",
   "activeAppWorkQualified": false,
   "latestObservation": {
-    "at": "2026-10-30T06:16:58.990Z",
+    "at": "2026-10-30T06:48:58.762Z",
     "owner": "54e5574c-72d6-4efe-b3af-6f52a869f45f",
     "activeSession": "237e7d50-2e15-4f99-a404-16b78bfcb82a",
     "codexMeter": {
-      "fiveHourUsedPercent": 1,
-      "weeklyUsedPercent": 87,
+      "fiveHourUsedPercent": 6,
+      "weeklyUsedPercent": 88,
       "binding": "weekly",
-      "estimatedBindingTurns": 260,
-      "fiveHourEstimatedTurns": 224
+      "estimatedBindingTurns": 194
     },
     "claudeMeter": {
-      "fiveHourUsedPercent": 26,
-      "weeklyUsedPercent": 47,
-      "estimatedXhighTurns": 127
+      "fiveHourUsedPercent": 65,
+      "estimateIncludesPostSnapshotSpend": true,
+      "weeklyUsedPercent": 50,
+      "estimatedXhighTurns": 63
     },
-    "changedArtifacts": [],
+    "changedArtifacts": [
+      "D:/atlias-max-app/PROGRESS.md",
+      "D:/atlias-max-app/VENDOR.json",
+      "D:/atlias-max-app/reports/COMPLETION-REPORT.md"
+    ],
     "changesQualified": false,
     "completionStillNo": true,
-    "actions": "Observed existing relay continuation. No app edits, tests, messages, restarts or Usage Limits changes."
+    "currentOwnerTool": {
+      "at": "2026-10-30T06:45:14.132Z",
+      "model": "claude-opus-5-5",
+      "effort": "xhigh",
+      "description": "Check Linux secret storage behaviour"
+    },
+    "processObserved": 9288,
+    "actions": "Read-only new artifact and Stop-retention observation. No product test, app edit, message, restart or Usage Limits change."
   },
   "localBatchReview": {
     "observedAt": "2026-10-29T15:45:28.064Z",
@@ -580,5 +591,17 @@
     "actualAssistantResponseConfirmed": true,
     "newPromptSentByWatch": false,
     "completionConfirmed": false
+  },
+  "vendorRetentionEvidence": {
+    "observedAt": "2026-10-30T06:48:58.762Z",
+    "baselineCommit": "1cb3b18e42fbefb144f5fecab3fc234426d2993b",
+    "observedCommit": "584a7cdd89729cdb0c824844a98275d9eb8162de",
+    "ancestorExit": 0,
+    "oldProcObject": "f8fd1168cdb1eb43ac3c221a454b7701354f7477",
+    "newProcObject": "f8fd1168cdb1eb43ac3c221a454b7701354f7477",
+    "vendorProcSha256": "180f0fffc1f5949992afe8dcb814c60396a48aaf2d9aed3e2d455ba0ea33d8a7",
+    "manifestProcSha256": "180f0fffc1f5949992afe8dcb814c60396a48aaf2d9aed3e2d455ba0ea33d8a7",
+    "baselineProcessSourceUnchanged": true,
+    "scope": "Git ancestry and byte identity of lib/proc.mjs only; no new app tests or package qualification by this watch"
   }
 }
