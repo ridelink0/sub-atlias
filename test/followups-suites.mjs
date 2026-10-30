@@ -90,7 +90,7 @@ export default async function ({ suite, asyncSuite, check, core, TMP, ROOT, fs, 
     check('slash dispatch never saves the side exchange', lines[0] === 'Because.' && before.equals(fs.readFileSync(file)), detail(lines));
   });
   await asyncSuite('draft recovery expert', 'followups: atomic drafts, redaction and crash during typing', async () => {
-    const file = drafts.fileFor(dir, dir), proc = new EventEmitter(); proc.exit = () => {};
+    const file = drafts.fileFor(dir, dir), proc = new EventEmitter(), exits = []; proc.exit = code => exits.push(code);
     const store = drafts.createStore(file, { proc, delay: 20 });
     store.save({ prompt: 'unsent', queued: ['one', 'two'], steers: ['first'] });
     check('drafts debounce instead of writing every key', !fs.existsSync(file), detail());
@@ -100,6 +100,10 @@ export default async function ({ suite, asyncSuite, check, core, TMP, ROOT, fs, 
     check('uncaught errors flush with existing secret-redaction rules', drafts.read(file).prompt === '[redacted]' && !fs.readFileSync(file, 'utf8').includes('abcdefghijklm'), detail());
     store.save({ prompt: 'signal saved', queued: [], steers: [] }); proc.emit('SIGTERM');
     check('SIGTERM flushes the latest draft', drafts.read(file).prompt === 'signal saved', detail());
+    check('a signal with no other listener still ends Atlias with its code', exits.join() === '143', detail(exits));
+    const cancel = () => {}; proc.once('SIGINT', cancel);
+    store.save({ prompt: 'saved during sign-in', queued: [], steers: [] }); proc.emit('SIGINT');
+    check('Ctrl+C during a sign-in that listens for it saves the draft and leaves the cancel to that listener', drafts.read(file).prompt === 'saved during sign-in' && exits.join() === '143', detail(exits));
     const beforeFailure = fs.readFileSync(file), rename = fs.renameSync;
     store.save({ prompt: 'retry after disk error', queued: [], steers: [] });
     try { fs.renameSync = () => { throw Error('fixture rename failure'); }; store.flush(); }
