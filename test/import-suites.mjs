@@ -315,7 +315,9 @@ export default async function importSuites({ suite, asyncSuite, check, skip, cor
     const r5 = spawnSync('git', ['diff', '--name-only', '25f0280', '--', 'lib/eval.mjs', 'tools/h2h'], { cwd: ROOT, encoding: 'utf8' });
     if (r5.status === 0) check('git: eval and h2h remain byte-identical to the frozen base 25f0280', r5.stdout.trim() === '', { happened: r5.stdout.trim(), why: 'The relay must not change measured runners or their grader path.', fix: 'Restore the frozen eval/h2h source.' });
     else skip('git diff against 25f0280', 'the base commit is not in this checkout');
-    const relayBase = 'c54f780';
+    // Reviewed 92edfc2 (2026-10-30, for Gev): the sub-agent ledger changes runSubagent only, which the
+    // benchmark path never reaches (the agent tool is not offered there), and state.subagent stays null there.
+    const relayBase = '92edfc2';
     const loopDiff = spawnSync('git', ['diff', '--name-only', relayBase, '--', 'lib/loop.mjs'], { cwd: ROOT, encoding: 'utf8' });
     if (loopDiff.status === 0) check('git: loop matches the reviewed optional-input source; golden requests enforce the benchmark baseline', loopDiff.stdout.trim() === '', { happened: loopDiff.stdout.trim(), why: 'Optional steering and interruption sources are absent from evals. Golden checks retain byte-identical benchmark requests. Any later loop change needs a review.', fix: 'Review the loop change, preserve golden fingerprints and pin the reviewed commit explicitly.' });
     else skip('git diff against reviewed relay source', 'the reviewed commit is not in this checkout');
