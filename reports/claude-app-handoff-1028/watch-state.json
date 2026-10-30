@@ -1,9 +1,9 @@
 {
-  "observedAt": "2026-10-30T07:31:28.035Z",
+  "observedAt": "2026-10-30T09:19:28.836Z",
   "session": "54e5574c-72d6-4efe-b3af-6f52a869f45f",
   "model": "Opus 5.5",
   "effort": "xhigh",
-  "activity": "Owner237 finished its local batch at07:04Z, with local app follow-ups remaining. With no active owner relay/process/test, this watch sent scheduling-only same-session requests; actual xhigh ACKs and completed exits verify delivery. Owner armed its own future relay and corrected source references. No app source edit/test by this watch.",
+  "activity": "Codex weekly meter91% used/9% remaining. App work and inspections stopped. Own watch deferred until measured weekly reset+7minutes; existing Claude relay and all ownership records preserved.",
   "appGoalAcknowledged": true,
   "goalAckFile": "reports/claude-app-handoff-1028/goal-ack.md",
   "harnessCommitRequired": "1cb3b18e42fbefb144f5fecab3fc234426d2993b",
@@ -57,7 +57,7 @@
     "D:/atlias-max-app/reports/COMPLETION-REPORT.md": "0e58e732fac985342cf256613959cf0a9625e728cc958f29cb4e66c724451132",
     "D:/atlias-max-app/docs/CODEX-LOCAL-QA-1029.md": "8979ccf0effdc9488f1e404424ea68a994fb9d6be4a7340fa5a890421e734099"
   },
-  "status": "awaiting_reserved_owner_relay",
+  "status": "codex_budget_deferred",
   "statusFingerprint": "owner-f1-reserved;relay-starting0047;new-artifacts-unqualified;app-NO",
   "continuation": {
     "acknowledgement": "ATLIAS-LOCAL-GAPS-1029-ACK",
@@ -281,30 +281,24 @@
     "duplicateGoalSent": false,
     "completionConfirmed": false
   },
-  "lastObservationDisposition": "Quiet: local batch ended with remaining local work; actual owner relay ready for measured reset+7minutes. Full app incomplete.",
+  "lastObservationDisposition": "Quiet budget deferral. Prior app completion remains historical/unverified for this wake; no new result inferred.",
   "activeAppWorkQualified": false,
   "latestObservation": {
-    "at": "2026-10-30T07:46:12.180Z",
-    "owner": "54e5574c-72d6-4efe-b3af-6f52a869f45f",
-    "activeSession": "237e7d50-2e15-4f99-a404-16b78bfcb82a",
+    "at": "2026-10-30T09:19:28.836Z",
     "codexMeter": {
-      "fiveHourUsedPercent": 17,
-      "weeklyUsedPercent": 90,
-      "binding": "weekly",
-      "estimatedBindingTurns": 119
+      "weeklyUsedPercent": 91,
+      "fiveHourUsedPercent": 23,
+      "remainingPercent": 9,
+      "binding": "weekly"
     },
     "claudeMeter": {
       "fiveHourUsedPercent": 88,
-      "weeklyUsedPercent": 52,
-      "estimatedXhighTurns": 23,
-      "snapshotAgeMinutes": 12
+      "weeklyUsedPercent": 52
     },
-    "changedArtifacts": [
-      "D:/atlias-max-app/reports/COMPLETION-REPORT.md"
-    ],
-    "changesQualified": false,
-    "completionStillNo": true,
-    "actions": "Current wake confirms artifact hashes unchanged; finish metadata verification/checkpoint only near budget boundary. Owner relay unchanged."
+    "appArtifactsInspected": false,
+    "currentOwnerLivenessInspected": false,
+    "productChecksRun": false,
+    "actions": "Budget stop and measured reset+7minute watch deferral only; Claude relay untouched."
   },
   "localBatchReview": {
     "observedAt": "2026-10-29T15:45:28.064Z",
@@ -498,9 +492,9 @@
     "reason": "Actual coordinated handoff; preserve the primary owner and its Usage Limits relay"
   },
   "ownershipPromptUpdate": {
-    "confirmedInSavedToml": false,
-    "scheduleStillEvery30Minutes": true,
-    "note": "Automation-update RPC did not return; do not claim the ownership prompt saved unless the actual TOML confirms it. This state and WORK-PLAN carry the current ownership guard."
+    "confirmedInSavedToml": true,
+    "scheduleStillEvery30Minutes": false,
+    "note": "Supported app update succeeded and saved TOML verified. Current ownership guidance replaced stale sessions; dated budget wake restores quiet30minute watch."
   },
   "previousSidechatSession": "5277af99-8794-4812-8ae0-5a7ef898ebe4",
   "primaryOwnerContinuation": {
@@ -644,5 +638,39 @@
         "effort": "xhigh"
       }
     ]
+  },
+  "codexBudgetDeferral": {
+    "observedAt": "2026-10-30T09:19:28.836Z",
+    "host": "codex",
+    "bindingWindow": "seven_day",
+    "usedPercent": 91,
+    "remainingPercent": 9,
+    "measurement": {
+      "now": 1793351709778,
+      "snapshotFetchedAt": 1793351681371,
+      "resetsAt": 1793792020000,
+      "resetsUtc": "2026-11-04T11:33:40.000Z"
+    },
+    "continuation": {
+      "wakeAt": 1793792440000,
+      "wakeUtc": "2026-11-04T11:40:40.000Z",
+      "wakeAmericaChicago": "2026-11-04T05:40:40-06:00",
+      "delayMs": 420000
+    },
+    "automation": {
+      "id": "atlias-finish-local-fixes",
+      "kind": "heartbeat",
+      "status": "ACTIVE",
+      "name": "Atlias desktop app completion watch",
+      "targetThreadId": "01a184b1-3fd3-7141-874d-ca8dcd8e74ae",
+      "updatedThrough": "Codex app automation_update",
+      "updateToolConfirmed": true,
+      "savedTomlVerified": true,
+      "path": "C:/Users/OWNER/.codex/automations/atlias-finish-local-fixes/automation.toml",
+      "rrule": "FREQ=DAILY;BYMONTH=11;BYMONTHDAY=4;BYHOUR=5;BYMINUTE=40;BYSECOND=40;COUNT=1",
+      "promptOwnershipCorrected": true,
+      "restoreEvery30MinutesAfterWake": true
+    },
+    "scope": "Budget bookkeeping only. App artifacts, owner liveness and tests were not inspected after reading below10%."
   }
 }

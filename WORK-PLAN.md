@@ -1,3 +1,11 @@
+## 2026-10-30 04:13 Central: Codex weekly budget stop
+
+Fresh live Codex JSON: weekly91% used/9% remaining, measured reset1793792020000=2026-11-04T11:33:40Z. Stop all app work and inspections under Gev's boundary. This wake did not recheck app artifacts, owner activity or tests; historical completion and scope remain unchanged, with no new success/failure inferred. Claude meter88% five-hour/52% weekly; its separately owned relay and all sessions/work remain untouched.
+
+Supported Codex app automation update succeeded. This watch is now ACTIVE for November4 at05:40:40 America/Chicago (11:40:40Z), exactly420000ms after the measured weekly reset. Saved automation.toml read back: date/time, target thread, heartbeat kind and ACTIVE state verified, including the CST offset after DST ends. Updated prompt uses current ownership/activeTranscript/ownerNextRelay instead of stale session references. Receipt: reports/claude-app-handoff-1028/codex-weekly-deferral-1030.json. No manual automation-file edit or workaround job. At that dated wake read fresh meters first, then restore useful quiet30minute watch and remove the dated preamble; verify the saved update.
+
+Next app observation must use current saved owner state and actual future Claude response. Prior Claude-owned relay at05:56:59 Central October30 was preserved; its current readiness/delivery was not rechecked this budget-stop wake. No new prompts, duplicate /goal, restart, app edit, test, push, deploy, paidAPI/cloud spend or live charge. Keep the website app gate closed until actual full completion and all platform/tool/Max evidence.
+
 ## 2026-10-30: same-owner after-reset continuation verified
 
 Latest wake07:43Z: Codex90% weekly/17% five-hour, binding estimate119 turns; Claude88% five-hour/52% weekly (12-minute snapshot), about23 xhigh turns. Finish this metadata checkpoint and start no new app work. Fresh meters first next wake; below10% remaining, save/defer from a freshly measured reset without disturbing the owner relay.

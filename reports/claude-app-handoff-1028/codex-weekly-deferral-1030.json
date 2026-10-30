@@ -1,0 +1,34 @@
+{
+  "observedAt": "2026-10-30T09:19:28.836Z",
+  "host": "codex",
+  "bindingWindow": "seven_day",
+  "usedPercent": 91,
+  "remainingPercent": 9,
+  "measurement": {
+    "now": 1793351709778,
+    "snapshotFetchedAt": 1793351681371,
+    "resetsAt": 1793792020000,
+    "resetsUtc": "2026-11-04T11:33:40.000Z"
+  },
+  "continuation": {
+    "wakeAt": 1793792440000,
+    "wakeUtc": "2026-11-04T11:40:40.000Z",
+    "wakeAmericaChicago": "2026-11-04T05:40:40-06:00",
+    "delayMs": 420000
+  },
+  "automation": {
+    "id": "atlias-finish-local-fixes",
+    "kind": "heartbeat",
+    "status": "ACTIVE",
+    "name": "Atlias desktop app completion watch",
+    "targetThreadId": "01a184b1-3fd3-7141-874d-ca8dcd8e74ae",
+    "updatedThrough": "Codex app automation_update",
+    "updateToolConfirmed": true,
+    "savedTomlVerified": true,
+    "path": "C:/Users/OWNER/.codex/automations/atlias-finish-local-fixes/automation.toml",
+    "rrule": "FREQ=DAILY;BYMONTH=11;BYMONTHDAY=4;BYHOUR=5;BYMINUTE=40;BYSECOND=40;COUNT=1",
+    "promptOwnershipCorrected": true,
+    "restoreEvery30MinutesAfterWake": true
+  },
+  "scope": "Budget bookkeeping only. App artifacts, owner liveness and tests were not inspected after reading below10%."
+}
