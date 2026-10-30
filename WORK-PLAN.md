@@ -1,3 +1,15 @@
+## 2026-10-30: same-owner after-reset continuation verified
+
+Latest wake07:43Z: Codex90% weekly/17% five-hour, binding estimate119 turns; Claude88% five-hour/52% weekly (12-minute snapshot), about23 xhigh turns. Finish this metadata checkpoint and start no new app work. Fresh meters first next wake; below10% remaining, save/defer from a freshly measured reset without disturbing the owner relay.
+
+Owner237 ended its batch at07:04:51Z; its process/relay and relevant app tests were absent. Local work still remains: the Ctrl+, after zoom lead, Steer transcript polish, worktree mode/remaining capabilities, plus the owner plan's other ordered tasks. The next implementation and qualification batch would not fit Claude's headroom above15 turns. Latest user authorization therefore supported scheduling-only housekeeping in that same owner session, preserving its reservation. No app source or test work was launched by this watch. Both actual xhigh ACKs and CLI exits0 are in next-owner-relay-1030.json and next-owner-sources-1030.json. Raw streams use .log and are complete.
+
+Owner's own Usage Limits workflow armed short id237e7d50/taskUsageLimitsRelay-237e7d50-mvuuxxve. Fresh measured reset1793357399834=2026-10-30T10:49:59.834Z; wake1793357819834=10:56:59.834Z, exactly420000ms later (05:56:59 Central). Actual native task Ready/enabled and saved continuation read back; native trigger rounddown is still over reset+5minutes. Future assistant response is not yet proven. Preserve this owner-managed relay; no new prompt before it, and never resume completed5277af99. Original owner-f1/54e5574c keeps app ownership.
+
+Adversarial handoff read found missing brief/research paths. The same owner appended and read back the full brief, final Deep Research/Image Deep Research report, authenticated Max-only macOS/Windows/Linux/no-iOS scope and completion gates while preserving NEXT order and unchanged timing. Current source is watch-state.ownerNextRelay.savedContinuation. After its wake, inspect actual new response and xhigh; task Running alone is not proof.
+
+Only the app completion report changed among six tracked artifacts; its current producer results remain unqualified by this watch. Full completion explicitly NO, root copy older, website gate closed. Keep useful quiet30-minute watch: local follow-ups remain. Last meters: Codex89% weekly/14% five-hour, binding139turns; Claude87% five-hour/52% weekly,25xhigh before the small source correction. Fresh meters first next wake. Earlier Codex automation prompt update remains unconfirmed; this ownership guard supersedes stale scheduled sessions. All local; no push/deploy/paidAPI/cloud/livebilling.
+
 ## 2026-10-30 01:43 Central: new owner batch in progress; Stop repair retained
 
 Current owner session237e7d50 remains on Opus5.5/xhigh with actual tools at06:45:14Z and native process9288. It is repairing Linux membership/sign-in after relaunch; preserve the active run, tests, Usage Limits and reserved owner-f1/original54e5574c ownership. No prompt, app edit or product test by this watch. Read watch-state.activeTranscript for current activity; never resume completed5277af99.
