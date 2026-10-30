@@ -1,3 +1,9 @@
+## 2026-10-29 21:43 Central: preserve primary-owner budget pause
+
+Fresh Codex63% five-hour/86% weekly has about75 binding turns; Claude90% five-hour/45% weekly has about14 turns, below the save boundary. Start no new Claude/app work. Actual owner reply at02:20:10.214Z in session2a4f730c says nothing fully finished, delegated app work and test qualification pending, and its relay armed. Existing Usage Limits relay for2a4f730c is independently Ready/enabled with start00:56:59 Central October30 (owner log05:56:59.589Z). This watch did not schedule it or independently read its measured reset; preserve its ownership and do not prompt into the pause. Do not stop or restart pending delegated work/tests.
+
+All six tracked artifact hashes remain unchanged. Completion explicitly NO; local website gate closed. New suite counts and remaining failures are producer reports, not qualification by this watch. Primary owner-f1/original54e5574c retains exclusive app ownership; never resume completed5277af99. No app tests/edits/messages by this watch. Next: keep the useful quiet30-minute watch; fresh meters/artifacts first, observe actual after-relay response when due. Any new usage continuation needs a fresh measured reset plus5to10minutes; never guess. Current ownership guard supersedes the stale automation prompt; its earlier update remains unconfirmed. No push/deploy/paidAPI/cloud/livebilling.
+
 ## 2026-10-29 20:13 Central: primary-owner relay continuation confirmed
 
 Actual assistant replies since 00:50:48.933Z and recent tools verify fresh session 2a4f730c-6d08-491e-a36b-16262c703d91 at claude-opus-5-5/xhigh. It was opened by the existing owner-f1 relay after reset. Primary ownership remains with original session 54e5574c; do not resume completed session 5277af99 or start competing app work. Fresh meters: Codex 19% five-hour/79% weekly, Claude 30% five-hour/40% weekly; observation fits. No app checks, edits or messages by this watch.
