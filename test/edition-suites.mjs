@@ -1,4 +1,15 @@
-import * as editionMod from '../lib/edition.mjs';import {bareCommand} from '../lib/settings.mjs';
+import * as editionMod from '../lib/edition.mjs';import {bareCommand} from '../lib/settings.mjs';import * as onboardingMod from '../lib/onboarding.mjs';
 export default function editionSuites({suite,check,TMP,fs,path}){
  suite('private edition expert','private edition first-open defaults preserve user configuration and ordinary hosts',()=>{const root=path.join(TMP,'private-edition-contract');fs.mkdirSync(root,{recursive:true});const file=path.join(root,'DISTRIBUTION.json');const detail={happened:'edition launch did not match the validated package manifest',why:'The private friend must open the Atlias app without falling into a host-only chooser.',fix:'Read trusted edition metadata and preserve ordinary install behavior.'};check('a normal source checkout has no private override',editionMod.editionDefaults(root)===null,detail);fs.writeFileSync(file,JSON.stringify({schema:'atlias.private-distribution.v1',edition:'claude-friend',preferredEngine:'claude-plan'}));const edition=editionMod.editionDefaults(root);check('friend package selects the official SDK and keeps a separate onboarding record',edition.preferredEngine==='claude-plan'&&edition.onboardingFile==='onboarding-claude-friend.json',detail);check('legacy plugin-only mode does not hide the friend terminal UI',bareCommand('sub',true,edition)==='agent'&&bareCommand('both',true,edition)==='agent',detail);check('noninteractive and ordinary host behavior remain available',bareCommand('sub',false,edition)==='help'&&bareCommand('sub',true,null)==='status',detail);});
+ suite('release edition expert','the release offers no Claude engine; the founders edition keeps it',()=>{
+  const detail={happened:'the Claude engine showed in the wrong edition',why:'Gev (2026-10-29): the release has no Claude; the founders edition (Gev and his friend) has it.',fix:'Gate every Claude offer on claudeOffered(edition).'};
+  const founders={name:'Founders edition',preferredEngine:'claude-plan'},found={claudePlan:true,ollama:true};
+  check('only a founders edition offers Claude',editionMod.claudeOffered(null)===false&&editionMod.claudeOffered(founders)===true,detail);
+  check('the release menu has no Claude row and the founders menu does',!onboardingMod.visibleChoices({hostEngines:'off'},false).some(r=>r.method==='claude-plan')&&onboardingMod.visibleChoices({hostEngines:'off'},true).some(r=>r.method==='claude-plan'),detail);
+  check('the release never recommends Claude, even with a Claude sign-in on the computer',onboardingMod.recommended(found,false)==='3'&&onboardingMod.recommended({},false)==='3'&&onboardingMod.recommended(found,true)==='1',detail);
+  const release=onboardingMod.welcomeText(found,{hostEngines:'off'},0,true,null,false),friend=onboardingMod.welcomeText(found,{hostEngines:'off'},0,true,null,true);
+  check('the release welcome names no Claude route; the founders welcome does',!/Claude/.test(release)&&/Use my Claude plan/.test(friend)&&/your Claude sign-in/.test(friend),{...detail,happened:release});
+  const lines=[];const row=onboardingMod.setupClaudePlan({edition:null,out:t=>lines.push(t)});
+  check('setup claude in the release says so and installs nothing',lines[0]===editionMod.CLAUDE_FOUNDERS_ONLY&&row instanceof Promise,{...detail,happened:lines});
+ });
 }
