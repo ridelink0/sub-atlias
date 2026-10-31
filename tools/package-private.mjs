@@ -1,6 +1,6 @@
 import fs from 'node:fs';import path from 'node:path';import crypto from 'node:crypto';import {execFileSync} from 'node:child_process';import {fileURLToPath} from 'node:url';
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-export function buildPrivate({source=ROOT,dest,version='4.0.1-preview.20261028'}={}){
+export function buildPrivate({source=ROOT,dest,version='4.1.0-preview.20261031'}={}){
  if(!dest||fs.existsSync(dest))throw Error('Use a new, empty destination path.');
  dest=path.resolve(dest);if(dest===source||dest.startsWith(path.resolve(source)+path.sep))throw Error('Build outside the source checkout.');
  fs.mkdirSync(dest,{recursive:true});
