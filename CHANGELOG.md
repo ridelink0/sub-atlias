@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.1.0
+
+- The release edition has no Claude engine; the founders edition keeps it.
+- Steer and Queue follow-ups while a task runs, /btw side questions, and prompt drafts that survive a crash.
+- A record of each sub-agent (task, status, steps, tokens, turns) and stopping one without the parent.
+- The terminal start screen shows the Atlias wordmark and Atlo with its four legs again; the prompt band is Atlias navy; the footer names the model and shows usage only for the engine in use.
+
 ## 4.0.0
 
 - Atlias's own agent from the 2026-10-16/17 harness work: against plain Claude Code on the same local model (qwen3.5:9b), nine 120-run screens averaged 19.5x fewer total tokens (best trial 23.4x, with a 5.4x smaller largest prompt), solving as many tasks or more in eight of nine. The best trial's settings (flags.preloadFiles, visibleCheck, finishOnGreen, quietNoCheck, stallStop, greenFailShown and the rest) are switches, off by default.

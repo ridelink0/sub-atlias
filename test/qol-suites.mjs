@@ -282,11 +282,11 @@ export default async function qolSuites({ suite, asyncSuite, check, core, agentM
 
   suite('version expert', 'versions agree and atlias --version shows the real one', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
-    check('package.json and core.VERSION are 4.0.0', pkg.version === '4.0.0' && core.VERSION === '4.0.0', { happened: `${pkg.version} / ${core.VERSION}`, why: 'Gev: bump to 4.0.0.', fix: 'Bump all manifests.' });
+    check('package.json and core.VERSION are 4.1.0', pkg.version === '4.1.0' && core.VERSION === '4.1.0', { happened: `${pkg.version} / ${core.VERSION}`, why: 'Gev: bump to 4.0.0.', fix: 'Bump all manifests.' });
     const line = updater.versionLine(ROOT);
-    check('--version prints the version from package.json with the commit of a checkout', line.startsWith('atlias 4.0.0') && /\([0-9a-f]{7,}/.test(line), { happened: line, why: 'The real version, not a guess.', fix: 'versionLine.' });
+    check('--version prints the version from package.json with the commit of a checkout', line.startsWith('atlias 4.1.0') && /\([0-9a-f]{7,}/.test(line), { happened: line, why: 'The real version, not a guess.', fix: 'versionLine.' });
     const r = spawnSync(process.execPath, [path.join(ROOT, 'bin', 'atlias.mjs'), '--version'], { encoding: 'utf8' });
-    check('the CLI answers --version and version with it', r.status === 0 && r.stdout.startsWith('atlias 4.0.0'), { happened: r.stdout + r.stderr, why: 'End to end.', fix: 'case version.' });
+    check('the CLI answers --version and version with it', r.status === 0 && r.stdout.startsWith('atlias 4.1.0'), { happened: r.stdout + r.stderr, why: 'End to end.', fix: 'case version.' });
     const plain = dir('plainv');
     fs.writeFileSync(path.join(plain, 'package.json'), JSON.stringify({ version: '9.9.9' }));
     check('a folder that is not a checkout reports its package version without git details', updater.versionLine(plain) === 'atlias 9.9.9', { happened: updater.versionLine(plain), why: 'No commit to show.', fix: 'toplevel compare.' });

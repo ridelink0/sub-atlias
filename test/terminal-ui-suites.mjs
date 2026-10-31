@@ -143,8 +143,8 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
   // B5: the footer keeps whole segments; a segment that does not fit is dropped, never cut mid-number.
   const footerInfo = { engine: 'echo (dry run)', permission: 'workspace', tokens: ['Claude plan', 'session', 'ctx 1,234', 'in 5,678'] };
   const footerAt = (columns) => ui.renderComposer({ text: 'x', info: footerInfo, columns, rows: 24 }).lines.at(-1);
-  check('a wide footer shows every segment (B5)', footerAt(120) === 'echo (dry run)  |  workspace  |  Claude plan  |  session  |  ctx 1,234  |  in 5,678', detail(JSON.stringify(footerAt(120))));
-  check('a narrow footer drops whole trailing segments, not the middle of a number (B5)', footerAt(40) === 'echo (dry run)  |  workspace' && footerAt(50) === 'echo (dry run)  |  workspace  |  Claude plan' && footerAt(60) === 'echo (dry run)  |  workspace  |  Claude plan  |  session', detail(JSON.stringify([footerAt(40), footerAt(50), footerAt(60)])));
+  check('a wide footer shows every segment (B5)', footerAt(120) === 'echo (dry run)  ·  workspace  ·  Claude plan  ·  session  ·  ctx 1,234  ·  in 5,678', detail(JSON.stringify(footerAt(120))));
+  check('a narrow footer drops whole trailing segments, not the middle of a number (B5)', footerAt(40) === 'echo (dry run)  ·  workspace' && footerAt(50) === 'echo (dry run)  ·  workspace  ·  Claude plan' && footerAt(60) === 'echo (dry run)  ·  workspace  ·  Claude plan  ·  session', detail(JSON.stringify([footerAt(40), footerAt(50), footerAt(60)])));
   check('the token counts follow ui.usageEnabled, which defaults off (B5)', core.DEFAULTS.ui.usageEnabled === false && /config\(\)\.ui\.usageEnabled === true/.test(fs.readFileSync(path.join(ROOT, 'lib/agent.mjs'), 'utf8')), detail());
   // Gev's reference: Atlo stays next to the unchanged pixel wordmark at normal terminal sizes.
   for (const rowCount of [24, 40]) {
