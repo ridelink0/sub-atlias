@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "atlias",
-  "description": "sub-atlias: the free sub version of Atlias (not the full Atlias app) for shared memory, knowledge graphs, hooks, MCP tools, and verification.",
+  "description": "atlias: a harness for AI coding agents, as a sub-harness or an agent of its own, built so that done means done.",
   "owner": {
     "name": "Gev",
     "email": "app.ridelink@gmail.com"
@@ -9,14 +9,14 @@
   "plugins": [
     {
       "name": "atlias",
-      "description": "sub-atlias, the free sub version of Atlias (not the full app): shared project memory, a knowledge graph, host hooks, MCP tools, and verification.",
+      "description": "A harness for AI coding agents, built so that done means done. It runs as a sub-harness inside Claude Code, Codex, Antigravity, Gemini CLI and fourteen more, or as an agent of its own in any terminal, and checks every claim of done against what really happened: a pass claimed with no test run or after a failing one, done with no check since the last edit, placeholders, weakened tests, unwired code, syntax errors, loops and destructive commands. Shared memory across hosts, a graphify knowledge graph, compaction handoff notes, Dream consolidation, and a tool loop that lets weak models edit, check and finish.",
       "author": {
         "name": "Gev"
       },
       "category": "productivity",
       "source": "./",
       "homepage": "https://github.com/ridelink0/atlias",
-      "version": "4.0.1"
+      "version": "4.0.0"
     }
   ]
 }

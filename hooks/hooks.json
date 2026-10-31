@@ -87,7 +87,7 @@
           {
             "type": "command",
             "command": "node \"${CLAUDE_PLUGIN_ROOT}/lib/hooks.mjs\" stop",
-            "timeout": 30
+            "timeout": 45
           }
         ]
       }

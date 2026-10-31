@@ -1,7 +1,7 @@
 {
   "name": "atlias",
-  "version": "4.0.1",
-  "description": "A sub-harness for shared project memory, a knowledge graph, host hooks, MCP tools, and verification.",
+  "version": "4.0.0",
+  "description": "A harness for AI coding agents, built so that done means done: a sub-harness inside Codex, Claude Code and sixteen more, or an agent of its own in any terminal.",
   "author": {
     "name": "Gev",
     "url": "https://github.com/ridelink0"
@@ -21,6 +21,7 @@
     "claude code",
     "mcp"
   ],
+  "skills": "./skills/",
   "interface": {
     "displayName": "atlias",
     "shortDescription": "Done means done: checks every claim of done against what really happened",

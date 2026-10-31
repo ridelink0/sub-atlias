@@ -1,0 +1,318 @@
+{
+  "mutations": [
+    {
+      "name": "long requests cut",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "instruction tail cut",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "repeated authority erased",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "off mode changes placement",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "moved tools not named",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "note replaces ToolSearch text",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "listing cut without its own switch",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "long skill name cut",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "another plugin's listing cut",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "memory switch omits every section",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "compact text without its switch",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "another provider's tool text rewritten",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "brief ignores verify.doublePass",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "hooks-only brief still names tools",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "hooks-only block for every host",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "lean Codex block for every host",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "malformed cache count read as 0",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "missing window counted as matched",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "window read only after the task",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "reload at another window matched",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "upstream error text dropped",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "row marked uncounted trusted",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "partial stream taken as complete",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "resume drops uncounted rows",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "responses count taken unchecked",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "responses stream without end not partial",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "previous_response_id let through",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "unmetered responses path let through",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "instructions dropped on the way",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "native skill capability removed",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "real skills root leaks into Codex",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "capped call leaves no receipt",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "unknown outcome clears a failure",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "quoted spacing collapsed",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "checkId ignored",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "hook records no checkId",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "alternating window ignores edits",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "failed edit resets the alternating guard",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "positions applied without the switch",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "positions reads a pipe into a shell",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "positions refuses 2>/dev/null",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "space before > /dev/sd slips by",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "quoted or globbed home target slips by",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "door ignores a cut reply",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "open quote split anyway",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "substitution taken as read-only",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "hook ignores the positions switch",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "no-check rule without its flag",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "no-check rule where a check exists",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "tool list ignores its flag",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "Stop timeout back to 30",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    },
+    {
+      "name": "ledger drops middle requests",
+      "caught": true,
+      "exit": 1,
+      "timeout": false
+    }
+  ],
+  "restoredFunctionalExit": 0,
+  "restoredFunctionalTimeout": false
+}

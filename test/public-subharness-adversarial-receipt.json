@@ -1,0 +1,375 @@
+{
+  "baselineExit": 0,
+  "baselineTimeout": false,
+  "mutations": [
+    {
+      "name": "unsafe public URL accepted",
+      "source": "lib/provider.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "credentials, invalid protocol and unsafe URLs",
+      "failedChecks": [
+        "credentials, invalid protocol and unsafe URLs are rejected before launch"
+      ]
+    },
+    {
+      "name": "explicit null cache becomes zero",
+      "source": "lib/provider.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "explicit null cache counts",
+      "failedChecks": [
+        "explicit null cache counts stay unknown"
+      ]
+    },
+    {
+      "name": "Anthropic cache read omitted",
+      "source": "lib/provider.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "Anthropic input, cache reads",
+      "failedChecks": [
+        "Anthropic input, cache reads, and TTL writes are disjoint",
+        "Anthropic stream merges cumulative output with the original input categories"
+      ]
+    },
+    {
+      "name": "TTL writes counted twice",
+      "source": "lib/provider.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "Anthropic input, cache reads",
+      "failedChecks": [
+        "Anthropic input, cache reads, and TTL writes are disjoint",
+        "cost is a labeled estimate with each supplied category rate"
+      ]
+    },
+    {
+      "name": "Responses cache input counted twice",
+      "source": "lib/provider.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "Responses cached input and reasoning",
+      "failedChecks": [
+        "Responses cached input and reasoning are not counted twice"
+      ]
+    },
+    {
+      "name": "missing price becomes free",
+      "source": "lib/provider.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "missing active rates",
+      "failedChecks": [
+        "missing active rates or unknown usage produce unknown cost"
+      ]
+    },
+    {
+      "name": "unknown call dropped from aggregate",
+      "source": "lib/provider.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "unknown calls are retained",
+      "failedChecks": [
+        "unknown calls are retained in totals rather than discarded"
+      ]
+    },
+    {
+      "name": "unsafe aggregate trusted",
+      "source": "lib/provider.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "unsafe integer aggregate",
+      "failedChecks": [
+        "unsafe integer aggregate totals remain unknown"
+      ]
+    },
+    {
+      "name": "stream assumed terminal",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "stream without a terminal event",
+      "failedChecks": [
+        "a stream without a terminal event remains unknown"
+      ]
+    },
+    {
+      "name": "Anthropic stream error ignored",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "stream error prevents",
+      "failedChecks": [
+        "a stream error prevents a later stop from certifying partial usage"
+      ]
+    },
+    {
+      "name": "in-progress JSON trusted",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "nonstreamed in-progress response",
+      "failedChecks": [
+        "a nonstreamed in-progress response is not terminal"
+      ]
+    },
+    {
+      "name": "upstream redirect follows credential",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "provider redirects are not followed",
+      "failedChecks": [
+        "provider redirects are not followed with credentials and location is not exposed"
+      ]
+    },
+    {
+      "name": "local cookie leaks upstream",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "upstream receives only the environment credential",
+      "failedChecks": [
+        "upstream receives only the environment credential and receipts contain no key or prompt"
+      ]
+    },
+    {
+      "name": "unknown inference route passes",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "unauthorized and unsupported inference paths",
+      "failedChecks": [
+        "unauthorized and unsupported inference paths never reach upstream"
+      ]
+    },
+    {
+      "name": "stream decoder corrupts split UTF8",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "split UTF-8 stream bytes",
+      "failedChecks": [
+        "split UTF-8 stream bytes are decoded once and forwarded unchanged"
+      ]
+    },
+    {
+      "name": "forwarded stream bytes corrupt UTF8",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "split UTF-8 stream bytes",
+      "failedChecks": [
+        "split UTF-8 stream bytes are decoded once and forwarded unchanged"
+      ]
+    },
+    {
+      "name": "provider credential logged",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "upstream receives only the environment credential",
+      "failedChecks": [
+        "upstream receives only the environment credential and receipts contain no key or prompt"
+      ]
+    },
+    {
+      "name": "wrong model priced as configured model",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "different native model",
+      "failedChecks": [
+        "usage for a different native model remains measured but its price is unknown"
+      ]
+    },
+    {
+      "name": "Codex native argv moved before globals",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "Codex resume and subcommand arguments",
+      "failedChecks": [
+        "Codex resume and subcommand arguments remain in native order"
+      ]
+    },
+    {
+      "name": "Claude resume argv dropped",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "Claude resumes natively",
+      "failedChecks": [
+        "Claude resumes natively with one plugin and selected model routing",
+        "launcher returns native exit status with resume arguments unchanged",
+        "one native process carries original request and follow-up to two physical calls"
+      ]
+    },
+    {
+      "name": "launcher reports false success",
+      "source": "lib/subharness.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "launcher returns native exit status",
+      "failedChecks": [
+        "launcher returns native exit status with resume arguments unchanged"
+      ]
+    },
+    {
+      "name": "long followup silently clipped",
+      "source": "lib/authority.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "compact restores long authority",
+      "failedChecks": [
+        "compact restores long authority and selected skill exactly in occurrence order",
+        "resume restores long authority and selected skill exactly in occurrence order",
+        "PostCompact retains exact authority beyond the handoff evidence budget"
+      ]
+    },
+    {
+      "name": "repeated request text globally deduped",
+      "source": "lib/authority.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "repeated requests remain separate occurrences",
+      "failedChecks": [
+        "native prompt retries deduplicate ids while repeated requests remain separate occurrences",
+        "compact restores long authority and selected skill exactly in occurrence order",
+        "resume restores long authority and selected skill exactly in occurrence order"
+      ]
+    },
+    {
+      "name": "skill amendment globally deduped",
+      "source": "lib/authority.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "reverted selected skill",
+      "failedChecks": [
+        "a reverted selected skill is a later ordered amendment rather than global duplicate text"
+      ]
+    },
+    {
+      "name": "clear leaves obsolete authority",
+      "source": "lib/brief.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "clear retires prior authority",
+      "failedChecks": [
+        "clear retires prior authority before a new objective is compacted"
+      ]
+    },
+    {
+      "name": "resume authority clipped as evidence",
+      "source": "lib/brief.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "resume restores long authority",
+      "failedChecks": [
+        "an explicitly selected project skill is captured before any tool read",
+        "compact restores long authority and selected skill exactly in occurrence order",
+        "resume restores long authority and selected skill exactly in occurrence order"
+      ]
+    },
+    {
+      "name": "selected native Skill not retained",
+      "source": "lib/track.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "native Skill invocation",
+      "failedChecks": [
+        "native Skill invocation retains full selected instructions"
+      ]
+    },
+    {
+      "name": "truncated shell skill promoted",
+      "source": "lib/track.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "mentioned skill or truncated shell excerpt",
+      "failedChecks": [
+        "a mentioned skill or truncated shell excerpt is not treated as full authority"
+      ]
+    },
+    {
+      "name": "explicit project skill selection omitted",
+      "source": "lib/router.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "explicitly selected project skill",
+      "failedChecks": [
+        "an explicitly selected project skill is captured before any tool read"
+      ]
+    },
+    {
+      "name": "concurrent hooks overwrite authority",
+      "source": "lib/authority.mjs",
+      "caught": true,
+      "exit": 1,
+      "timeout": false,
+      "expectedFailure": "six simultaneous hook processes",
+      "failedChecks": [
+        "six simultaneous hook processes preserve all 120 requests and six selected skills"
+      ]
+    }
+  ],
+  "restoredFunctionalExit": 0,
+  "restoredFunctionalTimeout": false,
+  "byteExactRestore": true,
+  "sourceHashes": {
+    "lib/provider.mjs": {
+      "before": "9e66b70fede931a20d587bd6a1b4d462565e78874759f162d678c28ec298a4e8",
+      "after": "9e66b70fede931a20d587bd6a1b4d462565e78874759f162d678c28ec298a4e8"
+    },
+    "lib/subharness.mjs": {
+      "before": "58931de1d5902d161a1f99ba09af743316bf509d535e19a2c2c660213b8dd84d",
+      "after": "58931de1d5902d161a1f99ba09af743316bf509d535e19a2c2c660213b8dd84d"
+    },
+    "lib/authority.mjs": {
+      "before": "9208c915ae03d4aed11646f26b005ad8be5dde3714261db50506a8aa6553d59f",
+      "after": "9208c915ae03d4aed11646f26b005ad8be5dde3714261db50506a8aa6553d59f"
+    },
+    "lib/brief.mjs": {
+      "before": "4c9d3182fea5eddba4f1a69d688124c4689606fd3d313e1eac4ad6efde9bd158",
+      "after": "4c9d3182fea5eddba4f1a69d688124c4689606fd3d313e1eac4ad6efde9bd158"
+    },
+    "lib/track.mjs": {
+      "before": "c198a86fdf0e0a4e6d4a071ab7fa945e36cfea0608aa82c3628613532545b194",
+      "after": "c198a86fdf0e0a4e6d4a071ab7fa945e36cfea0608aa82c3628613532545b194"
+    },
+    "lib/router.mjs": {
+      "before": "6a6878f475db936f876ad4d496281590f5c17458f1a4b811c980dfb0359ec67f",
+      "after": "6a6878f475db936f876ad4d496281590f5c17458f1a4b811c980dfb0359ec67f"
+    }
+  }
+}

@@ -1,12 +1,14 @@
 // Tool implementations shared by the MCP server and the CLI.
 import fs from 'node:fs';
 import path from 'node:path';
-import { claudeMemoryDir, readText, writeText, readLines, exists, clip, config, ensureDir } from '../lib/core.mjs';
+import { STATE_DIR, slug, claudeMemoryDir, readText, writeText, readLines, exists, clip, config, ensureDir } from '../lib/core.mjs';
 import * as graph from '../lib/graph.mjs';
 import * as dream from '../lib/dream.mjs';
 import * as progress from '../lib/progress.mjs';
 import { syntaxReport } from '../lib/gate.mjs';
 import { doctor, formatDoctor } from '../lib/hosts.mjs';
+import * as bench from '../lib/bench.mjs';
+import * as relay from '../lib/relay.mjs';
 import { doctorRows } from '../lib/hosts-extra.mjs';
 
 const TYPES = new Set(['user', 'feedback', 'project', 'reference']);
@@ -32,13 +34,18 @@ export function recall(cwd, query, limit = 8) {
     return true;
   };
   const memDir = claudeMemoryDir(cwd);
-  if (exists(memDir)) {
+  // Notes brought in by `atlias import` live in the Atlias home: this project's, and the ones from Codex.
+  const importedDirs = [path.join(STATE_DIR, 'projects', slug(cwd), 'memory'), path.join(STATE_DIR, 'memory', 'codex')].filter((d) => d !== memDir && exists(d));
+  if (exists(memDir) || importedDirs.length) {
     const hits = [];
-    for (const f of fs.readdirSync(memDir)) {
-      if (!f.endsWith('.md') || f === 'MEMORY.md') continue;
-      const text = readText(path.join(memDir, f)) || '';
-      const s = score(text);
-      if (s) hits.push({ f, s, text });
+    for (const dir of [memDir, ...importedDirs]) {
+      if (!exists(dir)) continue;
+      for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.md') || f === 'MEMORY.md') continue;
+        const text = readText(path.join(dir, f)) || '';
+        const s = score(text);
+        if (s) hits.push({ f, s, text });
+      }
     }
     hits.sort((a, b) => b.s - a.s);
     for (const h of hits.slice(0, limit)) add(`### memory ${h.f}\n${clip(h.text.replace(/^---[\s\S]*?---\s*/, '').trim(), cfg.bodyChars)}`);
@@ -101,14 +108,16 @@ export function verifyText(cwd, paths) {
 }
 
 export const TOOLS = [
+  { name: 'harness_relay', description: 'Opt-in automatic relay for an exact saved Atlias agent session (not a host chat id). status lists this project; schedule saves next_step and at, or a fresh measured reset_at plus five minutes; cancel uses id. Enable agent.relay on first. Same engine/model/permissions, bounded chain, Windows Task Scheduler.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['status','schedule','cancel'] }, session: { type: 'string' }, at: { type: 'string' }, reset_at: { type: 'string' }, next_step: { type: 'string' }, id: { type: 'string' }, cwd: { type: 'string' } }, required: ['action'] } },
   { name: 'harness_recall', description: 'Search the shared memory (all hosts), recent session digests and the knowledge graph for a question. Cheap; use before reading files or asking the user to repeat themselves.', inputSchema: { type: 'object', properties: { query: { type: 'string' }, cwd: { type: 'string', description: 'project directory (defaults to the server cwd)' } }, required: ['query'] } },
   { name: 'harness_remember', description: 'Save one durable fact to the shared memory as a Claude Code memory file (name, type user|feedback|project|reference, description, body) and index it. Use for preferences, corrections, decisions and references, never for what the code already says.', inputSchema: { type: 'object', properties: { name: { type: 'string' }, type: { type: 'string', enum: ['user', 'feedback', 'project', 'reference'] }, description: { type: 'string' }, body: { type: 'string' }, cwd: { type: 'string' } }, required: ['name', 'type', 'description'] } },
-  { name: 'harness_progress', description: 'get: read the handoff note (objective, changed files, checks, next step). set: record the next step so a compaction, crash or new session picks up exactly here.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['get', 'set'] }, text: { type: 'string' }, cwd: { type: 'string' } }, required: ['action'] } },
+  { name: 'harness_progress', description: 'Shared project handoff across all callers, including workers. get: read the parent project note. set: record the shared next step for compaction, crash or resume. Actor-specific hook notes are separate.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['get', 'set'] }, text: { type: 'string' }, cwd: { type: 'string' } }, required: ['action'] } },
   { name: 'harness_verify', description: 'Syntax-check changed files (JavaScript, JSON, Python). Returns what failed and how to fix it.', inputSchema: { type: 'object', properties: { paths: { type: 'array', items: { type: 'string' } }, cwd: { type: 'string' } }, required: ['paths'] } },
   { name: 'harness_digest', description: 'show: the session digests waiting to be consolidated into memory. ack: mark them consolidated after you saved the durable facts with harness_remember.', inputSchema: { type: 'object', properties: { action: { type: 'string', enum: ['show', 'ack'] }, cwd: { type: 'string' } }, required: ['action'] } },
   { name: 'graph_query', description: 'Ask the graphify knowledge graph of this project a question (BFS over code, docs and their relationships). A few hundred tokens instead of a file walk. Requires graphify-out/graph.json.', inputSchema: { type: 'object', properties: { question: { type: 'string' }, budget: { type: 'integer', description: 'token cap, default 600' }, cwd: { type: 'string' } }, required: ['question'] } },
   { name: 'graph_affected', description: 'Reverse traversal: what depends on this node and would be affected by changing it. Use before a risky edit.', inputSchema: { type: 'object', properties: { node: { type: 'string' }, cwd: { type: 'string' } }, required: ['node'] } },
   { name: 'graph_explain', description: 'Plain-language explanation of one node and its neighbours.', inputSchema: { type: 'object', properties: { node: { type: 'string' }, cwd: { type: 'string' } }, required: ['node'] } },
+  { name: 'harness_bench', description: 'Measure what atlias costs on this project and what a graph answer replaces: the session brief in tokens, a graph answer against the files it names, and how often the guard and the gate have interrupted. Reads only; calls no model. Use when asked whether the harness is worth its cost.', inputSchema: { type: 'object', properties: { questions: { type: 'array', items: { type: 'string' }, description: 'codebase questions to measure the graph against' }, cwd: { type: 'string' } } } },
   { name: 'harness_status', description: 'Health of the harness and its host integrations, with a fix for every failing check.', inputSchema: { type: 'object', properties: { cwd: { type: 'string' } } } },
 ];
 
@@ -116,6 +125,7 @@ export function callTool(name, args = {}) {
   const cwd = args.cwd || process.cwd();
   const cfg = config();
   switch (name) {
+    case 'harness_relay': return JSON.stringify(relay.relayAction(cwd, args));
     case 'harness_recall': return recall(cwd, args.query, args.limit);
     case 'harness_remember': return remember(cwd, args);
     case 'harness_progress':
@@ -131,6 +141,7 @@ export function callTool(name, args = {}) {
     case 'graph_query': return graph.query(cwd, args.question, args.budget || cfg.graph.queryBudget) || 'no graph here (run /graphify or `graphify update .`), or the graph had no answer.';
     case 'graph_affected': return graph.sub(cwd, 'affected', args.node) || 'no graph here, or no such node.';
     case 'graph_explain': return graph.sub(cwd, 'explain', args.node) || 'no graph here, or no such node.';
+    case 'harness_bench': return bench.report(cwd, Array.isArray(args.questions) ? args.questions : []);
     case 'harness_status': return formatDoctor(doctor(cwd).concat(doctorRows()));
     default: throw new Error(`unknown tool ${name}`);
   }

@@ -1,31 +1,16 @@
 {
   "name": "atlias",
-  "version": "4.0.1",
-  "description": "sub-atlias: the free sub-harness version of Atlias (not the full Atlias app). Shared project memory, knowledge graphs, host hooks, MCP tools, and verification inside Claude Code, Codex and other hosts.",
+  "version": "4.0.0",
+  "description": "A harness for AI coding agents, built so that done means done. It runs as a sub-harness inside Claude Code, Codex, Antigravity, Gemini CLI and fourteen more, or as an agent of its own in any terminal, and checks every claim of done against what really happened: a pass claimed with no test run or after a failing one, done with no check since the last edit, placeholders, weakened tests, unwired code, syntax errors, loops and destructive commands. Shared memory across hosts, a graphify knowledge graph, compaction handoff notes, Dream consolidation, and a tool loop that lets weak models edit, check and finish.",
   "type": "module",
   "bin": {
     "atlias": "bin/atlias.mjs"
   },
   "scripts": {
-    "test": "node test/public-package.mjs",
+    "test": "node test/safe-runner.mjs",
     "doctor": "node bin/atlias.mjs doctor",
     "test:install": "node test/install-sandbox.mjs"
   },
-  "files": [
-    "README.md",
-    "CHANGELOG.md",
-    "LICENSE",
-    ".claude-plugin/",
-    ".codex-plugin/",
-    ".mcp.json",
-    "assets/atlias-logo.svg",
-    "bin/",
-    "docs/API-SUBHARNESS.md",
-    "hooks/",
-    "lib/",
-    "mcp/",
-    "test/"
-  ],
   "engines": {
     "node": ">=18"
   },
@@ -36,10 +21,12 @@
     "url": "https://github.com/ridelink0/atlias.git"
   },
   "keywords": [
+    "agent harness",
     "claude code",
     "codex",
     "antigravity",
     "gemini cli",
+    "nanobot",
     "memory",
     "knowledge graph",
     "graphify",

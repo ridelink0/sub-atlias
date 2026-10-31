@@ -1,83 +1,561 @@
 #!/usr/bin/env node
+// atlias command line.
+//   atlias install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--companions]
+//   atlias uninstall [--all|--codex|--antigravity|--gemini]
+//   atlias doctor | status | brief [--host codex] | test | version
+//   atlias tiers | eval [--tier smoke|main|big] [--sample N] | compare <a.json> <b.json>
+//   atlias polyglot | editbench | refactorbench <path>   convert somebody else's benchmark
+//   atlias shortcut [install|uninstall|status]   the atlias command in any terminal
+//   atlias mode [both|sub|standalone] | settings [list]
+//   atlias skills [name]   the skills installed here, or one of them in full
+//   atlias recall <query> | remember <name> <type> <description> -- <body>
+//   atlias progress [set <text>] | dream [show|ack|distil <session-id> [transcript]]
+//   atlias graph query|affected|explain|update <arg> | config [set <section.key> <value>]
 import fs from 'node:fs';
-import { VERSION } from '../lib/core.mjs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { VERSION, STATE_DIR, ROOT, readJson, writeJson, DEFAULTS, config, parseSetting, writeLauncher, flagStamp, flagLine, flagEnvName, sameFlags } from '../lib/core.mjs';
 import * as hosts from '../lib/hosts.mjs';
-import * as extras from '../lib/hosts-extra.mjs';
-import * as provider from '../lib/provider.mjs';
+import { installClaudeLabel, removeClaudeLabel } from '../lib/claude-label.mjs';
+import * as brief from '../lib/brief.mjs';
+import * as progress from '../lib/progress.mjs';
+import * as dream from '../lib/dream.mjs';
+import * as graph from '../lib/graph.mjs';
+import * as agent from '../lib/agent.mjs';
+import * as extra from '../lib/hosts-extra.mjs';
+import { logo } from '../lib/logo.mjs';
+import * as bench from '../lib/bench.mjs';
+import * as shortcut from '../lib/shortcut.mjs';
+import * as settings from '../lib/settings.mjs';
+import {editionDefaults, claudeOffered, offeredEngines, CLAUDE_FOUNDERS_ONLY} from '../lib/edition.mjs';
+import * as skills from '../lib/skills.mjs';
 import * as subharness from '../lib/subharness.mjs';
+import * as provider from '../lib/provider.mjs';
+import { authCommand } from '../lib/auth-command.mjs';
+import { recall, remember } from '../mcp/tools.mjs';
 
-const args = process.argv.slice(2);
-const command = args[0] || 'help';
-const say = (value) => process.stdout.write(String(value) + '\n');
-const help = `atlias ${VERSION} — shared memory, graph, and verification inside your existing coding host.
+const argv = process.argv.slice(2);
+// --version and --help are what people type; treat them as the commands.
+const FLAG_COMMANDS = { '--version': 'version', '-v': 'version', '--help': 'help', '-h': 'help' };
+const cmd = FLAG_COMMANDS[argv[0]] || argv[0] || settings.bareCommand();
+const extraIds = () => (argv.includes('--extras') ? argv.slice(argv.indexOf('--extras') + 1).filter((a) => !a.startsWith('--')) : []);
+const flag = (f) => argv.includes(f);
+// The value after a flag: --engine ollama, --only fix-a-bug.
+const optVal = (f) => { const i = argv.indexOf(f); return i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : null; };
+const after = (f) => (argv.includes(f) ? argv[argv.indexOf(f) + 1] : undefined);
+// --sandbox and --no-sandbox both mean something, so undefined has to stay
+// distinguishable from false or the flag could not turn the setting off.
+const sandboxFlag = () => (flag('--sandbox') ? true : flag('--no-sandbox') ? false : undefined);
+const cwd = process.cwd();
+const say = (x) => process.stdout.write((Array.isArray(x) ? x.join('\n') : String(x)) + '\n');
+const readOr = (p, fallback) => { try { return fs.readFileSync(p, 'utf8'); } catch { return fallback; } };
+// The terminal command. Records this copy first, so a checkout or an npm
+// install that is not in the plugin cache can still be found by the launcher.
+const shortcutInstall = () => { writeLauncher(ROOT); return shortcut.installShortcut().lines; };
+const shortcutUninstall = () => { const r = shortcut.uninstallShortcut(); return r.length ? r.map((f) => `removed ${f}`) : ['terminal command: nothing of ours to remove']; };
 
-Commands:
-  atlias install [--claude|--codex|--antigravity|--gemini]
-  atlias uninstall [--claude|--codex|--antigravity|--gemini]
-  atlias sub --host claude|codex --profile provider.json [--log receipts.jsonl] [--executable cli] -- [native arguments]
-  atlias provider check provider.json
-  atlias provider usage receipts.jsonl
-  atlias doctor
-  atlias version`;
+// The --engine list of atlias agent and atlias exec; the release names no anthropic or claude engine (Gev, 2026-10-30).
+const AGENT_ENGINES = offeredEngines(['chatgpt', 'responses', 'anthropic', 'gemini', 'openai', 'ollama', 'claude', 'codex', 'echo']).join('|');
+// `atlias <command> --help` prints that command's usage and runs nothing. It
+// used to be read as one more flag: `atlias eval --help` started a real eval on
+// the default model and left five workspaces behind.
+const HELP = {
+  statusline: ['usage: atlias statusline install|remove', 'Show Claude Code + atlias while preserving the existing status details, or restore the previous status line.'],
+  eval: [
+    'usage: atlias eval [task ids] [options]   score tasks: the model works in a scratch copy and the check command decides',
+    '  --tier smoke|main|big     a named tier (atlias tiers lists them); default: the shipped smoke tasks',
+    '  --corpus <dir>            score the task files in another directory instead',
+    '  --only <id>               one task by id',
+    '  --sample N [--seed s]     the same N tasks every time for a given seed',
+    '  --engine ollama|openai|echo   echo is a dry run with no model',
+    '  --model <name>            score a named model without changing the settings',
+    '  --repeat k                k attempts per task; a task passes only when all k do (pass^k)',
+    '  --rounds N                override every task\'s own round budget',
+    '  --save <file.json>        keep the report for atlias compare',
+    '  --outlive-parent          keep running if the process that started the eval goes away (by default it stops)',
+    'Code the model wrote runs under a watchdog: at its limit (shell 2 min, check 60 s) it is ended with everything it',
+    'started, and whatever a task left running in the background is ended when the task is scored (ATLIAS_EVAL_REAP=0 turns that off).',
+  ],
+  compare: ['usage: atlias compare <a.json> <b.json>   two runs saved with atlias eval --save, paired task by task'],
+  tiers: ['usage: atlias tiers   the benchmark tiers, which are on this machine, and how to get the rest'],
+  polyglot: ['usage: atlias polyglot <path to a polyglot-benchmark clone> [--lang python] [--out <dir>] [--limit N] [--only name,name]'],
+  editbench: ['usage: atlias editbench <rows.jsonl> --bench canitedit|humanevalfix [--variant lazy|descriptive] [--lang python|js] [--out <dir>] [--limit N] [--only id,id] [--rounds N]'],
+  refactorbench: ['usage: atlias refactorbench <path to refactor-benchmark/refactor-benchmark> [--out <dir>] [--limit N] [--only name,name] [--max-bytes 40960] [--rounds 16]'],
+  agent: [`usage: atlias agent [--plain] [--engine ${AGENT_ENGINES}] [--once "<prompt>"] [--resume [id]] [--sandbox]`],
+  get exec() { return [`usage: atlias exec "<prompt>" [--engine ${offeredEngines(['claude-plan', 'chatgpt', 'responses', 'anthropic', 'gemini', 'openai', 'ollama', 'claude', 'codex', 'echo']).join('|')}] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)`]; },
+  update: ['usage: atlias update [--check] [--no-fetch]', 'Fast-forwards this git checkout of atlias from its update source (config update.source; empty means the upstream of the current branch) and prints the commits it pulled. Refuses when tracked files are changed, HEAD is detached, no source is set, or the history has diverged. Never resets, merges, rebases or pushes. --check only reports.'],
+  import: ['usage: atlias import [--dry-run] [--from claude|codex|gemini|antigravity] [--sessions] [--yes] [--undo]', 'Brings instructions, memory, skills, slash commands and MCP definitions (and with --sessions the saved sessions) from your other tools into the Atlias home. --dry-run prints the plan only. Nothing is copied without a yes; credentials are never read; --undo removes exactly what an import made.'],
+  resume: ['usage: atlias resume [id] [--engine e] [--sandbox] [--plain]   search and choose a saved agent session in this folder'],
+  install: ['usage: atlias install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--extras [ids]|--companions|--shortcut]'],
+  uninstall: ['usage: atlias uninstall [--all|--codex|--antigravity|--gemini|--extras|--shortcut]'],
+  shortcut: ['usage: atlias shortcut [install|uninstall|status]   the atlias command in any terminal'],
+  mode: ['usage: atlias mode [both|sub|standalone]'],
+  settings: ['usage: atlias settings [list]'],
+  graph: ['usage: atlias graph query|affected|explain|update <arg>'],
+  remember: ['usage: atlias remember <name> <user|feedback|project|reference> <description> -- <body>'],
+  config: ['usage: atlias config [set <section.key> <value>]'],
+  sub: ['usage: atlias sub --host claude|codex --profile <provider.json> [--log <receipts.jsonl>] [--executable <native-cli>] -- [native arguments]', 'Runs one native session with Atlias, your API model and measured token/cost receipts. Follow-ups and resume use the native host commands.'],
+  provider: ['usage: atlias provider check <provider.json> | usage <receipts.jsonl>', 'check validates offline; usage reports recorded tokens and user-priced estimates. No API request is made.'],
+};
+HELP.run = HELP.agent;
+HELP.fly = HELP.agent;
+const beforeDashes = argv.slice(1, argv.includes('--') ? argv.indexOf('--') : undefined);
+const helpFor = cmd !== 'help' && beforeDashes.some((a) => a === '--help' || a === '-h') ? cmd : null;
 
-function selectedHosts(names) {
-  const selected = names.filter((name) => args.includes(`--${name}`));
-  const permitted = new Set([...names.map((name) => `--${name}`), ...(command === 'install' ? ['--gemini-hooks'] : [])]);
-  const invalid = args.slice(1).filter((arg) => !permitted.has(arg));
-  if (invalid.length) throw Error(`Unsupported host option: ${invalid[0]}.`);
-  if (!selected.length) throw Error(`Choose a host: ${names.map((name) => `--${name}`).join(', ')}.`);
-  if (args.includes('--gemini-hooks') && !selected.includes('gemini')) throw Error('--gemini-hooks requires --gemini.');
-  return selected;
-}
-
-try {
-  if (['help', '--help', '-h'].includes(command)) say(help);
-  else if (command === 'version' || command === '--version' || command === '-v') say(`atlias ${VERSION}`);
-  else if (command === 'install') {
-    const out = [];
-    for (const host of selectedHosts(['claude', 'codex', 'antigravity', 'gemini'])) {
-      if (host === 'claude') out.push(...hosts.installClaude());
-      if (host === 'codex') out.push(...hosts.installCodex());
-      if (host === 'antigravity') out.push(...hosts.installAntigravity());
-      if (host === 'gemini') out.push(...hosts.installGemini(args.includes('--gemini-hooks')));
-    }
-    say(out.join('\n'));
-  } else if (command === 'uninstall') {
-    const out = [];
-    for (const host of selectedHosts(['claude', 'codex', 'antigravity', 'gemini'])) {
-      if (host === 'claude') out.push('Claude Code plugin: use /plugin uninstall atlias@atlias inside Claude Code.');
-      if (host === 'codex') out.push(...hosts.uninstallCodex());
-      if (host === 'antigravity') out.push(...hosts.uninstallAntigravity());
-      if (host === 'gemini') out.push(...hosts.uninstallGemini());
-    }
-    say(out.join('\n'));
-  } else if (command === 'doctor') {
-    say(hosts.formatDoctor(hosts.doctor().concat(extras.doctorRows())));
-  } else if (command === 'provider') {
-    if (args[1] === 'check' && args[2] && args.length === 3) {
-      const profile = provider.load(args[2]);
-      say(`Valid ${profile.protocol} profile for model ${profile.model}. Pricing ${profile.pricing ? 'configured' : 'unknown'}; no API call made.`);
-    } else if (args[1] === 'usage' && args[2] && args.length === 3) {
-      const rows = fs.readFileSync(args[2], 'utf8').split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
-      say(JSON.stringify(provider.summarize(rows), null, 2));
-    } else throw Error('Use provider check <file> or provider usage <file>.');
-  } else if (command === 'sub') {
-    const split = args.indexOf('--');
-    const options = split < 0 ? args.slice(1) : args.slice(1, split);
-    const allowed = new Set(['--host', '--profile', '--log', '--executable']);
+if (cmd === 'help' && editionDefaults()) say([logo(), '', 'Atlias - Founders edition', '', 'atlias                     open your Atlias workspace', 'atlias setup claude        connect your Claude account', 'atlias settings            change your preferences', 'atlias agent --plain       use simple line input', 'atlias --version           show the installed version', '', 'In the workspace: /connect, /help, /settings, /model, /effort, /exit.', 'Atlias runs here. You do not need to open Claude Code.']);
+else if (helpFor) say(HELP[helpFor] || [`atlias ${helpFor}: no usage of its own; atlias --help lists every command.`]);
+else switch (cmd) {
+  case 'sub': {
+    const split = argv.indexOf('--');
+    const options = split < 0 ? argv.slice(1) : argv.slice(1, split);
+    const allowed = ['--host', '--profile', '--log', '--executable'];
     const opts = {};
-    for (let i = 0; i < options.length; i += 2) {
-      const key = options[i], value = options[i + 1];
-      if (!allowed.has(key) || !value || value.startsWith('--') || key in opts) throw Error('Use sub --help for launcher options; native arguments go after --.');
-      opts[key] = value;
+    try {
+      for (let i = 0; i < options.length; i += 2) {
+        if (!allowed.includes(options[i]) || !options[i + 1] || options[i + 1].startsWith('--') || options[i] in opts) throw Error('Use atlias sub --help for launcher options; native arguments go after --.');
+        opts[options[i]] = options[i + 1];
+      }
+      if (!opts['--profile']) throw Error('--profile is required.');
+      process.exitCode = await subharness.launch({ host: opts['--host'], file: opts['--profile'], logFile: opts['--log'], executable: opts['--executable'], args: split < 0 ? [] : argv.slice(split + 1) });
+    } catch (e) { say(`atlias sub: ${e.message}`); process.exitCode = 2; }
+    break;
+  }
+  case 'provider': {
+    try {
+      if (argv[1] === 'check' && argv.length === 3) {
+        const p = provider.load(argv[2]);
+        say(`Valid ${p.protocol} profile for model ${p.model}. Pricing ${p.pricing ? 'configured' : 'unknown'}; no API call made.`);
+      } else if (argv[1] === 'usage' && argv.length === 3) {
+        const rows = fs.readFileSync(argv[2], 'utf8').split(/\r?\n/).filter(Boolean).map((line) => JSON.parse(line));
+        say(JSON.stringify(provider.summarize(rows), null, 2));
+      } else { say(HELP.provider); process.exitCode = 2; }
+    } catch { say('Invalid provider profile or usage receipt file; see atlias provider --help.'); process.exitCode = 2; }
+    break;
+  }
+  case 'logo': say(logo()); break;
+  // Task evaluation: the model works in a scratch copy and a command decides.
+  case 'eval': {
+    // A long run whose starter is gone has nobody to read it, and on Windows
+    // nothing ends it: the orphaned head-to-head runner of 2026-09-26 kept
+    // starting tasks for hours. Checked every two seconds between tasks (a
+    // check that is running finishes first); --outlive-parent keeps it going,
+    // for a run started under nohup or the like on purpose.
+    let stopIfOrphaned = () => {};
+    if (!flag('--outlive-parent')) {
+      const first = process.ppid;
+      const gone = () => {
+        if (process.platform !== 'win32' && process.ppid !== first) return true;
+        try { process.kill(first, 0); return false; } catch (e) { return !(e && e.code === 'EPERM'); }
+      };
+      stopIfOrphaned = () => { if (gone()) { say('atlias eval: the process that started this run is gone, so the run stops here (--outlive-parent keeps it going).'); process.exit(3); } };
+      // The timer covers a long wait on the model; runSuite also asks before
+      // every attempt, because a fast engine never yields to a timer.
+      setInterval(stopIfOrphaned, 2000).unref();
     }
-    if (!opts['--profile']) throw Error('--profile is required.');
-    process.exitCode = await subharness.launch({
-      host: opts['--host'], file: opts['--profile'], logFile: opts['--log'],
-      executable: opts['--executable'], args: split < 0 ? [] : args.slice(split + 1),
-    });
-  } else throw Error(`Unknown command: ${command}. Run atlias --help.`);
-} catch (error) {
-  process.stderr.write(`atlias: ${error.message}\n`);
-  process.exitCode = 2;
+    const evals = await import('../lib/eval.mjs');
+    const loopMod = await import('../lib/loop.mjs');
+    const cfg = config().agent;
+    // Positional task ids only: the value after --engine or --only belongs to
+    // that flag, not to the task list.
+    const taken = new Set();
+    for (const f of ['--engine', '--only', '--repeat', '--model', '--corpus', '--save', '--tier', '--sample', '--seed', '--rounds', '--work']) { const i = argv.indexOf(f); if (i >= 0) taken.add(i + 1); }
+    const want = argv.slice(1).filter((a, i) => !a.startsWith('--') && !taken.has(i + 1));
+    const only = optVal('--only');
+    // --corpus scores a different task directory, so the shipped nine stay fast
+    // and a converted benchmark can be run on purpose rather than by default.
+    const corpus = optVal('--corpus');
+    // --tier names one of the three tiers instead: smoke (the shipped nine),
+    // main (one-function fixes and instruction edits), big (whole source files).
+    // A tier that is not on this machine says so and prints how to regenerate it,
+    // because a corpus of nothing would otherwise score 0 of 0 and look like a
+    // measurement.
+    const tierName = optVal('--tier');
+    const tiers = await import('../lib/tiers.mjs');
+    let chosen = null;
+    let tasks;
+    if (tierName && corpus) say(`--tier ${tierName} and --corpus ${corpus} were both given; the tier is what ran.`);
+    if (tierName) {
+      chosen = tiers.tierTasks(tierName);
+      if (!chosen.ok) { say([chosen.why, '', tiers.statusLines()]); process.exitCode = 2; break; }
+      tasks = chosen.tasks;
+    } else tasks = corpus ? evals.loadTasks(path.resolve(corpus)) : evals.loadTasks();
+    if (only) tasks = tasks.filter((t) => t.id === only);
+    if (want.length) tasks = tasks.filter((t) => want.includes(t.id));
+    // --sample takes the same N tasks every time for a given seed, so two arms
+    // of an A/B are scored on one subset and compare() pairs them task by task.
+    const sample = parseInt(optVal('--sample') || '0', 10) || 0;
+    const seed = optVal('--seed') || 'atlias';
+    const before = tasks.length;
+    if (sample > 0) tasks = tiers.sampleTasks(tasks, sample, seed);
+    if (!tasks.length) { say(tierName ? `no tasks in the ${tierName} tier` : 'no tasks; the corpus is in evals/*.json'); process.exitCode = 2; break; }
+    if (chosen) say(`tier ${chosen.name}: ${chosen.tier.what}`);
+    if (sample > 0 && tasks.length < before) say(`sampled ${tasks.length} of ${before} task(s) with seed "${seed}"; the same seed picks the same tasks again.`);
+    const engine = optVal('--engine') || (cfg.openaiModel ? 'openai' : 'ollama');
+    // echo is the dry run: it exercises the harness without a model, so a
+    // broken corpus or checker shows up before any tokens are spent.
+    // --model scores a named model without editing the machine's settings, so
+    // two baselines can be taken in a row and the report names which was which.
+    const picked = optVal('--model');
+    // An eval run keeps the local model loaded between tasks, so no task pays a
+    // reload the one before it did not, unless the machine's settings say otherwise.
+    const cfgFor = { ...cfg, ...(picked ? { ollamaModel: picked, openaiModel: picked } : {}), ollamaKeepAlive: cfg.ollamaKeepAlive || '30m' };
+    if (engine === 'openai' && loopMod.v1ContextWarning(cfgFor.openaiUrl)) say(loopMod.v1ContextWarning(cfgFor.openaiUrl));
+    const chat = engine === 'echo' ? async () => ({ content: 'echo: no work done' })
+      : engine === 'openai' ? loopMod.openaiChat(cfgFor) : loopMod.ollamaChat(cfgFor);
+    // One run of a sampling process is not a result: --repeat 3 runs each task
+    // three times and reports pass^3 beside pass@3.
+    const repeat = Math.max(1, parseInt(optVal('--repeat') || '1', 10) || 1);
+    const model = picked || (engine === 'openai' ? cfg.openaiModel : engine === 'ollama' ? cfg.ollamaModel : '');
+    say(`${tasks.length} task(s) against ${engine}${repeat > 1 ? `, ${repeat} attempts each` : ''}. The check command decides, not the model.`);
+    // What corpus produced the score, in the report itself: a saved report that
+    // does not say which tier and which sample it ran cannot be the A in an A/B.
+    const corpusInfo = { tier: chosen ? chosen.name : (corpus ? path.basename(path.resolve(corpus)) : 'shipped'), tasks: tasks.length, of: before, sample: sample > 0 && tasks.length < before ? sample : 0, seed: sample > 0 && tasks.length < before ? seed : '' };
+    // --rounds overrides every task's own budget for this run and says so in the
+    // report. A tier where most runs end out of rounds is measuring the budget.
+    const roundsArg = Math.max(0, parseInt(optVal('--rounds') || '0', 10) || 0);
+    // The workspaces' folder is checked before the first task, not discovered
+    // broken at it.
+    const work = evals.workRoot(optVal('--work') || '');
+    const refused = evals.workRootProblem(work);
+    if (refused) { say(refused); process.exitCode = 2; break; }
+    // An arm is named by its flags. A flag the environment names that does not
+    // exist, or a value that does not parse, would run this arm as the control
+    // and score it as the change, so the run does not start.
+    const flagsNow = flagStamp();
+    if (flagsNow.unknown.length || flagsNow.bad.length) {
+      const known = Object.keys(flagsNow.values).map(flagEnvName);
+      say([...flagsNow.unknown.map((n) => `${n} names no flag.`), ...flagsNow.bad.map((b) => b.error), `The flags are: ${known.length ? known.join(', ') : 'none yet'}. Nothing ran.`].join('\n'));
+      process.exitCode = 2;
+      break;
+    }
+    say(`flags: ${flagLine(flagsNow)}`);
+    // --save keeps the report so two runs can be compared later. A score nobody
+    // wrote down cannot be the A in an A/B. It is written after every task, so a
+    // run that dies keeps what it did, and --resume carries on from it.
+    const savePath = optVal('--save');
+    const out = savePath ? path.resolve(savePath) : '';
+    let prior = [];
+    if (flag('--resume')) {
+      if (!out) { say('--resume needs --save <file>: it carries on from the report in that file.'); process.exitCode = 2; break; }
+      let old = null;
+      try { old = JSON.parse(fs.readFileSync(out, 'utf8')); } catch { old = null; }
+      const same = old && old.engine === engine && (old.model || '') === (model || '') && (old.tries || 1) === repeat;
+      if (old && !same) { say(`--resume: ${out} was a ${old.engine} ${old.model || ''} run with ${old.tries || 1} attempt(s) each; this one is ${engine} ${model || ''} with ${repeat}. Refusing to mix them.`); process.exitCode = 2; break; }
+      // Nor two arms: rows run with other flags are another arm's rows.
+      if (old && old.flags && !sameFlags(old.flags, flagsNow)) { say(`--resume: ${out} ran with flags ${flagLine(old.flags)}; this run has ${flagLine(flagsNow)}. Refusing to mix them.`); process.exitCode = 2; break; }
+      const want = new Set(tasks.map((t) => t.id));
+      prior = old ? (old.results || []).filter((r) => want.has(r.id)) : [];
+      say(prior.length ? `--resume: ${prior.length} of ${tasks.length} task(s) already in ${out}; running the other ${tasks.length - prior.length}.` : `--resume: nothing to carry on from in ${out}; starting fresh.`);
+    }
+    const save = (rep) => { fs.mkdirSync(path.dirname(out), { recursive: true }); fs.writeFileSync(out, `${JSON.stringify(rep, null, 2)}\n`); };
+    // The stamp is taken once, at the start: it names the code that is running.
+    const stampNow = out ? evals.harnessStamp() : null;
+    const partial = (rows) => { if (out) save({ partial: true, results: rows, engine, model, tries: repeat, corpus: corpusInfo, stamp: stampNow, flags: flagsNow }); };
+    const report = await evals.runSuite(tasks, { chat, state: agent.newState(cwd, engine), repeat, engineName: engine, model, corpus: corpusInfo, budget: roundsArg, beforeAttempt: stopIfOrphaned, work, prior, onResult: partial, flags: flagsNow });
+    say(evals.format(report));
+    if (out) { save(report); say(`saved to ${out}`); }
+    process.exitCode = report.passed === report.total ? 0 : 1;
+    break;
+  }
+  case 'bench': say(bench.report(cwd, argv.slice(1).filter((a) => !a.startsWith('--')))); break;
+  // Two saved runs, asked the paired question rather than eyeballed. Two scores
+  // on a corpus this size are not a result; the disagreements are.
+  case 'compare': {
+    const evals2 = await import('../lib/eval.mjs');
+    const files = argv.slice(1).filter((a) => !a.startsWith('--'));
+    if (files.length !== 2) { say('usage: atlias compare <a.json> <b.json>   (write them with atlias eval --save)'); process.exitCode = 1; break; }
+    const load = (f) => { try { return JSON.parse(fs.readFileSync(path.resolve(f), 'utf8')); } catch (e) { say(`could not read ${f}: ${e.message}`); return null; } };
+    const A = load(files[0]), B = load(files[1]);
+    if (!A || !B) { process.exitCode = 1; break; }
+    const nameOf = (rep, f) => [rep.stamp && rep.stamp.text, rep.model].filter(Boolean).join(' ') || path.basename(f);
+    let aName = nameOf(A, files[0]), bName = nameOf(B, files[1]);
+    // Two runs of the same code and model (a rerun, or a changed setting) would
+    // otherwise print as "X 3/9 against X 4/9"; the file names tell them apart.
+    if (aName === bName) { aName = `${aName} (${path.basename(files[0])})`; bName = `${bName} (${path.basename(files[1])})`; }
+    say(evals2.formatCompare(evals2.compare(A, B), aName, bName));
+    break;
+  }
+  // Somebody else's benchmark, converted into tasks this machine can run, with
+  // every task proved to fail as shipped and pass with its own reference
+  // solution before it is written.
+  case 'polyglot': {
+    const poly = await import('../lib/polyglot.mjs');
+    const valued = new Set(['--lang', '--out', '--limit', '--rounds', '--only']);
+    const skip = new Set();
+    for (const f of valued) { const i = argv.indexOf(f); if (i >= 0) skip.add(i + 1); }
+    const repo = argv.slice(1).find((a, i) => !a.startsWith('--') && !skip.has(i + 1));
+    if (!repo) { say('usage: atlias polyglot <path to a polyglot-benchmark clone> [--lang python] [--out <dir>] [--limit N] [--only name,name]'); break; }
+    const lang = optVal('--lang') || 'python';
+    const out = optVal('--out') || path.join(ROOT, 'evals', 'polyglot');
+    const limit = parseInt(optVal('--limit') || '0', 10) || 0;
+    const rounds = parseInt(optVal('--rounds') || '18', 10) || 18;
+    const only = String(optVal('--only') || '').split(',').map((s) => s.trim()).filter(Boolean);
+    say(`converting ${lang} exercises from ${repo}. Each one is run twice here before it is kept: it has to fail as shipped and pass with the exercise's own solution.`);
+    const result = poly.convert(path.resolve(repo), lang, out, { limit, rounds, only });
+    say(poly.report(result));
+    process.exitCode = result.wrote.length ? 0 : 1;
+    break;
+  }
+  // Which tier a measurement can be taken on here, and how to get the ones that
+  // are not on this machine.
+  case 'tiers': {
+    const tiers = await import('../lib/tiers.mjs');
+    say(tiers.statusLines());
+    break;
+  }
+  // Aider's refactor benchmark: whole source files, one method to move out of
+  // its class, graded on the AST by the benchmark's own rules.
+  case 'refactorbench': {
+    const rb = await import('../lib/refactorbench.mjs');
+    const valued = new Set(['--out', '--limit', '--rounds', '--only', '--max-bytes']);
+    const skip = new Set();
+    for (const f of valued) { const i = argv.indexOf(f); if (i >= 0) skip.add(i + 1); }
+    const dir = argv.slice(1).find((a, i) => !a.startsWith('--') && !skip.has(i + 1));
+    if (!dir) { say('usage: atlias refactorbench <path to refactor-benchmark/refactor-benchmark> [--out <dir>] [--limit N] [--only name,name] [--max-bytes 40960] [--rounds 16]'); process.exitCode = 1; break; }
+    const out = optVal('--out') || path.join(ROOT, 'evals', 'refactor');
+    const limit = parseInt(optVal('--limit') || '0', 10) || 0;
+    const rounds = parseInt(optVal('--rounds') || '16', 10) || 16;
+    // --max-bytes 0 means no cap; anything that is not a number keeps the
+    // default rather than quietly becoming no cap.
+    const capArg = optVal('--max-bytes');
+    const capNum = capArg === null ? NaN : parseInt(capArg, 10);
+    const maxBytes = Number.isFinite(capNum) && capNum >= 0 ? capNum : rb.DEFAULT_MAX_BYTES;
+    const only = String(optVal('--only') || '').split(',').map((s) => s.trim()).filter(Boolean);
+    say(`converting the refactor benchmark from ${dir}. Each task is proved here first: the file as shipped must fail the AST check, and the same file with the method moved out must pass it.`);
+    const result = rb.convert(path.resolve(dir), out, { limit, rounds, only, maxBytes });
+    say(rb.report(result));
+    process.exitCode = result.wrote.length ? 0 : 1;
+    break;
+  }
+  // CanItEdit and HumanEvalFix, from their JSONL rows, proved the same way.
+  case 'editbench': {
+    const eb = await import('../lib/editbench.mjs');
+    const valued = new Set(['--bench', '--variant', '--lang', '--out', '--limit', '--only', '--rounds']);
+    const skip = new Set();
+    for (const f of valued) { const i = argv.indexOf(f); if (i >= 0) skip.add(i + 1); }
+    const file = argv.slice(1).find((a, i) => !a.startsWith('--') && !skip.has(i + 1));
+    const kind = optVal('--bench');
+    if (!file || !['canitedit', 'humanevalfix'].includes(kind)) { say('usage: atlias editbench <rows.jsonl> --bench canitedit|humanevalfix [--variant lazy|descriptive] [--lang python|js] [--out <dir>] [--limit N] [--only id,id] [--rounds N]'); process.exitCode = 1; break; }
+    const variant = optVal('--variant') || 'lazy';
+    const lang = optVal('--lang') || 'python';
+    const out = optVal('--out') || path.join(ROOT, 'evals', kind, kind === 'canitedit' ? variant : lang);
+    const rows = eb.readJsonl(path.resolve(file));
+    if (!rows.length) { say(`no rows in ${file}`); process.exitCode = 1; break; }
+    const limit = parseInt(optVal('--limit') || '0', 10) || 0;
+    const only = String(optVal('--only') || '').split(',').map((s) => s.trim()).filter(Boolean);
+    say(`converting ${rows.length} ${kind} row(s) from ${file}. Each one has to fail as shipped and pass with the benchmark's own reference here before it is kept.`);
+    const result = eb.convertRows(rows, kind, out, { variant, lang, limit, only, rounds: Math.max(0, parseInt(optVal('--rounds') || '0', 10) || 0) });
+    say(eb.report(result));
+    process.exitCode = result.wrote.length ? 0 : 1;
+    break;
+  }
+  case 'chooser': process.exitCode = await agent.chooser(); break;
+  case 'agent': case 'run': case 'fly': {
+    const r = after('--resume');
+    process.exitCode = await agent.repl({ plain: flag('--plain'), engine: after('--engine'), once: after('--once'), resume: flag('--resume') ? (r && !r.startsWith('--') ? r : 'last') : null, sandbox: sandboxFlag() });
+    break;
+  }
+  case 'import': {
+    const importer = await import('../lib/import.mjs');
+    const o = importer.parseArgs(argv.slice(1));
+    let rl = null;
+    const ask = process.stdin.isTTY ? (q) => { rl = rl || readlineMod.createInterface({ input: process.stdin, output: process.stdout }); return rl.question(q); } : null;
+    const readlineMod = await import('node:readline/promises');
+    const r = await importer.runImport(o, { ask, out: say });
+    if (rl) rl.close();
+    process.exitCode = r.code;
+    break;
+  }
+  case 'activate': {
+    // Max subscription: a Stripe Checkout link that carries this install's hidden id, opened in the browser.
+    const license = await import('../lib/license.mjs');
+    try {
+      const current = await license.check({ cfg: { ...license.effectiveConfig(), required: true }, force: true });
+      if (current.ok) { say('Atlias Max is already active. Start Atlias to continue; no checkout was opened.'); break; }
+      if (current.reason === 'payment pending') { say(license.stopMessage(current)); break; }
+      const url = await license.checkoutUrl();
+      say(`Opening Stripe Checkout for Atlias Max. If no browser opens, visit:\n${url}\nAfter paying, start Atlias again; it picks up the subscription by itself.`);
+      if (process.platform === 'win32') spawnSync('cmd', ['/c', 'start', '""', url], { stdio: 'ignore' });
+      else spawnSync(process.platform === 'darwin' ? 'open' : 'xdg-open', [url], { stdio: 'ignore' });
+    } catch (error) { say(`atlias activate: ${error.message}`); process.exitCode = 1; }
+    break;
+  }
+  case 'setup': {
+    if (argv[1] !== 'claude') { say(claudeOffered() ? 'usage: atlias setup claude   (installs the Claude Agent SDK, signs you in through Anthropic, then asks for the model and reasoning effort)' : CLAUDE_FOUNDERS_ONLY); process.exitCode = 2; break; }
+    const onboarding = await import('../lib/onboarding.mjs');
+    const rl = (await import('node:readline/promises')).createInterface({ input: process.stdin, output: process.stdout });
+    try { const row = await onboarding.setupClaudePlan({ ask: (q) => rl.question(q + ' '), out: say, resolve: agent.resolveCommand }); process.exitCode = row.status === 'complete' ? 0 : 1; }
+    finally { rl.close(); }
+    break;
+  }
+  case 'auth': {
+    const result = await authCommand(argv.slice(1).join(' '), { out: say, api: agent.slashApi });
+    if (result?.ok === false) process.exitCode = 1;
+    break;
+  }
+  case 'resume': process.exitCode = await agent.repl({ plain: flag('--plain'), engine: after('--engine'), resume: argv[1] && !argv[1].startsWith('--') ? argv[1] : 'pick', sandbox: sandboxFlag() }); break;
+  case 'exec': {
+    // The prompt is every word that is not a flag or a flag's value; - or a
+    // pipe reads it from stdin, as codex exec does.
+    const valued = new Set(['--engine', '--resume', '--output-format', '--permissions']);
+    const words = [];
+    for (let i = 1; i < argv.length; i++) { if (valued.has(argv[i])) { i++; continue; } if (!argv[i].startsWith('--')) words.push(argv[i]); }
+    let prompt = words.join(' ').trim();
+    if (prompt === '-' || (!prompt && !process.stdin.isTTY)) { prompt = ''; for await (const chunk of process.stdin) prompt += chunk; prompt = prompt.trim(); }
+    if (!prompt) { say(`usage: atlias exec "<prompt>" [--engine ${AGENT_ENGINES}] [--resume [id]] [--sandbox] [--json]   (or pipe the prompt in)`); process.exitCode = 2; break; }
+    // A valued flag with no value exits 2 (it used to fall back silently); --flag=value is read as well.
+    const bare = ['--output-format', '--permissions'].find((f) => { const i = argv.indexOf(f); return (i !== -1 && (i + 1 >= argv.length || argv[i + 1].startsWith('--'))) || argv.includes(f + '='); });
+    if (bare) { say(`${bare} needs a value, for example ${bare}=text`); process.exitCode = 2; break; }
+    const eqValue = (f) => { const hit = argv.find((a) => a.startsWith(f + '=')); return hit ? hit.slice(f.length + 1) : undefined; };
+    const format = after('--output-format') || eqValue('--output-format') || (flag('--json') ? 'json' : 'text');
+    if (!['text', 'json', 'stream-json'].includes(format)) { say('--output-format must be text, json or stream-json'); process.exitCode = 2; break; }
+    const permissions = after('--permissions') || eqValue('--permissions');
+    if (permissions && !['read-only', 'plan', 'workspace', 'auto'].includes(permissions)) { say('--permissions must be read-only, plan, workspace or auto'); process.exitCode = 2; break; }
+    const rs = after('--resume');
+    const res = await agent.runOnce({ engine: after('--engine'), prompt, resume: flag('--resume') ? (rs && !rs.startsWith('--') ? rs : 'last') : null, sandbox: sandboxFlag(), permissions, emit: format === 'stream-json' ? (ev) => say(JSON.stringify(ev)) : null });
+    if (format === 'stream-json') { if (res.code !== 0) say(JSON.stringify({ type: 'error', message: res.text })); }
+    else say(format === 'json' ? JSON.stringify(res.json) : res.text);
+    process.exitCode = res.code;
+    break;
+  }
+  case 'relay': {
+    const relay = await import('../lib/relay.mjs');
+    const action = argv[1] || 'status';
+    try {
+      if (['on','off'].includes(action)) {
+        if (['read-only','plan'].includes(config().agent.permissions)) throw Error('Relay settings cannot change in this permission mode.');
+        settings.set('agent.relay',action); say('Relay '+action); break;
+      }
+      if (!['status','cancel','at','after-reset'].includes(action)) throw Error('Use atlias relay on|off|status|cancel <id>|at <ISO> --session <id> --next <step>|after-reset <ISO> --session <id> --next <step>.');
+      const args = action === 'cancel' ? {action,id:argv[2]} : ['at','after-reset'].includes(action) ? {action:'schedule',session:after('--session'),[action === 'at' ? 'at' : 'reset_at']:argv[2],next_step:after('--next')} : {action:'status'};
+      say(JSON.stringify(relay.relayAction(process.cwd(),args),null,2));
+    } catch(error) { say(error.message); process.exitCode=2; }
+    break;
+  }
+  case 'version': say((await import('../lib/update.mjs')).versionLine()); break;
+  case 'update': {
+    const updater = await import('../lib/update.mjs');
+    const o = updater.parseArgs(argv.slice(1));
+    if (o.bad.length) { say('usage: atlias update [--check] [--no-fetch]   fast-forward this git checkout from its update source (config update.source); --check only reports'); process.exitCode = 2; break; }
+    const r = updater.update({ check: o.check, fetch: o.fetch });
+    say(r.text);
+    process.exitCode = r.code;
+    break;
+  }
+  case 'install': {
+    const all = flag('--all') || !argv.slice(1).some((a) => a.startsWith('--'));
+    const out = [];
+    if (all || flag('--claude')) out.push(...hosts.installClaude(after('--source')));
+    if (all || flag('--codex')) out.push(...hosts.installCodex());
+    if (all || flag('--antigravity')) out.push(...hosts.installAntigravity());
+    if (all || flag('--gemini')) out.push(...hosts.installGemini(flag('--gemini-hooks')));
+    if (all || flag('--extras')) out.push(...extra.installAll(extraIds()));
+    if (all || flag('--companions')) out.push(...hosts.installCompanions());
+    if (all || flag('--shortcut')) out.push(...shortcutInstall());
+    say(out); break;
+  }
+  case 'uninstall': {
+    const all = flag('--all') || !argv.slice(1).some((a) => a.startsWith('--'));
+    const out = [];
+    if (all || flag('--codex')) out.push(...hosts.uninstallCodex());
+    if (all || flag('--antigravity')) out.push(...hosts.uninstallAntigravity());
+    if (all || flag('--gemini')) out.push(...hosts.uninstallGemini());
+    if (all || flag('--extras')) out.push(...extra.uninstallAll(extraIds()));
+    if (all || flag('--shortcut')) out.push(...shortcutUninstall());
+    out.push('claude code: /plugin uninstall atlias@atlias inside Claude Code');
+    say(out); break;
+  }
+  case 'mode': {
+    if (!argv[1]) { say(settings.describeMode()); break; }
+    const r = settings.setMode(argv[1]);
+    say(r.text);
+    process.exitCode = r.ok ? 0 : 2;
+    break;
+  }
+  case 'settings': {
+    if (!process.stdin.isTTY || argv[1] === 'list') { say(settings.format()); break; }
+    const rl = (await import('node:readline/promises')).createInterface({ input: process.stdin, output: process.stdout });
+    process.exitCode = await settings.menu((q) => rl.question(q), say);
+    rl.close();
+    break;
+  }
+  case 'shortcut': {
+    const sub = argv[1] || 'status';
+    if (sub === 'install') say(shortcutInstall());
+    else if (sub === 'uninstall' || sub === 'remove') say(shortcutUninstall());
+    else if (sub === 'status') {
+      const s = shortcut.shortcutStatus();
+      const hit = shortcut.whichAtlias();
+      say([`launcher: ${s.launcher || 'not written'}`, ...s.shims.map((x) => `command: ${x.file}${x.onPath ? '' : ' (folder not on PATH)'}`), `typing atlias runs: ${hit || 'nothing yet; run atlias shortcut install'}`]);
+      process.exitCode = hit ? 0 : 1;
+    } else { say('usage: atlias shortcut [install|uninstall|status]'); process.exitCode = 2; }
+    break;
+  }
+  case 'doctor': { const c = hosts.doctor(cwd).concat(extra.doctorRows()); say(hosts.formatDoctor(c)); process.exitCode = c.every((x) => x.ok) ? 0 : 1; break; }
+  case 'statusline': {
+    const action=argv[1]||'install';
+    if(!['install','remove'].includes(action)){say('usage: atlias statusline install|remove');process.exitCode=1;break;}
+    try { const result=(action==='remove'?removeClaudeLabel:installClaudeLabel)();say(result.preservedOtherOwner?'The status line belongs to another tool and was left intact.':action==='remove'?'Previous Claude status line restored.':'Claude Code + atlias label enabled; existing status details preserved.'); }
+    catch(error){say(error.message);process.exitCode=1;}
+    break;
+  }
+  case 'status': {
+    const g = graph.status(cwd);
+    const p = dream.pending(cwd);
+    say([`atlias ${VERSION}`, `mode: ${settings.mode()} (atlias mode to change it)`, `state: ${STATE_DIR}`, `project: ${cwd}`, `graph: ${g.exists ? `present, updated ${g.age}` : 'none'}`, `dream pending: ${p.count}`, `handoff note: ${progress.read(cwd) ? progress.notePath(cwd) : 'none yet'}`]);
+    break;
+  }
+  case 'brief': say(brief.build({ cwd, session_id: 'cli', source: 'startup' }, after('--host') || 'claude')); break;
+  case 'test': { const r = spawnSync(process.execPath, [path.join(ROOT, 'test', 'run.mjs'), ...argv.slice(1)], { stdio: 'inherit' }); process.exitCode = r.status || 0; break; }
+  case 'skills': {
+    const which = argv.slice(1).filter((a) => !a.startsWith('--')).join(' ').trim();
+    if (!which) { say(skills.format(skills.discover(cwd))); break; }
+    const one = skills.body(cwd, which);
+    if (!one) { say(`no skill matches ${which}; atlias skills lists them`); process.exitCode = 1; break; }
+    say(`${one.path}\n\n${one.text}`);
+    break;
+  }
+  case 'recall': say(recall(cwd, argv.slice(1).join(' '))); break;
+  case 'remember': {
+    const sep = argv.indexOf('--');
+    const [name, type, ...desc] = argv.slice(1, sep === -1 ? undefined : sep);
+    if (!name || !type) { say('usage: atlias remember <name> <user|feedback|project|reference> <description> -- <body>'); process.exitCode = 2; break; }
+    say(remember(cwd, { name, type, description: desc.join(' '), body: sep === -1 ? '' : argv.slice(sep + 1).join(' ') }));
+    break;
+  }
+  case 'progress': {
+    if (argv[1] === 'set') { const m = progress.applyNext(cwd, argv.slice(2).join(' ')); say(m || 'next step recorded; no handoff note yet.'); }
+    else say(progress.read(cwd) || 'no handoff note yet');
+    break;
+  }
+  case 'dream': {
+    if (argv[1] === 'ack') say(`dream: consolidated through cursor ${dream.ack(cwd)}`);
+    else if (argv[1] === 'distil') { const row = dream.distil(argv[2] || 'cli', argv[3] || '', cwd); say(row ? `dream: wrote cursor ${row.cursor}` : 'dream: nothing to distil for that session'); }
+    else { dream.digest(cwd); say(readOr(dream.digestPath(cwd), 'no digest yet')); }
+    break;
+  }
+  case 'graph': {
+    const sub = argv[1]; const arg = argv.slice(2).join(' ');
+    if (sub === 'query') say(graph.query(cwd, arg, config().graph.queryBudget) || 'no graph, or no answer');
+    else if (sub === 'affected' || sub === 'explain') say(graph.sub(cwd, sub, arg) || 'no graph, or no answer');
+    else if (sub === 'update') say(graph.updateNow(cwd) ? 'graph updated' : 'graph update failed (see ~/.atlias/log.txt)');
+    else say('usage: atlias graph query|affected|explain|update <arg>');
+    break;
+  }
+  case 'config': {
+    const p = path.join(STATE_DIR, 'config.json');
+    const user = readJson(p, {}) || {};
+    if (argv[1] === 'set' && argv[2]) {
+      const [section, key] = argv[2].split('.');
+      const parsed = parseSetting(section, key, argv.slice(3).join(' '));
+      if (parsed.error) { say(parsed.error); process.exitCode = 2; break; }
+      user[section] = { ...(user[section] || {}), [key]: parsed.value };
+      writeJson(p, user);
+      // Read it back through config() so what is printed is what took effect.
+      say(`${argv[2]} = ${JSON.stringify(config()[section][key])}`);
+    } else say(JSON.stringify(config(), null, 2));
+    break;
+  }
+  default:
+    say([logo(), '', 'atlias                             by mode: ask (both), status (sub), the agent (standalone)', `agent [--engine ${AGENT_ENGINES}] [--once "<prompt>"] [--resume [id]] [--sandbox]`, 'exec "<prompt>" [--engine e] [--resume [id]] [--sandbox] [--json]   one prompt, no questions; - or a pipe reads stdin', '  --sandbox                        work in a throwaway git worktree, show the diff at the end, and change the project only if you take it', 'resume [id]                        search and choose a saved agent session in this folder', 'import [--dry-run] [--from tool] [--sessions] [--undo]   bring memory, skills, commands and sessions over from Claude Code, Codex, Gemini CLI, Antigravity', 'update [--check]                   fast-forward this git checkout from its update source', 'mode [both|sub|standalone]         what atlias is on this machine', 'settings [list]                    every option, with what it does', 'install [--all|--codex|--antigravity|--gemini [--gemini-hooks]|--claude|--extras [ids]|--companions|--shortcut]', 'uninstall [--all|--codex|--antigravity|--gemini|--extras|--shortcut]', 'shortcut [install|uninstall|status]  the atlias command in any terminal', 'tiers                              the benchmark tiers, which are on this machine, and how to get the rest', 'eval [--tier smoke|main|big] [--sample N [--seed s]] [--engine e] [--repeat k] [--save f]   score tasks; the check decides', 'compare <a.json> <b.json>          two saved runs, paired, with what the corpus could never have shown', 'doctor | status | brief [--host codex] | test | bench [question...] | version | logo', 'auth chatgpt [login|status|logout|models|use]   personal dedicated plan sign-in; no API billing fallback', 'skills [name]                      the skills installed here, or one of them in full', 'recall <query> | remember <name> <type> <description> -- <body>', 'relay [on|off|status|cancel <id>]    optional automatic saved-session continuations (Windows)', 'progress [set <next step>] | dream [ack|distil <session>] | graph query|affected|explain|update <arg>', 'config [set <section.key> <value>]']);
 }

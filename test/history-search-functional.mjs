@@ -1,0 +1,80 @@
+// The public history after the next evolution controller: refreshed stage
+// views (unrounded tokens per solve, counted output), round outcomes, the search
+// policy, the three-round penalty and promotion routes. Zero inference.
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { collectHistory } from '../lib/evolution-status.mjs';
+import { collectLive } from '../lib/live-status.mjs';
+const root = fs.mkdtempSync(path.join(os.tmpdir(), 'atlias-history-search-'));
+const rows = (n, k) => Array.from({ length: n }, (_, i) => ({ key: `humanevalfix-python-${i}`, pass: i < k }));
+const stage = (n, k, tokens, output) => ({ n, passed: k, tokens, output, tokensPerPass: k ? tokens / k : null, peak: 5000, partial: false, rows: rows(n, k) });
+const base = { 'agent.ollamaModel': 'qwen3.5:9b' };
+const champion = { id: 'v0002', parent: 'v0000', born: '2026-10-10T00:00:00Z', change: base, config: base, s1: stage(10, 7, 170000, 16000), s2: stage(60, 44, 1144308, 176008) };
+const losses = [3, 4, 5].map(i => ({ id: `v000${i}`, parent: 'v0002', born: `2026-10-10T0${i}:00:00Z`, by: 'qwen3.5:9b', change: { 'agent.evictBlock': i }, config: { ...base, 'agent.evictBlock': i }, s1: stage(10, 7, 170000, 16000), s2: stage(60, 40, 1200000, 180000), vsChampionS2: { champion: 'v0002', wins: false }, roundOutcome: { status: 'completed', championBefore: 'v0002', outcome: 'not-promoted' }, searchDecision: { policy: 'archive-exploration' } }));
+const superseded = { id: 'v0006', parent: 'v0002', born: '2026-10-10T06:00:00Z', by: 'qwen3.5:9b', change: { 'flags.finishOnGreen': true }, config: { ...base, 'flags.finishOnGreen': true }, roundOutcome: { status: 'not-run', outcome: 'superseded-before-evaluation' }, searchDecision: { policy: 'champion-anchored-three-round-penalty' } };
+const archive = { champion: 'v0002', iterations: 6, playbook: {}, variants: [{ id: 'v0000', parent: null, born: '2026-10-09T00:00:00Z', config: {}, s1: stage(10, 1, 250000, 10000), s2: stage(60, 10, 1428530, 87874) }, champion, ...losses, superseded], promotions: [{ at: '2026-10-10T00:07:00Z', from: 'v0000', to: 'v0002', route: 'cost' }] };
+fs.writeFileSync(path.join(root, 'ARCHIVE.json'), JSON.stringify(archive));
+const now = new Date('2026-10-10T12:00:00Z');
+const h = collectHistory({ root, now });
+const v2 = h.variants.find(v => v.id === 'v0002');
+// Per-solve figures from the counts: an unrounded stored ratio no longer reads as missing.
+assert.equal(v2.stages.s2.tokensPerPass, 26007);
+assert.equal(v2.stages.s2.outputTokens, 176008);
+assert.equal(v2.stages.s2.totalPerPass, 30007);
+assert.equal(h.search.penaltyActive, true);
+assert.equal(h.search.measuredWithoutPromotion, 3);
+assert.equal(h.search.nextParent, 'v0002');
+assert.deepEqual(h.promotions, [{ at: '2026-10-10T00:07:00Z', from: 'v0000', to: 'v0002', route: 'cost' }]);
+const s6 = h.variants.find(v => v.id === 'v0006');
+assert.equal(s6.status, 'superseded');
+assert.equal(s6.outcome, 'superseded-before-evaluation');
+assert.equal(s6.searchPolicy, 'champion-anchored-three-round-penalty');
+assert.equal(h.variants.find(v => v.id === 'v0003').outcome, 'not-promoted');
+// The live feed names every typed change the controller can make.
+const live = collectLive({ stateRoot: root, now });
+assert.ok(live.status.communications.some(m => m.variant === 'v0006' && m.text === 'flags.finishOnGreen = true'));
+assert.ok(live.status.communications.some(m => m.variant === 'v0003' && m.text === 'agent.evictBlock = 3'));
+assert.ok(!/[A-Za-z]:[\\/]/.test(JSON.stringify(live)));
+// What the models are doing and saying, rebuilt from recorded events only:
+// v0005 is mid-screen, so its last turn is the coder's progress.
+const running = JSON.parse(JSON.stringify(archive));
+const v5 = running.variants.find(v => v.id === 'v0005');
+delete v5.s2; delete v5.vsChampionS2; delete v5.roundOutcome;
+running.variants.find(v => v.id === 'v0006').searchDecision.completedRoundIds = ['v0003', 'v0004', 'v0005'];
+fs.writeFileSync(path.join(root, 'ARCHIVE.json'), JSON.stringify(running));
+fs.writeFileSync(path.join(root, 'HEARTBEAT.json'), JSON.stringify({ at: now.toISOString(), pid: 1, phase: 'eval', variant: 'v0005', stage: 's2' }));
+fs.mkdirSync(path.join(root, 'variants', 'v0005'), { recursive: true });
+fs.writeFileSync(path.join(root, 'variants', 'v0005', 's2.json'), JSON.stringify({ partial: true, results: [{ id: 'humanevalfix-python-1', pass: true, stop: 'answered', rounds: 6, promptTotal: 9000, outputTotal: 900 }, { id: 'canitedit-lazy-7', pass: false, stop: 'rounds-exhausted', rounds: 14, promptTotal: 40000, outputTotal: 3000 }] }));
+fs.writeFileSync(path.join(root, 'evolve.log'), '2026-10-10T05:10:00.000Z v0005 s2 start (60 tasks) {"agent.evictBlock":5}\n');
+const live2 = collectLive({ stateRoot: root, now });
+const act = live2.status.activity;
+assert.equal(act.variant, 'v0005'); assert.equal(act.coder, 'qwen3.5:9b'); assert.equal(act.expected, 60); assert.equal(act.completed, 2); assert.equal(act.change, 'agent.evictBlock = 5');
+assert.deepEqual(act.recent.map(t => [t.number, t.suite, t.solved, t.stop, t.rounds]), [[2, 'CanItEdit lazy', false, 'ran out of rounds', 14], [1, 'HumanEvalFix Python', true, 'answered', 6]]);
+const turns = id => live2.status.conversations.find(c => c.variant === id).turns;
+const t3 = turns('v0003');
+assert.equal(t3[0].from, 'Evolution controller'); assert.equal(t3[0].to, 'Proposer');
+assert.ok(t3[0].text.startsWith('Parent v0002 (44 of 60 on the paired screen). Parent sampled from the archive by score.'));
+assert.deepEqual([t3[1].from, t3[1].text], ['Proposer (qwen3.5:9b)', 'CHANGE agent.evictBlock = 3']);
+assert.ok(t3.some(t => t.from === 'Coder (qwen3.5:9b)' && t.text === '40 of 60 solved, 30,000 prompt tokens per solve.'));
+assert.ok(t3.at(-1).to === null && t3.at(-1).text.endsWith('Not promoted.'));
+const t5 = turns('v0005');
+assert.equal(t5.at(-1).text, 'Working: 2 of 60 tasks done so far, 1 solved.');
+assert.equal(live2.status.conversations.find(c => c.variant === 'v0005').live, true);
+const t6 = turns('v0006');
+assert.ok(t6[0].text.includes('Search penalty active (3 completed rounds without a new champion)'));
+assert.equal(t6.at(-1).text, 'Superseded at a controller handoff; this change was never run.');
+const ls = live2.status.liveStats;
+assert.deepEqual([ls.stage.variant, ls.stage.done, ls.stage.solved, ls.stage.expected, ls.stage.elapsedMinutes], ['v0005', 2, 1, 60, 410]);
+assert.deepEqual(ls.stage.stopReasons, { 'ran out of rounds': 1, answered: 1 });
+assert.deepEqual(ls.stage.suites, { 'HumanEvalFix Python': { n: 1, solved: 1 }, 'CanItEdit lazy': { n: 1, solved: 0 } });
+assert.equal(ls.stage.promptTokensPerSolve, 49000); assert.equal(ls.stage.outputTokens, 3900);
+assert.ok(Date.parse(ls.stage.finishEstimate) > now.getTime());
+assert.equal(ls.proposals.modelAnswered, 4);
+const head = id => live2.status.conversations.find(c => c.variant === id).headline;
+assert.equal(head('v0003'), 'agent.evictBlock = 3: not promoted');
+assert.equal(head('v0005'), 'agent.evictBlock = 5: running now');
+assert.equal(head('v0006'), 'flags.finishOnGreen = true: superseded, never run');
+fs.rmSync(root, { recursive: true, force: true });
+console.log('PASS history search functional: per-solve and output counts from refreshed views, penalty state, promotion route, outcomes, superseded rounds and every typed change in the live feed');

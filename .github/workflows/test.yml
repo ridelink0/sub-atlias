@@ -1,7 +1,9 @@
 name: tests
 
-# The public package has no runtime dependencies. Check its syntax, package
-# contract, host-install sandbox, and MCP handshake on every supported platform.
+# Everything in atlias was written and run on Windows. The platform assumptions
+# were reasoned about rather than observed, and reasoning is where the last two
+# platform bugs came from. This runs the whole suite on the platforms nobody
+# here has, on every push, so the gap closes by evidence instead of argument.
 
 on:
   push:
@@ -26,14 +28,16 @@ jobs:
       # No install step: atlias has no dependencies, which is the point.
       - name: syntax
         shell: bash
-        run: for f in lib/*.mjs mcp/*.mjs bin/*.mjs test/*.mjs; do node --check "$f"; done
+        run: for f in lib/*.mjs mcp/*.mjs bin/*.mjs test/run.mjs; do node --check "$f"; done
       - name: suite
-        run: npm test
+        run: node test/run.mjs
       - name: the command line answers
         shell: bash
         run: |
           node bin/atlias.mjs --version
-          node bin/atlias.mjs --help | grep -q "atlias install"
+          NO_COLOR=1 node bin/atlias.mjs logo
+          node bin/atlias.mjs agent --engine echo --once "ci is flying"
+          node bin/atlias.mjs bench | head -5
       - name: install into a sandbox home and validate what was written
         run: node test/install-sandbox.mjs
       - name: the mcp server completes a handshake
