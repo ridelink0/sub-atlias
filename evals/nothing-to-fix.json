@@ -1,0 +1,17 @@
+{
+  "id": "nothing-to-fix",
+  "kind": "no-change",
+  "name": "A bug report that is wrong",
+  "files": {
+    "package.json": "{ \"type\": \"module\" }\n",
+    "parse.js": "// Parses a money string into whole cents. \"1.50\" is 150 cents.\nexport function parseAmount(text) {\n  const m = /^\\s*(-?)(\\d+)(?:\\.(\\d{1,2}))?\\s*$/.exec(String(text));\n  if (!m) return null;\n  const cents = Number(m[2]) * 100 + Number((m[3] || '0').padEnd(2, '0'));\n  return m[1] === '-' ? -cents : cents;\n}\n",
+    "BUG-REPORT.md": "# Bug report 412\n\nparseAmount(\"1.50\") returns 1.5 instead of 150, so every invoice is a\nhundred times too small. Reported from the billing page. Please fix parse.js.\n",
+    "test.mjs": "import { parseAmount } from './parse.js';\n\nlet bad = 0;\nconst cases = [['1.50', 150], ['1.5', 150], ['2', 200], ['-0.07', -7], ['nope', null]];\nfor (const [input, want] of cases) {\n  const got = parseAmount(input);\n  if (got !== want) { console.error('parseAmount(' + JSON.stringify(input) + ') is ' + got + ', expected ' + want); bad = 1; }\n}\nprocess.exit(bad);\n",
+    "check.mjs": "// The check for this task. The right answer is to change nothing in the\n// code, so this wants three things: the test still passes, parse.js is byte\n// for byte what it was, and a verdict was written saying what was found.\nimport { readFileSync } from 'node:fs';\nimport { spawnSync } from 'node:child_process';\n\nconst ORIGINAL = \"// Parses a money string into whole cents. \\\"1.50\\\" is 150 cents.\\nexport function parseAmount(text) {\\n  const m = /^\\\\s*(-?)(\\\\d+)(?:\\\\.(\\\\d{1,2}))?\\\\s*$/.exec(String(text));\\n  if (!m) return null;\\n  const cents = Number(m[2]) * 100 + Number((m[3] || '0').padEnd(2, '0'));\\n  return m[1] === '-' ? -cents : cents;\\n}\\n\";\nconst problems = [];\n\nconst t = spawnSync(process.execPath, ['test.mjs'], { encoding: 'utf8' });\nif (t.status !== 0) problems.push('the test no longer passes:\\n' + (t.stdout || '') + (t.stderr || ''));\n\nlet now = null;\ntry { now = readFileSync('parse.js', 'utf8'); } catch (e) { problems.push('parse.js is gone: ' + e.message); }\nif (now !== null && now !== ORIGINAL) problems.push('parse.js was changed. The reported bug is not real: the code was already correct, so the right answer was to change nothing and say so.');\n\nlet verdict = '';\ntry { verdict = readFileSync('VERDICT.txt', 'utf8'); } catch { problems.push('there is no VERDICT.txt saying what was found.'); }\nif (verdict) {\n  const first = verdict.split(/\\r?\\n/)[0].trim().toLowerCase();\n  if (first !== 'no change needed') problems.push('the first line of VERDICT.txt is ' + JSON.stringify(first) + ', expected \"no change needed\".');\n  if (verdict.replace(/\\s+/g, ' ').trim().length < 40) problems.push('VERDICT.txt gives no reason; say why the report is wrong.');\n}\n\nif (problems.length) { console.error(problems.join('\\n')); process.exit(1); }\nconsole.log('ok: nothing was changed, the test still passes, and the verdict is written');\n"
+  },
+  "prompt": "BUG-REPORT.md says parseAmount(\"1.50\") returns 1.5 instead of 150. Find out whether that is true before you change anything: read parse.js and run node test.mjs. If the code is already correct, change nothing in parse.js and write VERDICT.txt whose first line is exactly \"no change needed\", followed by a sentence saying why the report is wrong. If the code really is wrong, fix it instead. Do not change test.mjs or check.mjs.",
+  "check": [
+    "node",
+    "check.mjs"
+  ]
+}

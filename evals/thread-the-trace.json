@@ -1,0 +1,17 @@
+{
+  "id": "thread-the-trace",
+  "kind": "multi-file",
+  "name": "Carry a trace id through three files",
+  "files": {
+    "package.json": "{ \"type\": \"module\" }\n",
+    "db.js": "// The data layer.\nexport function findUser(id) {\n  return { id, name: 'gev' };\n}\n",
+    "api.js": "import { findUser } from './db.js';\n\n// The request layer.\nexport function handle(req) {\n  return findUser(req.id);\n}\n",
+    "app.js": "import { handle } from './api.js';\n\n// The entry point.\nexport function run(id) {\n  return handle({ id });\n}\n",
+    "test.mjs": "import { findUser } from './db.js';\nimport { handle } from './api.js';\nimport { run } from './app.js';\n\nlet bad = 0;\nconst a = findUser(3, 'trace-a');\nif (!a || a.trace !== 'trace-a' || a.id !== 3) { console.error('db.js: findUser(3, \"trace-a\") gave ' + JSON.stringify(a)); bad = 1; }\nconst b = handle({ id: 4 }, 'trace-b');\nif (!b || b.trace !== 'trace-b' || b.id !== 4) { console.error('api.js: handle({ id: 4 }, \"trace-b\") gave ' + JSON.stringify(b)); bad = 1; }\nconst c = run(5, 'trace-c');\nif (!c || c.trace !== 'trace-c' || c.id !== 5) { console.error('app.js: run(5, \"trace-c\") gave ' + JSON.stringify(c)); bad = 1; }\nprocess.exit(bad);\n"
+  },
+  "prompt": "Every request has to carry a trace id from the entry point down to the data layer. node test.mjs fails. Add a second argument named trace to run in app.js, handle in api.js and findUser in db.js, pass it down through all three, and have findUser return it on the object it builds as trace. Do not change test.mjs.",
+  "check": [
+    "node",
+    "test.mjs"
+  ]
+}

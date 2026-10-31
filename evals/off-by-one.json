@@ -1,0 +1,15 @@
+{
+  "id": "off-by-one",
+  "kind": "failing-test",
+  "name": "Fix an off-by-one so the test passes",
+  "files": {
+    "package.json": "{ \"type\": \"module\" }\n",
+    "sum.js": "// Adds the numbers from 1 to n.\nexport function sumTo(n) {\n  let t = 0;\n  for (let i = 1; i < n; i++) t += i;\n  return t;\n}\n",
+    "test.mjs": "import { sumTo } from './sum.js';\nconst got = sumTo(5);\nif (got !== 15) { console.error(`sumTo(5) is ${got}, expected 15`); process.exit(1); }\nconsole.log('ok');\n"
+  },
+  "prompt": "node test.mjs fails. Fix sum.js so it passes. Do not change test.mjs.",
+  "check": [
+    "node",
+    "test.mjs"
+  ]
+}

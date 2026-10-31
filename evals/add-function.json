@@ -1,0 +1,15 @@
+{
+  "id": "add-function",
+  "kind": "new-function",
+  "name": "Add a function the test asks for",
+  "files": {
+    "package.json": "{ \"type\": \"module\" }\n",
+    "strings.js": "export function upper(s) { return String(s).toUpperCase(); }\n",
+    "test.mjs": "import * as m from './strings.js';\nif (typeof m.titleCase !== 'function') { console.error('titleCase is missing'); process.exit(1); }\nif (m.titleCase('hello there') !== 'Hello There') { console.error('titleCase(\"hello there\") gave ' + m.titleCase('hello there')); process.exit(1); }\nconsole.log('ok');\n"
+  },
+  "prompt": "Add a titleCase export to strings.js so node test.mjs passes. Do not change test.mjs.",
+  "check": [
+    "node",
+    "test.mjs"
+  ]
+}

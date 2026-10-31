@@ -1,0 +1,15 @@
+{
+  "id": "keep-the-other-test",
+  "kind": "no-regression",
+  "name": "Fix one test without breaking the other",
+  "files": {
+    "package.json": "{ \"type\": \"module\" }\n",
+    "calc.js": "export function add(a, b) { return a - b; }\nexport function mul(a, b) { return a * b; }\n",
+    "test.mjs": "import { add, mul } from './calc.js';\nlet bad = 0;\nif (add(2, 3) !== 5) { console.error('add is wrong'); bad = 1; }\nif (mul(2, 3) !== 6) { console.error('mul is wrong'); bad = 1; }\nprocess.exit(bad);\n"
+  },
+  "prompt": "node test.mjs fails on add. Fix calc.js. mul already passes and must keep passing. Do not change test.mjs.",
+  "check": [
+    "node",
+    "test.mjs"
+  ]
+}

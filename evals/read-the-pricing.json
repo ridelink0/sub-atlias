@@ -1,0 +1,16 @@
+{
+  "id": "read-the-pricing",
+  "kind": "read-first",
+  "name": "Take a rate from a config file you have to read",
+  "files": {
+    "package.json": "{ \"type\": \"module\" }\n",
+    "pricing.json": "{\n  \"currency\": \"USD\",\n  \"country\": \"US\",\n  \"vat_percent\": 7.25,\n  \"discount_percent\": 0,\n  \"rounding\": \"half-up\"\n}\n",
+    "total.js": "// Prices are whole cents everywhere in this codebase.\nexport function total(cents) {\n  return cents;\n}\n",
+    "test.mjs": "import { readFileSync } from 'node:fs';\nimport { total } from './total.js';\n\nconst pricing = JSON.parse(readFileSync(new URL('./pricing.json', import.meta.url), 'utf8'));\nconst want = (c) => Math.round(c * (1 + pricing.vat_percent / 100));\nlet bad = 0;\nfor (const c of [0, 99, 250, 10000]) {\n  const got = total(c);\n  if (got !== want(c)) { console.error('total(' + c + ') is ' + got + ', expected ' + want(c)); bad = 1; }\n}\nprocess.exit(bad);\n"
+  },
+  "prompt": "node test.mjs fails. total.js must add VAT to a price given in whole cents and return whole cents, taking the rate from pricing.json. Read pricing.json and use the field it actually has. Do not change test.mjs or pricing.json.",
+  "check": [
+    "node",
+    "test.mjs"
+  ]
+}

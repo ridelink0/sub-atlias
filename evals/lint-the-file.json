@@ -1,0 +1,15 @@
+{
+  "id": "lint-the-file",
+  "kind": "linter",
+  "name": "Make the linter pass",
+  "files": {
+    "package.json": "{ \"type\": \"module\" }\n",
+    "src.js": "export function describeUser(user) {\n  var label = user.name;\n  if (user.role == 'admin') {\n    label = label + ' (admin)';   \n  }\n  console.log('describeUser', label);\n  return label;\n}\n\nexport function initials(name) { var parts = String(name).split(' '); return parts.map(function (p) { return p.charAt(0).toUpperCase(); }).join(''); }\n",
+    "lint.mjs": "// This project's linter. It is not a test: it reads the source and reports\n// style violations by line. Its last rule is that the documented API is\n// still exported, so deleting the code is not a way to make it pass.\nimport { readFileSync } from 'node:fs';\n\nconst FILE = 'src.js';\nconst RULES = [\n  ['no-var', /(^|[^\\w$])var\\s/, 'declare with const or let, never var'],\n  ['eqeqeq', /[^=!<>]==[^=]/, 'compare with === and !=='],\n  ['no-console', /console\\s*\\./, 'no console calls in library code'],\n  ['no-trailing-whitespace', /[ \\t]+$/, 'trailing whitespace'],\n  ['max-len', /^.{101,}$/, 'lines are at most 100 characters'],\n];\nconst API = ['describeUser', 'initials'];\n\nconst problems = [];\nlet text = '';\ntry { text = readFileSync(FILE, 'utf8'); } catch (e) { console.error('lint: cannot read ' + FILE + ': ' + e.message); process.exit(1); }\ntext.split(/\\r?\\n/).forEach((line, i) => {\n  for (const [name, re, why] of RULES) if (re.test(line)) problems.push(FILE + ':' + (i + 1) + '  ' + name + ': ' + why);\n});\nlet mod = null;\ntry { mod = await import('./' + FILE); } catch (e) { problems.push(FILE + ':1  parse: ' + e.message); }\nif (mod) for (const n of API) if (typeof mod[n] !== 'function') problems.push(FILE + ':1  missing-export: ' + n + ' has to stay exported');\n\nif (problems.length) { console.error(problems.join('\\n')); console.error(problems.length + ' problem(s).'); process.exit(1); }\nconsole.log('lint clean');\n"
+  },
+  "prompt": "node lint.mjs reports style problems in src.js. Fix src.js so the linter passes with no problems. Both exported functions must keep working the same way, apart from the console call, which should go. Do not change lint.mjs.",
+  "check": [
+    "node",
+    "lint.mjs"
+  ]
+}

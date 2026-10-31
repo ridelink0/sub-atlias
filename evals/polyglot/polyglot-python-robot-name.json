@@ -1,0 +1,22 @@
+{
+  "id": "polyglot-python-robot-name",
+  "kind": "polyglot-python",
+  "name": "robot-name (python)",
+  "rounds": 18,
+  "protect": [
+    "robot_name_test.py"
+  ],
+  "files": {
+    "robot_name.py": "class Robot:\r\n    def __init__(self):\r\n        pass\r\n",
+    "robot_name_test.py": "import unittest\r\nimport random\r\n\r\nfrom robot_name import Robot\r\n\r\n\r\nclass RobotNameTest(unittest.TestCase):\r\n    # assertRegex() alias to address DeprecationWarning\r\n    # assertRegexpMatches got renamed in version 3.2\r\n    if not hasattr(unittest.TestCase, \"assertRegex\"):\r\n        assertRegex = unittest.TestCase.assertRegexpMatches\r\n\r\n    name_re = r'^[A-Z]{2}\\d{3}$'\r\n\r\n    def test_has_name(self):\r\n        self.assertRegex(Robot().name, self.name_re)\r\n\r\n    def test_name_sticks(self):\r\n        robot = Robot()\r\n        robot.name\r\n        self.assertEqual(robot.name, robot.name)\r\n\r\n    def test_different_robots_have_different_names(self):\r\n        self.assertNotEqual(\r\n            Robot().name,\r\n            Robot().name\r\n        )\r\n\r\n    def test_reset_name(self):\r\n        # Set a seed\r\n        seed = \"Totally random.\"\r\n\r\n        # Initialize RNG using the seed\r\n        random.seed(seed)\r\n\r\n        # Call the generator\r\n        robot = Robot()\r\n        name = robot.name\r\n\r\n        # Reinitialize RNG using seed\r\n        random.seed(seed)\r\n\r\n        # Call the generator again\r\n        robot.reset()\r\n        name2 = robot.name\r\n        self.assertNotEqual(name, name2)\r\n        self.assertRegex(name2, self.name_re)\r\n\r\n\r\nif __name__ == '__main__':\r\n    unittest.main()\r\n"
+  },
+  "prompt": "# Instructions\n\nManage robot factory settings.\n\nWhen a robot comes off the factory floor, it has no name.\n\nThe first time you turn on a robot, a random name is generated in the format of two uppercase letters followed by three digits, such as RX837 or BC811.\n\nEvery once in a while we need to reset a robot to its factory settings, which means that its name gets wiped.\nThe next time you ask, that robot will respond with a new random name.\n\nThe names must be random: they should not follow a predictable sequence.\nUsing random names means a risk of collisions.\nYour solution must ensure that every existing robot has a unique name.\n\nThe file to write is robot_name.py. Make the tests in robot_name_test.py pass; that file is what the check runs to grade this task. Do not change robot_name_test.py: it is the specification, and a run that edits it does not count.",
+  "check": [
+    "C:\\Users\\OWNER\\AppData\\Local\\Programs\\Python\\Python313\\python.exe",
+    "-m",
+    "pytest",
+    "-q",
+    "robot_name_test.py"
+  ],
+  "timeoutMs": 120000
+}

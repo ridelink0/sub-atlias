@@ -1,0 +1,17 @@
+{
+  "id": "misleading-error",
+  "kind": "misleading-error",
+  "name": "A failure that blames the wrong file",
+  "files": {
+    "package.json": "{ \"type\": \"module\" }\n",
+    "defaults.js": "// The defaults every layer reads.\nexport function defaults() {\n  return { host: 'localhost', prot: 8080 };\n}\n",
+    "config.js": "import { defaults } from './defaults.js';\n\nexport function port(env) {\n  return (env && Number(env.PORT)) || defaults().port;\n}\n",
+    "server.js": "import { defaults } from './defaults.js';\n\nexport function describe() {\n  const d = defaults();\n  return d.host + ':' + d.port;\n}\n",
+    "test.mjs": "import { port } from './config.js';\nimport { describe } from './server.js';\n\nlet bad = 0;\nconst p = port({});\nif (p !== 8080) { console.error('FAIL config.js: port({}) returned ' + p + ' instead of the default 8080. config.js is not reading the default properly.'); bad = 1; }\nif (port({ PORT: '3000' }) !== 3000) { console.error('FAIL config.js: the environment is ignored.'); bad = 1; }\nconst d = describe();\nif (d !== 'localhost:8080') { console.error('FAIL server.js: describe() returned ' + d + '. server.js is building the address wrongly.'); bad = 1; }\nprocess.exit(bad);\n"
+  },
+  "prompt": "node test.mjs fails twice. Fix the code so it passes. Do not change test.mjs.",
+  "check": [
+    "node",
+    "test.mjs"
+  ]
+}
