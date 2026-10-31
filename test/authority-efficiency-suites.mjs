@@ -3,6 +3,11 @@ import * as loop from '../lib/loop.mjs';
 import * as agent from '../lib/agent.mjs';
 
 export default async function authorityEfficiencySuites({ suite, asyncSuite, check, fs, path, PROJECT }) {
+  suite('terminal display expert', 'tool rows use Atlias verbs in the display layer only (Gev 2026-10-31)', () => {
+    const rows = ['  tool edit_file src/app.js', '  tool shell npm test', '  tool mystery_tool x', '  tool read_file', 'plain line', 'worker:  tool shell ls'].map(agent.toolRow);
+    check('agent.toolRow rewords the loop progress line and leaves everything else as it was', rows[0] === '  \u25b8 edit  src/app.js' && rows[1] === '  \u25b8 run  npm test' && rows[2] === '  \u25b8 mystery_tool  x' && rows[3] === '  \u25b8 open' && rows[4] === 'plain line' && rows[5] === 'worker:  tool shell ls' && agent.toolRow(null) === null,
+      { happened: JSON.stringify(rows), why: 'The loop is the pinned reviewed source; only the shown words may change.', fix: 'Keep the rewording in lib/agent.mjs toolRow.' });
+  });
   suite('authority expert', 'authority: exact requests survive save, resume and repeated compaction', () => {
     const key = 'ATLIAS_FLAG_AUTHORITY_LEDGER';
     const previous = process.env[key];
