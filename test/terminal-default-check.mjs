@@ -32,7 +32,7 @@ try{
   check('official reset restores enabled default without changing engine',()=>{const r=inspect(root,home,'reset');assert.equal(r.enabled,true);assert.equal(r.engine,'codex');});
   // Plant the old default in an isolated copy and prove the default assertion fails.
   const mutant=path.join(scratch,'mutant');fs.mkdirSync(path.join(mutant,'lib'),{recursive:true});
-  for(const name of ['core.mjs','settings.mjs','usage-display.mjs'])fs.copyFileSync(path.join(root,'lib',name),path.join(mutant,'lib',name));
+  for(const name of ['core.mjs','settings.mjs','usage-display.mjs','edition.mjs'])fs.copyFileSync(path.join(root,'lib',name),path.join(mutant,'lib',name));
   fs.writeFileSync(path.join(mutant,'package.json'),'{"type":"module","version":"4.0.0"}');
   const corePath=path.join(mutant,'lib/core.mjs'),original=fs.readFileSync(corePath,'utf8');
   assert.ok(original.includes('terminalEnabled: true'));fs.writeFileSync(corePath,original.replace('terminalEnabled: true','terminalEnabled: false'));

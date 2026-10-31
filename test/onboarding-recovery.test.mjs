@@ -121,7 +121,7 @@ test('auth failures expose reviewed recovery text without trusting provider text
 test('native Claude auth waits for its async login before checking status', async () => {
   const lines = []; let signedIn = false;
   await auth.authCommand('claude login', { out: line => lines.push(line), api: {
-    nativeAuthStatus: async () => ({ available: true, authenticated: signedIn }),
+    claudeOffered: () => true, nativeAuthStatus: async () => ({ available: true, authenticated: signedIn }),
     nativeLogin: async () => { await Promise.resolve(); signedIn = true; },
   } });
   assert.equal(signedIn, true); assert.match(lines.at(-1), /claude: authenticated/);
@@ -131,11 +131,11 @@ test('failed native sign-in returns failure and never prints adapter errors', as
   for (const provider of ['claude', 'codex']) {
     const lines = [];
     const failed = await auth.authCommand(`${provider} login`, { out: line => lines.push(line), api: {
-      nativeAuthStatus: async () => ({ available: true, authenticated: false }), nativeLogin: async () => { throw Error('synthetic-private-login'); },
+      claudeOffered: () => true, nativeAuthStatus: async () => ({ available: true, authenticated: false }), nativeLogin: async () => { throw Error('synthetic-private-login'); },
     } });
     assert.equal(failed.ok, false); assert.match(lines.at(-1), /sign-in is not verified/);
     const unavailable = await auth.authCommand(`${provider} status`, { out: line => lines.push(line), api: {
-      nativeAuthStatus: async () => { throw Error('synthetic-private-status'); },
+      claudeOffered: () => true, nativeAuthStatus: async () => { throw Error('synthetic-private-status'); },
     } });
     assert.equal(unavailable.ok, false); assert.ok(!lines.join('\n').includes('synthetic-private'));
   }
@@ -157,7 +157,7 @@ test('permission refusals return failure for every authentication mutation', asy
     settings.set('agent.permissions', 'read-only');
     for (const provider of ['chatgpt', 'claude', 'codex']) {
       const lines = [];
-      const result = await auth.authCommand(`${provider} login`, { out: line => lines.push(line), engine: { login: () => assert.fail('permission refusal cannot start sign-in') }, api: { nativeLogin: () => assert.fail('permission refusal cannot start native sign-in') } });
+      const result = await auth.authCommand(`${provider} login`, { out: line => lines.push(line), engine: { login: () => assert.fail('permission refusal cannot start sign-in') }, api: { claudeOffered: () => true, nativeLogin: () => assert.fail('permission refusal cannot start native sign-in') } });
       assert.equal(result?.ok, false); assert.match(lines.at(-1), /disabled in this permission mode/);
     }
   } finally { settings.set('agent.permissions', prior); }

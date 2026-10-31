@@ -9,6 +9,8 @@ process.env.ATLIAS_HOME = stateHome;
 process.env.OPENAI_API_KEY = 'environment-secret-for-test';
 process.env.ANTHROPIC_API_KEY = 'environment-secret-for-test';
 process.env.GEMINI_API_KEY = 'environment-secret-for-test';
+// The Anthropic API route is founders-only (Gev, 2026-10-30); test/edition-suites.mjs checks the release refuses it.
+(await import('../lib/edition.mjs')).offerClaudeForTests(true);
 const agent = await import('../lib/agent.mjs');
 const loop = await import('../lib/loop.mjs');
 const transports = await import('../lib/direct-transports.mjs');

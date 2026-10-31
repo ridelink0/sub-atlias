@@ -1116,6 +1116,7 @@ await (await import('./onboarding-goals-suites.mjs')).default({ suite, asyncSuit
 await (await import('./claude-plan-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./claude-label-suites.mjs')).default({ suite, asyncSuite, check, TMP, fs, path, ROOT });
 await (await import('./loop-subagent-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
+await (await import('./subagent-ledger-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./cache-mask-suites.mjs')).default({ suite, asyncSuite, check, TMP, fs, path });
 await (await import('./merge-1023-suites.mjs')).default({ asyncSuite, check });
 (await import('./merge-1023-suites.mjs')).costSuite({ suite, check, loop: await import('../lib/loop.mjs') });
@@ -1138,6 +1139,7 @@ await (await import('./media-input-suites.mjs')).default({ suite, asyncSuite, ch
 await (await import('./customization-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./terminal-ui-suites.mjs')).default({ suite, asyncSuite, check, core, fs, path, ROOT });
 await (await import('./terminal-usability-suites.mjs')).default({ suite, asyncSuite, check, core, fs, path, ROOT, TMP });
+await (await import('./followups-suites.mjs')).default({ suite, asyncSuite, check, core, fs, path, ROOT, TMP });
 await (await import('./direct-contract-suites.mjs')).default({ asyncSuite, check, ROOT, path, spawnSync });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
 await (await import('./features-1022-compact-suites.mjs')).default({ asyncSuite, check, TMP, agentMod, commands: await import('../lib/commands.mjs') });
@@ -1151,7 +1153,7 @@ await (await import('./features-1022-background-suites.mjs')).default({ asyncSui
 await (await import('./features-1022-tools-suites.mjs')).default({ asyncSuite, check, TMP });
 await (await import('./features-1022-review-fix-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
 await (await import('./features-1022-review-fix2-suites.mjs')).default({ suite, check, core, TMP, ROOT, fs, path });
-await (await import('./edition-suites.mjs')).default({ suite, check, TMP, fs, path });
+await (await import('./edition-suites.mjs')).default({ suite, asyncSuite, check, core, agentMod, TMP, fs, path });
 await (await import('./license-suites.mjs')).default({ asyncSuite, check, TMP, ROOT, fs, path });
 await (await import('./model-check-suites.mjs')).default({ asyncSuite, check });
 

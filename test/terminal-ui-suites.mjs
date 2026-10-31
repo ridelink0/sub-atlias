@@ -18,7 +18,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     output.write = (s) => { output.text += s; };
     let fallbackCalls = 0, fallbackClosed = 0;
     const createUI = opts.impl ? opts.impl.createTerminalUI : ui.createTerminalUI;
-    const terminal = createUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, history: opts.history, keepRawBetweenPrompts: opts.keepRawBetweenPrompts, appearance: opts.appearance, getCommands: () => opts.rows || rows,
+    const terminal = createUI({ input, output, proc, env: opts.env || { NO_COLOR: '1' }, history: opts.history, keepRawBetweenPrompts: opts.keepRawBetweenPrompts, appearance: { followUp: 'queue', ...opts.appearance }, getCommands: () => opts.rows || rows,
       getInfo: () => ({ engine: 'echo', permission: 'workspace', tokens: 'tokens not recorded' }),
       fallbackQuestion: async () => { fallbackCalls++; return 'plain answer'; }, closeFallback: () => fallbackClosed++ });
     const start = (q) => (q === undefined ? terminal.prompt() : terminal.question(q)).then((text) => ({ text }), (error) => ({ error: error.message }));
@@ -310,13 +310,13 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     check('a second Ctrl+C within two seconds of the interrupt asks to leave', leftAt.exit === true && !r.input.isRaw && r.input.listenerCount('data') === 0, detail(JSON.stringify(leftAt)));
     // TUI-B 2: the footer shows the spinner, the seconds and the stop key, repainted at most ten times a second.
     r = rig(); const ticking = new AbortController(); r.terminal.turnStart(ticking);
-    const before = (r.output.text.split('esc to interrupt').length - 1); await wait(1000);
-    const paints = (r.output.text.split('esc to interrupt').length - 1) - before;
-    check('a running turn names the activity and repaints 5 to 12 times a second (TUI-B 2)', before >= 1 && paints >= 5 && paints <= 12 && /[|/\\-] Working \d+s  esc to interrupt/.test(r.output.text), detail(JSON.stringify({ before, paints })));
+    const before = (r.output.text.split('Esc stops').length - 1); await wait(1000);
+    const paints = (r.output.text.split('Esc stops').length - 1) - before;
+    check('a running turn names the activity and repaints 5 to 12 times a second (TUI-B 2)', before >= 1 && paints >= 5 && paints <= 12 && /[|/\\-] Working \d+s  Esc stops/.test(r.output.text), detail(JSON.stringify({ before, paints })));
     r.terminal.turnEnd();
     // h4 F-h1-C: once the turn ends the spinner stops repainting.
     const stopsAt = r.output.text.length; await new Promise((resolve) => setTimeout(resolve, 300));
-    check('the spinner stops repainting when the turn ends (h4 F-h1-C)', !r.output.text.slice(stopsAt).includes('esc to interrupt'), detail());
+    check('the spinner stops repainting when the turn ends (h4 F-h1-C)', !r.output.text.slice(stopsAt).includes('Esc stops'), detail());
     // TUI-B 3: Enter during a turn queues the message (dim "queued: ...") and the turn hands it back; typed text becomes the next draft.
     r = rig(); const queuing = new AbortController(); r.terminal.turnStart(queuing);
     r.send('next one'); r.send('\r'); r.send('half');

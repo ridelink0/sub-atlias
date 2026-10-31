@@ -4,6 +4,7 @@ import * as commands from '../lib/commands.mjs';
 import * as settings from '../lib/settings.mjs';
 import * as copy from '../lib/selection-copy.mjs';
 import * as auth from '../lib/auth-command.mjs';
+import { offerClaudeForTests } from '../lib/edition.mjs';
 
 export default async function onboardingGoalsSuites({ asyncSuite, suite, check, core, agentMod, TMP, fs, path }) {
   let sequence = 0;
@@ -18,7 +19,7 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
     const previous = Object.fromEntries(['engine', 'ollamaUrl', 'ollamaModel', 'chatgptModel', 'chatgptReasoningEffort', 'openaiUrl', 'openaiModel'].map((key) => [key, core.config().agent[key]]));
     const welcome = onboarding.welcomeText();
     check('the first-open screen explicitly offers ChatGPT, every direct API billing route, Ollama and set up later',
-      /Sign in with ChatGPT/.test(welcome) && /OpenAI API/.test(welcome) && /Anthropic API/.test(welcome) && /Google Gemini API/.test(welcome) && /OpenAI-compatible API endpoint/.test(welcome) && /I will just use local models using Ollama/.test(welcome) && /Set up later/.test(welcome),
+      /Sign in with ChatGPT/.test(welcome) && /OpenAI API/.test(welcome) && /Google Gemini API/.test(welcome) && /OpenAI-compatible API endpoint/.test(welcome) && /Local models with Ollama/.test(welcome) && /Set up later/.test(welcome),
       { happened: welcome, why: 'A first install must show actionable choices without hiding billing differences.', fix: 'Render CHOICES from welcomeText.' });
     check('the first-open route list contains every explicit provider and host choice exactly once',
       onboarding.CHOICES.length === 11 && new Set(onboarding.CHOICES.map((choice) => choice.method)).size === 11
@@ -26,7 +27,7 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
       { happened: JSON.stringify(onboarding.CHOICES.map((choice) => choice.method)), why: 'The visible menu and routed methods must not drift apart.', fix: 'Keep one explicit row for each supported or clearly unsupported route.' });
 
     const localFile = path.join(temp('state'), 'onboarding.json');
-    const prompts = ['I will just use local models using Ollama', 'http://127.0.0.1:11434', 'qwen-local:latest'];
+    const prompts = ['Local models with Ollama', 'http://127.0.0.1:11434', 'qwen-local:latest'];
     let probes = 0;
     let localInstructions = '';
     const local = await onboarding.firstOpen({ detect: false, file: localFile, ask: async () => prompts.shift(), out: (line) => { localInstructions += line + '\n'; }, fetchImpl: async (url, options) => {
@@ -91,15 +92,17 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
     const claudeFile = path.join(temp('state'), 'claude-native.json');
     let nativeLogins = 0, nativeChecks = 0, nativeCopy = '';
     const claudeAnswers = ['9', 'yes'];
-    const claude = await onboarding.firstOpen({ detect: false, file: claudeFile, ask: async () => claudeAnswers.shift(), out: (line) => { nativeCopy += line; },
+    // The claude host is a founders-edition route (Gev, 2026-10-30); test/edition-suites.mjs checks the release refuses it.
+    const asFounders = async (fn) => { offerClaudeForTests(true); try { return await fn(); } finally { offerClaudeForTests(false); } };
+    const claude = await asFounders(() => onboarding.firstOpen({ detect: false, file: claudeFile, ask: async () => claudeAnswers.shift(), out: (line) => { nativeCopy += line; },
       nativeAuthStatus: async (provider) => (++nativeChecks === 1 ? { available: true, authenticated: false, subscription: false } : { available: provider === 'claude', authenticated: true, subscription: true }),
-      nativeLogin: async (provider) => { if (provider === 'claude') nativeLogins++; return { started: true, exitCode: 0 }; } });
+      nativeLogin: async (provider) => { if (provider === 'claude') nativeLogins++; return { started: true, exitCode: 0 }; } }));
     check('Claude subscription setup uses only its native CLI status and login and labels billing as native-owned',
       claude.status === 'complete' && claude.method === 'claude' && nativeLogins === 1 && nativeChecks === 2 && /unmodified CLI owns sign-in/.test(nativeCopy) && /did not inspect credentials/.test(nativeCopy),
       { happened: JSON.stringify({ claude, nativeLogins, nativeChecks, nativeCopy }), why: 'The supported subscription path stays inside the actual Claude Code CLI and cannot imply Atlias SDK token relay.', fix: 'Use the native login command and status booleans only.' });
     const failedAnswers = ['9', 'yes'];
-    const failedClaude = await onboarding.firstOpen({ detect: false, file: path.join(temp('state'), 'claude-cancel.json'), ask: async () => failedAnswers.shift(), out: () => {},
-      nativeAuthStatus: async () => ({ available: true, authenticated: false, subscription: false }), nativeLogin: async () => ({ started: true, exitCode: 1 }) });
+    const failedClaude = await asFounders(() => onboarding.firstOpen({ detect: false, file: path.join(temp('state'), 'claude-cancel.json'), ask: async () => failedAnswers.shift(), out: () => {},
+      nativeAuthStatus: async () => ({ available: true, authenticated: false, subscription: false }), nativeLogin: async () => ({ started: true, exitCode: 1 }) }));
     check('a native CLI login that does not authenticate stays deferred', failedClaude.status === 'deferred' && failedClaude.verification === 'native_sign_in_unverified',
       { happened: JSON.stringify(failedClaude), why: 'An unsuccessful sign-in cannot unlock the selected host.', fix: 'Require a verified native auth status before marking setup complete.' });
 
@@ -323,7 +326,9 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
       { happened: 'native CLI calls did not match expected commands', why: 'Native auth must remain in each official CLI with inherited user I/O.', fix: 'Use the official login/status/logout subcommands.' });
     let unavailableCalls = 0, loginCalls = 0, authText = '';
     const missing = agentMod.nativeAuthStatus('claude', { available: false, run: () => { unavailableCalls++; return { status: 0, stdout: '{"loggedIn":true}', stderr: '' }; } });
-    await auth.authCommand('claude login', { out: (line) => { authText += line; }, api: { nativeAuthStatus: () => ({ available: false }), nativeLogin: () => { loginCalls++; } } });
+    // The claude host is founders-only (Gev, 2026-10-30); here it is offered but its CLI is missing.
+    offerClaudeForTests(true);
+    try { await auth.authCommand('claude login', { out: (line) => { authText += line; }, api: { nativeAuthStatus: () => ({ available: false }), nativeLogin: () => { loginCalls++; } } }); } finally { offerClaudeForTests(false); }
     check('an unavailable native CLI is neither invoked for status nor presented as a successful login route',
       !missing.available && unavailableCalls === 0 && loginCalls === 0 && /native CLI unavailable/.test(authText),
       { happened: JSON.stringify({ missing, unavailableCalls, loginCalls, authText }), why: 'A missing host cannot receive a login command or be shown as available.', fix: 'Stop before invoking provider auth when binary detection fails.' });
