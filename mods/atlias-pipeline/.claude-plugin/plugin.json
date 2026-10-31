@@ -1,0 +1,34 @@
+{
+  "name": "atlias-pipeline",
+  "version": "0.1.0",
+  "description": "Default-off collectors for the local planner and reporter: the exact original and follow-up prompts and the selected skills, native receipts that count only with a numeric exit code, and an optional evidence-record style. No model call; every other event passes through unchanged.",
+  "author": { "name": "Gev", "url": "https://github.com/ridelink0" },
+  "homepage": "https://github.com/ridelink0/atlias",
+  "license": "MIT",
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Atlias pipeline collectors",
+      "description": "Master switch. Off registers nothing. Every option below needs this on.",
+      "default": false
+    },
+    "collectAuthority": {
+      "type": "boolean",
+      "title": "Record original and follow-up prompts",
+      "description": "Keep the exact text of each of the person's own prompts, in order, and each selected skill's exact text, in the session store. Needs the master switch on.",
+      "default": false
+    },
+    "collectReceipts": {
+      "type": "boolean",
+      "title": "Record check receipts",
+      "description": "After a Bash or PowerShell call, record its exit code when the native result carries a numeric one; otherwise the receipt is unknown. Edits make earlier receipts stale. Needs Record original and follow-up prompts on.",
+      "default": false
+    },
+    "evidenceRecordStyle": {
+      "type": "boolean",
+      "title": "Evidence record style",
+      "description": "Add one constant instruction asking for the shortest complete evidence record at the end of each reply. It saves no generated tokens by itself. Needs the master switch on.",
+      "default": false
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "atlias-transaction",
+  "version": "0.1.0",
+  "author": { "name": "Gev" },
+  "description": "Experimental native tool batches; each operation uses Claude Code's ordinary tool permission path.",
+  "userConfig": {
+    "enabled": { "type": "boolean", "title": "Native tool batches", "description": "Register a bounded sequential batch tool. Requires native qualification on the installed client.", "default": false },
+    "deferBuiltins": { "type": "boolean", "title": "Defer built-in tools", "description": "Keep native tools available through ToolSearch while loading the batch tool upfront. Requires ENABLE_TOOL_SEARCH=true.", "default": false },
+    "deferShell": { "type": "boolean", "title": "Defer the shells too", "description": "With hotCoreTools, keep only Read, Edit and Write visible and defer Bash and PowerShell behind ToolSearch; a check can still run as a batch operation. Experimental; requires same-model quality qualification.", "default": false },
+    "omitBatch": { "type": "boolean", "title": "Leave the batch tool out", "description": "With hotCoreTools, keep the same deferral but do not register the batch tool; every native tool stays callable directly or through ToolSearch. Experimental; requires same-model quality qualification.", "default": false },
+    "hotGlob": { "type": "boolean", "title": "Keep Glob visible too", "description": "With hotCoreTools, keep Glob natively visible as well; every other deferred built-in stays deferred. Experimental; requires same-model quality qualification.", "default": false },
+    "hotCoreTools": { "type": "boolean", "title": "Keep core tools visible", "description": "With deferBuiltins, keep Read, Edit, Write, Bash and PowerShell natively visible and defer only the other available built-ins. Experimental; requires same-model quality qualification.", "default": false },
+    "unchangedReads": { "type": "boolean", "title": "Pass unchanged-file Read notices", "description": "In a batch, pass the exact native notice for a re-read of an unchanged file through as executed instead of stopping with require-native-read. Experimental; requires same-model quality qualification.", "default": false },
+    "deduplicateTextReads": { "type": "boolean", "title": "Deduplicate text Read results", "description": "Keep exact native text and metadata; represent a verified duplicate file.content with a reversible recipe. Experimental; requires same-model quality qualification.", "default": false }
+  }
+}

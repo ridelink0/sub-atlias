@@ -1,0 +1,8 @@
+{
+  "name": "atlias-meter",
+  "version": "0.1.0",
+  "description": "A read-only meter for Claude Code 2.1.287 or newer: what skills, tools, context, reminders and tool results cost in a session, and the exact tokens of every request. It changes nothing Claude Code sends or stores.",
+  "author": { "name": "Gev", "url": "https://github.com/ridelink0" },
+  "homepage": "https://github.com/ridelink0/atlias",
+  "license": "MIT"
+}
