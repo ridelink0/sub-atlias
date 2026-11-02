@@ -17,6 +17,8 @@ Choose the host you use: `--claude`, `--codex`, `--antigravity`, or `--gemini`. 
 
 For Claude Code's plugin browser, add `ridelink0/atlias` as a marketplace and install `atlias`. Codex users can add the repository as a plugin marketplace, then run `atlias install --codex` to configure its MCP server and hooks.
 
+On macOS, install Node from nodejs.org, Homebrew or nvm. If you use nvm with an IDE host started from the Dock, run `atlias install` again after changing Node version, because the host's config holds that Node's full path. Install graphify with `uv tool install graphifyy` or `pipx install graphifyy`, since Homebrew's Python refuses a plain `pip install`.
+
 ## What it adds
 
 - One project memory shared through host MCP tools.

@@ -1,13 +1,13 @@
 {
   "name": "atlias",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "sub-atlias: the free sub-harness version of Atlias (not the full Atlias app). Shared project memory, knowledge graphs, host hooks, MCP tools, and verification inside Claude Code, Codex and other hosts.",
   "type": "module",
   "bin": {
     "atlias": "bin/atlias.mjs"
   },
   "scripts": {
-    "test": "node test/public-package.mjs",
+    "test": "node test/public-package.mjs && node test/macos.mjs",
     "doctor": "node bin/atlias.mjs doctor",
     "test:install": "node test/install-sandbox.mjs"
   },
