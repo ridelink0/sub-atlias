@@ -89,22 +89,25 @@ export default async function onboardingGoalsSuites({ asyncSuite, suite, check, 
       chat.status === 'complete' && chat.method === 'chatgpt' && chat.verification === 'plan_authorized_model_verified' && modelCalls === 1 && validated === 'gpt-6.1-sol/xhigh' && core.config().agent.engine === 'chatgpt',
       { happened: JSON.stringify({ chat, authCalls, modelCalls, validated }), why: 'The direct ChatGPT engine must be wired to its own SDK and preserve the explicitly requested model and effort.', fix: 'Use the plan engine session/login/models/validate flow with no substitute.' });
 
+    // Sitework 4.1.8 sends choice 9 (Claude Code, your Claude plan) through the Claude plan setup. A fake
+    // Claude plan module stands in, so no test installs the SDK or opens a real browser sign-in (2026-11-03:
+    // the real ones ran here, and a real login landed in the test folder).
     const claudeFile = path.join(temp('state'), 'claude-native.json');
-    let nativeLogins = 0, nativeChecks = 0, nativeCopy = '';
-    const claudeAnswers = ['9', 'yes'];
+    const fakePlan = (signsIn) => { const s = { logins: 0, signed: false }; return { s, plan: { prepared: () => true, INSTALL_SIZE: '0 MB', runtimeRoot: () => 'R', SETUP_COMMAND: 'atlias setup claude', MODELS: ['claude-opus-5-5'], EFFORTS: ['xhigh'], prepare: () => { throw new Error('the test must not install the SDK'); }, planStatus: () => ({ authenticated: s.signed, plan: s.signed }), planLogin: () => { s.logins++; s.signed = signsIn; return { started: true, exitCode: signsIn ? 0 : 1 }; } } }; };
+    let nativeCopy = '';
+    const claudeAnswers = ['9', 'yes', 'claude-opus-5-5', 'xhigh'];
     // The claude host is a founders-edition route (Gev, 2026-10-30); test/edition-suites.mjs checks the release refuses it.
     const asFounders = async (fn) => { offerClaudeForTests(true); try { return await fn(); } finally { offerClaudeForTests(false); } };
-    const claude = await asFounders(() => onboarding.firstOpen({ detect: false, file: claudeFile, ask: async () => claudeAnswers.shift(), out: (line) => { nativeCopy += line; },
-      nativeAuthStatus: async (provider) => (++nativeChecks === 1 ? { available: true, authenticated: false, subscription: false } : { available: provider === 'claude', authenticated: true, subscription: true }),
-      nativeLogin: async (provider) => { if (provider === 'claude') nativeLogins++; return { started: true, exitCode: 0 }; } }));
-    check('Claude subscription setup uses only its native CLI status and login and labels billing as native-owned',
-      claude.status === 'complete' && claude.method === 'claude' && nativeLogins === 1 && nativeChecks === 2 && /unmodified CLI owns sign-in/.test(nativeCopy) && /did not inspect credentials/.test(nativeCopy),
-      { happened: JSON.stringify({ claude, nativeLogins, nativeChecks, nativeCopy }), why: 'The supported subscription path stays inside the actual Claude Code CLI and cannot imply Atlias SDK token relay.', fix: 'Use the native login command and status booleans only.' });
+    const good = fakePlan(true);
+    const claude = await asFounders(() => onboarding.firstOpen({ detect: false, file: claudeFile, ask: async () => claudeAnswers.shift(), out: (line) => { nativeCopy += line; }, claudePlan: good.plan }));
+    check("Claude Code setup signs in through Anthropic's own Claude plan sign-in, once, and runs on Atlias's loop",
+      claude.status === 'complete' && claude.method === 'claude-plan' && good.s.logins === 1 && /Atlias never sees your password or token/.test(nativeCopy),
+      { happened: JSON.stringify({ claude, logins: good.s.logins, nativeCopy }), why: "Choice 9 is the Claude plan route since Sitework 4.1.8; the sign-in is Anthropic's own.", fix: 'Route choice 9 through configureClaudePlan with the injected module.' });
     const failedAnswers = ['9', 'yes'];
-    const failedClaude = await asFounders(() => onboarding.firstOpen({ detect: false, file: path.join(temp('state'), 'claude-cancel.json'), ask: async () => failedAnswers.shift(), out: () => {},
-      nativeAuthStatus: async () => ({ available: true, authenticated: false, subscription: false }), nativeLogin: async () => ({ started: true, exitCode: 1 }) }));
-    check('a native CLI login that does not authenticate stays deferred', failedClaude.status === 'deferred' && failedClaude.verification === 'native_sign_in_unverified',
-      { happened: JSON.stringify(failedClaude), why: 'An unsuccessful sign-in cannot unlock the selected host.', fix: 'Require a verified native auth status before marking setup complete.' });
+    const bad = fakePlan(false);
+    const failedClaude = await asFounders(() => onboarding.firstOpen({ detect: false, file: path.join(temp('state'), 'claude-cancel.json'), ask: async () => failedAnswers.shift(), out: () => {}, claudePlan: bad.plan }));
+    check('a Claude sign-in that does not verify stays deferred', failedClaude.status === 'deferred' && failedClaude.verification === 'plan_sign_in_unverified' && bad.s.logins === 1,
+      { happened: JSON.stringify(failedClaude), why: 'An unsuccessful sign-in cannot unlock the selected route.', fix: 'Require a verified plan status before marking setup complete.' });
 
     const unavailableFile = path.join(temp('state'), 'chatgpt-unprepared.json');
     let unexpectedlyLoggedIn = false;
