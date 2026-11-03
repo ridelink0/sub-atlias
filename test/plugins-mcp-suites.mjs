@@ -196,7 +196,7 @@ export async function silentModelSuite({ asyncSuite, check, core, TMP, fs, path 
         onActivity: (label) => statuses.push(label), narrateFetch,
         chat: async () => { if (++calls === 1) return { content: 'NARRATION-ONE Let me open the file first.\n' + frame({ tool: 'read_file', path: 'read.txt' }) }; await wait(slowSecond); return { content: 'Done.' }; },
       });
-      await wait(30);
+      await wait(120);
       return { reply, shown, statuses, state };
     } finally { core.setRunOverride(null); }
   };
