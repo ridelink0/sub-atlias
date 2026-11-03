@@ -37,7 +37,7 @@ export default async function ({ suite, asyncSuite, check, core, fs, path, ROOT,
     const source = fs.readFileSync(path.join(ROOT, 'lib/terminal-ui.mjs'), 'utf8');
     const changed = source.replace("if (name === 'enter' && a.question && !renderComposer", "if (false && name === 'enter' && a.question && !renderComposer");
     fs.writeFileSync(path.join(folder, 'terminal-ui.mjs'), changed);
-    for (const dep of ['terminal-brand.mjs', 'terminal-appearance.mjs', 'usage-display.mjs']) fs.copyFileSync(path.join(ROOT, 'lib', dep), path.join(folder, dep));
+    for (const dep of fs.readdirSync(path.join(ROOT, 'lib')).filter((n) => n.endsWith('.mjs') && n !== 'terminal-ui.mjs')) fs.copyFileSync(path.join(ROOT, 'lib', dep), path.join(folder, dep));
     check('the same scenario catches a planted missing question guard', source !== changed && !await scenario(await import(pathToFileURL(path.join(folder, 'terminal-ui.mjs')).href)), detail());
   });
   await asyncSuite('terminal recovery expert', 'terminal usability: queue draft and current key state', async () => {

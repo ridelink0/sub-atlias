@@ -39,7 +39,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
       const mutated = source.replace('if (!keepRawBetweenPrompts) input.setRawMode(active.wasRaw);', 'input.setRawMode(active.wasRaw);');
       const file = path.join(temp, 'terminal-ui.mjs'); fs.writeFileSync(file, mutated);
       fs.copyFileSync(path.join(ROOT, 'lib/terminal-brand.mjs'), path.join(temp, 'terminal-brand.mjs'));
-      for (const dependency of ['terminal-appearance.mjs', 'usage-display.mjs']) fs.copyFileSync(path.join(ROOT, 'lib', dependency), path.join(temp, dependency));
+      for (const dependency of fs.readdirSync(path.join(ROOT, 'lib')).filter((n) => n.endsWith('.mjs') && !['terminal-ui.mjs', 'terminal-brand.mjs'].includes(n))) fs.copyFileSync(path.join(ROOT, 'lib', dependency), path.join(temp, dependency));
       const impl = await import(pathToFileURL(file).href), broken = rig({ impl, keepRawBetweenPrompts: true });
       const pending = broken.start(); broken.send('/help\r'); await pending;
       check('a planted per-prompt mode reset fails the held-mode contract', mutated !== source && !broken.input.isRaw, detail());
@@ -58,7 +58,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
     r.send('beta\x13\r'); const first = await p; p = r.start(); r.send('\x13\r'); const second = await p;
     check('two drafts swap and both remain reachable across prompt boundaries', first.text === 'alpha' && second.text === 'beta', detail()); r.terminal.close();
     const approval = async impl => {
-      const editor = rig({ impl }); let pending = editor.start(); editor.send('original\x13\r'); await pending;
+      const editor = rig({ impl }); let pending = editor.start(); editor.send('original\x13done\r'); await pending;
       pending = editor.start('Allow this action? [y/N]'); editor.send('n\x13\r'); const answer = await pending;
       pending = editor.start(); editor.send('\x13\r'); const restored = await pending; editor.terminal.close();
       return answer.text === 'n' && restored.text === 'original';
@@ -73,7 +73,8 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
       const source = fs.readFileSync(path.join(ROOT, 'lib/terminal-ui.mjs'), 'utf8');
       const mutant = source.replace('if (!a.main && !a.busy) return;', 'if (false) return;');
       const file = path.join(folder, 'terminal-ui.mjs'); fs.writeFileSync(file, mutant);
-      for (const dependency of ['terminal-brand.mjs','terminal-appearance.mjs','usage-display.mjs']) fs.copyFileSync(path.join(ROOT,'lib',dependency),path.join(folder,dependency));
+      // Every module the terminal imports (Sitework 4.1.8 added seasons, the scene, the GitHub mark and onboarding).
+      for (const dependency of fs.readdirSync(path.join(ROOT, 'lib')).filter((n) => n.endsWith('.mjs') && n !== 'terminal-ui.mjs')) fs.copyFileSync(path.join(ROOT, 'lib', dependency), path.join(folder, dependency));
       check('a planted missing permission boundary fails the identical scenario', source !== mutant && !await approval(await import(pathToFileURL(file).href)), detail());
     } finally { fs.rmSync(folder, { recursive: true, force: true }); }
   });
@@ -186,7 +187,7 @@ export default async function terminalUISuites({ suite, asyncSuite, check, core,
       const mutated = source.replace(needle, 'const matches = a.matches || [];');
       const mutantPath = path.join(temp, 'terminal-ui-mutant.mjs'); fs.writeFileSync(mutantPath, mutated);
       fs.copyFileSync(path.join(ROOT, 'lib/terminal-brand.mjs'), path.join(temp, 'terminal-brand.mjs'));
-      for (const dependency of ['terminal-appearance.mjs', 'usage-display.mjs']) fs.copyFileSync(path.join(ROOT, 'lib', dependency), path.join(temp, dependency));
+      for (const dependency of fs.readdirSync(path.join(ROOT, 'lib')).filter((n) => n.endsWith('.mjs') && !['terminal-ui.mjs', 'terminal-brand.mjs'].includes(n))) fs.copyFileSync(path.join(ROOT, 'lib', dependency), path.join(temp, dependency));
       const mutant = await import(pathToFileURL(mutantPath).href);
       const mutantCompletion = await coalescedCompletion(mutant);
       check('stale-frame mutation is detected by the coalesced-input regression', mutantCompletion === '/goal status' && mutantCompletion !== currentCompletion, detail(JSON.stringify(mutantCompletion)));
