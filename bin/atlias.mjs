@@ -491,7 +491,7 @@ else switch (cmd) {
     } else { say('usage: atlias shortcut [install|uninstall|status]'); process.exitCode = 2; }
     break;
   }
-  case 'doctor': { const c = hosts.doctor(cwd).concat(extra.doctorRows()); say(hosts.formatDoctor(c)); process.exitCode = c.every((x) => x.ok) ? 0 : 1; break; }
+  case 'doctor': { const c = hosts.doctor(cwd).concat(extra.doctorRows()); say(hosts.formatDoctor(c)); process.exitCode = c.every((x) => x.ok || hosts.isOptionalRow(x)) ? 0 : 1; break; }
   case 'statusline': {
     const action=argv[1]||'install';
     if(!['install','remove'].includes(action)){say('usage: atlias statusline install|remove');process.exitCode=1;break;}
