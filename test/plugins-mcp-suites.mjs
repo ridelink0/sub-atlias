@@ -177,9 +177,6 @@ export default async function pluginsMcpSuites({ suite, asyncSuite, check, core,
     check('the agent tool names type, and nothing else about it changed shape', Object.keys(loop.AGENT_TOOL.params).join() === 'task,name,engine,model,type', detail(loop.AGENT_TOOL.params));
   });
 
-  suite('terminal display expert', 'status words for MCP servers: computer use shows as computer use', () => {
-    check('an MCP call on a computer-use server shows Working on computer use; any other MCP server shows Working', agent.toolActivity('mcp', 'computer-use computer_click') === 'Working on computer use' && agent.toolActivity('mcp', 'gev-knowledge query_graph') === 'Working' && agent.toolRow('  tool mcp kitecho echo') === '● Use(kitecho echo)', detail([agent.toolActivity('mcp', 'computer-use x'), agent.toolRow('  tool mcp kitecho echo')]));
-  });
 }
 
 // Gev 2026-11-03: the model stays silent during a turn; the status shows the app's fixed words for its tool,
@@ -188,18 +185,33 @@ export async function silentModelSuite({ asyncSuite, check, core, TMP, fs, path 
   const dir = path.join(TMP, 'silent-model'); fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, 'read.txt'), 'fixture');
   const frame = (s) => '```atlias\n' + JSON.stringify(s) + '\n```';
-  await asyncSuite('terminal display expert', 'the model is silent during a turn and the status follows its tools', async () => {
-    core.setRunOverride({ agent: { testCommand: 'off', maxToolRounds: 4 } });
+  const detail = (happened) => ({ happened: JSON.stringify(happened), why: 'Gev: the model never speaks during a turn; a local model may label the step, off by default.', fix: 'Check narrate, ACTIVITY and activityChat in lib/agent.mjs.' });
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const run = async (narrator, narrateFetch, slowSecond = 0) => {
+    core.setRunOverride({ agent: { testCommand: 'off', maxToolRounds: 4, narrator, ollamaModel: 'tiny', ollamaUrl: 'http://127.0.0.1:9' } });
     try {
       const shown = [], statuses = [], state = agent.newState(dir, 'openai');
       let calls = 0;
       const reply = await agent.turn(state, 'Read the fixture.', null, (line) => shown.push(String(line)), {
-        onActivity: (label) => statuses.push(label),
-        chat: async () => (++calls === 1 ? { content: 'NARRATION-ONE Let me open the file first.\n' + frame({ tool: 'read_file', path: 'read.txt' }) } : { content: 'Done.' }),
+        onActivity: (label) => statuses.push(label), narrateFetch,
+        chat: async () => { if (++calls === 1) return { content: 'NARRATION-ONE Let me open the file first.\n' + frame({ tool: 'read_file', path: 'read.txt' }) }; await wait(slowSecond); return { content: 'Done.' }; },
       });
-      const rows = shown.filter((l) => /read\.txt/.test(l));
-      check('model text between tool calls never reaches the screen; the tool row does', reply === 'Done.' && rows.length === 1 && !shown.some((l) => l.includes('NARRATION')), { happened: JSON.stringify(shown), why: 'Gev: the harness is not shown; the model does not speak during a turn.', fix: 'Keep interim model text out of say().' });
-      check('the status follows the tool and goes back to Working when the model is called again', JSON.stringify(statuses) === JSON.stringify(['Working', 'Working on files', 'Working']) && !Object.getOwnPropertySymbols(state).length, { happened: JSON.stringify(statuses), why: 'The status is the app\'s own words for what the model is doing now.', fix: 'Check toolActivity, ACTIVITY and activityChat in lib/agent.mjs.' });
+      await wait(30);
+      return { reply, shown, statuses, state };
     } finally { core.setRunOverride(null); }
+  };
+  await asyncSuite('terminal display expert', 'the model is silent during a turn; a local model labels the step only when the narrator is on', async () => {
+    let fetched = 0;
+    const off = await run('off', async () => { fetched++; return { ok: true, json: async () => ({ message: { content: 'x' } }) }; });
+    check('model text between tool calls never reaches the screen; the tool row does', off.reply === 'Done.' && off.shown.filter((l) => /read\.txt/.test(l)).length === 1 && !off.shown.some((l) => l.includes('NARRATION')), detail(off.shown));
+    check('narrator off (the default): the status is only Working and no local model is called', core.config().agent.narrator === 'off' && off.statuses.every((x) => x === 'Working') && off.statuses.length === 2 && fetched === 0 && !Object.getOwnPropertySymbols(off.state).length, detail({ statuses: off.statuses, fetched }));
+    let asked = null;
+    const on = await run('on', async (url, init) => { asked = { url, body: JSON.parse(init.body) }; return { ok: true, json: async () => ({ message: { content: 'Reading the fixture file.\nmore' } }) }; }, 40);
+    check('narrator on: the local model labels the step from the tool name and target only, cleaned to one line', JSON.stringify(on.statuses) === JSON.stringify(['Working', 'Reading the fixture file', 'Working']) && asked.url === 'http://127.0.0.1:9/api/chat' && asked.body.model === 'tiny' && /Tool: read_file\nTarget: read\.txt/.test(asked.body.messages[1].content) && !JSON.stringify(asked.body).includes('NARRATION'), detail({ statuses: on.statuses, asked }));
+    const late = await run('on', async () => { await wait(60); return { ok: true, json: async () => ({ message: { content: 'Reading slowly' } }) }; });
+    check('a label that arrives after the next step began is dropped', !late.statuses.includes('Reading slowly'), detail(late.statuses));
+    const failing = await agent.narrate('shell', 'npm test', { cfg: { narrator: 'on', ollamaModel: 'tiny' }, fetchImpl: async () => { throw new Error('offline'); } });
+    const junk = await agent.narrate('shell', 'x', { cfg: { narrator: 'on', ollamaModel: 'tiny' }, fetchImpl: async () => ({ ok: true, json: async () => ({ message: { content: 'x'.repeat(200) } }) }) });
+    check('an unreachable or rambling local model shows nothing new', failing === null && junk === null, detail({ failing, junk }));
   });
 }
