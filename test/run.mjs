@@ -1141,6 +1141,7 @@ await (await import('./terminal-ui-suites.mjs')).default({ suite, asyncSuite, ch
 await (await import('./terminal-usability-suites.mjs')).default({ suite, asyncSuite, check, core, fs, path, ROOT, TMP });
 await (await import('./followups-suites.mjs')).default({ suite, asyncSuite, check, core, fs, path, ROOT, TMP });
 await (await import('./plugins-mcp-suites.mjs')).default({ suite, asyncSuite, check, core, TMP, fs, path });
+await (await import('./plugins-mcp-suites.mjs')).silentModelSuite({ asyncSuite, check, core, TMP, fs, path });
 await (await import('./direct-contract-suites.mjs')).default({ asyncSuite, check, ROOT, path, spawnSync });
 await (await import('./coverage-suites.mjs')).default({ suite, check, ROOT, fs, path });
 await (await import('./features-1022-compact-suites.mjs')).default({ asyncSuite, check, TMP, agentMod, commands: await import('../lib/commands.mjs') });

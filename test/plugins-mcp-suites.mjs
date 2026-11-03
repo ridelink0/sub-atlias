@@ -181,3 +181,25 @@ export default async function pluginsMcpSuites({ suite, asyncSuite, check, core,
     check('an MCP call on a computer-use server shows Working on computer use; any other MCP server shows Working', agent.toolActivity('mcp', 'computer-use computer_click') === 'Working on computer use' && agent.toolActivity('mcp', 'gev-knowledge query_graph') === 'Working' && agent.toolRow('  tool mcp kitecho echo') === '● Use(kitecho echo)', detail([agent.toolActivity('mcp', 'computer-use x'), agent.toolRow('  tool mcp kitecho echo')]));
   });
 }
+
+// Gev 2026-11-03: the model stays silent during a turn; the status shows the app's fixed words for its tool,
+// and goes back to Working each time the model is called again.
+export async function silentModelSuite({ asyncSuite, check, core, TMP, fs, path }) {
+  const dir = path.join(TMP, 'silent-model'); fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'read.txt'), 'fixture');
+  const frame = (s) => '```atlias\n' + JSON.stringify(s) + '\n```';
+  await asyncSuite('terminal display expert', 'the model is silent during a turn and the status follows its tools', async () => {
+    core.setRunOverride({ agent: { testCommand: 'off', maxToolRounds: 4 } });
+    try {
+      const shown = [], statuses = [], state = agent.newState(dir, 'openai');
+      let calls = 0;
+      const reply = await agent.turn(state, 'Read the fixture.', null, (line) => shown.push(String(line)), {
+        onActivity: (label) => statuses.push(label),
+        chat: async () => (++calls === 1 ? { content: 'NARRATION-ONE Let me open the file first.\n' + frame({ tool: 'read_file', path: 'read.txt' }) } : { content: 'Done.' }),
+      });
+      const rows = shown.filter((l) => /read\.txt/.test(l));
+      check('model text between tool calls never reaches the screen; the tool row does', reply === 'Done.' && rows.length === 1 && !shown.some((l) => l.includes('NARRATION')), { happened: JSON.stringify(shown), why: 'Gev: the harness is not shown; the model does not speak during a turn.', fix: 'Keep interim model text out of say().' });
+      check('the status follows the tool and goes back to Working when the model is called again', JSON.stringify(statuses) === JSON.stringify(['Working', 'Working on files', 'Working']) && !Object.getOwnPropertySymbols(state).length, { happened: JSON.stringify(statuses), why: 'The status is the app\'s own words for what the model is doing now.', fix: 'Check toolActivity, ACTIVITY and activityChat in lib/agent.mjs.' });
+    } finally { core.setRunOverride(null); }
+  });
+}
