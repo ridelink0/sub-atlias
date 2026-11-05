@@ -12,7 +12,7 @@ import { TOOLS } from '../mcp/tools.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-assert.equal(packageJson.name, 'atlias');
+assert.equal(packageJson.name, 'sub-atlias');
 assert.equal(VERSION, packageJson.version);
 assert.equal(packageJson.bin['atlias'], 'bin/atlias.mjs');
 for (const privatePath of ['lib/agent.mjs', 'lib/loop.mjs', 'lib/eval.mjs', 'lib/bench.mjs', 'evals']) {
@@ -55,7 +55,13 @@ reader.push('data: {"type":"response.completed","response":{"usage":{"input_toke
 assert.deepEqual(reader.finish().tokens, { input: 10, output: 2, cacheRead: 0, cacheWrite: 0, cacheWrite5m: 0, cacheWrite1h: 0, totalInput: 10, total: 12 });
 
 const toolNames = new Set(TOOLS.map((tool) => tool.name));
-for (const name of ['harness_recall', 'harness_remember', 'harness_verify', 'graph_query', 'graph_affected', 'graph_explain']) assert.ok(toolNames.has(name));
+const READ_ONLY = { harness_recall: true, harness_remember: false, harness_progress: false, harness_verify: true, harness_digest: false, harness_status: true, graph_query: true, graph_affected: true, graph_explain: true };
+assert.deepEqual([...toolNames].sort(), Object.keys(READ_ONLY).sort());
+for (const tool of TOOLS) {
+  for (const hint of ['readOnlyHint', 'destructiveHint', 'idempotentHint', 'openWorldHint']) assert.equal(typeof tool.annotations?.[hint], 'boolean', `${tool.name} declares ${hint}`);
+  assert.equal(tool.annotations.readOnlyHint, READ_ONLY[tool.name], `${tool.name} read-only hint`);
+  assert.equal(tool.annotations.destructiveHint, false, `${tool.name} never destroys data`);
+}
 assert.equal(toolNames.has('harness_bench'), false);
 
 const cli = spawnSync(process.execPath, [path.join(root, 'bin', 'atlias.mjs'), '--help'], { encoding: 'utf8' });

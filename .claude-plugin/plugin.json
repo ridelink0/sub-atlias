@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "atlias",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "sub-atlias, the free sub version of Atlias (not the full app): shared project memory, a knowledge graph, host hooks, MCP tools, and verification.",
   "author": {
-    "name": "Gev",
+    "name": "Ridelinkmaps",
     "url": "https://github.com/ridelink0"
   },
-  "homepage": "https://github.com/ridelink0/atlias",
-  "repository": "https://github.com/ridelink0/atlias",
+  "homepage": "https://github.com/ridelink0/sub-atlias",
+  "repository": "https://github.com/ridelink0/sub-atlias",
   "license": "MIT",
   "keywords": [
     "agent harness",

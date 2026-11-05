@@ -3,7 +3,7 @@
   "name": "atlias",
   "description": "sub-atlias: the free sub version of Atlias (not the full Atlias app) for shared memory, knowledge graphs, hooks, MCP tools, and verification.",
   "owner": {
-    "name": "Gev",
+    "name": "Ridelinkmaps",
     "email": "app.ridelink@gmail.com"
   },
   "plugins": [
@@ -11,12 +11,12 @@
       "name": "atlias",
       "description": "sub-atlias, the free sub version of Atlias (not the full app): shared project memory, a knowledge graph, host hooks, MCP tools, and verification.",
       "author": {
-        "name": "Gev"
+        "name": "Ridelinkmaps"
       },
       "category": "productivity",
       "source": "./",
-      "homepage": "https://github.com/ridelink0/atlias",
-      "version": "4.0.1"
+      "homepage": "https://github.com/ridelink0/sub-atlias",
+      "version": "4.0.2"
     }
   ]
 }

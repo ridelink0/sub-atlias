@@ -1,6 +1,6 @@
 {
-  "name": "atlias",
-  "version": "4.0.1",
+  "name": "sub-atlias",
+  "version": "4.0.2",
   "description": "sub-atlias: the free sub-harness version of Atlias (not the full Atlias app). Shared project memory, knowledge graphs, host hooks, MCP tools, and verification inside Claude Code, Codex and other hosts.",
   "type": "module",
   "bin": {
@@ -30,10 +30,10 @@
     "node": ">=18"
   },
   "license": "MIT",
-  "author": "Gev",
+  "author": "Ridelinkmaps",
   "repository": {
     "type": "git",
-    "url": "https://github.com/ridelink0/atlias.git"
+    "url": "https://github.com/ridelink0/sub-atlias.git"
   },
   "keywords": [
     "claude code",
