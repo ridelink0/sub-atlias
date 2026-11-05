@@ -9,13 +9,13 @@ sub-atlias adds shared project memory, a knowledge graph, and verification hooks
 Install the terminal package with Node.js 18 or newer:
 
 ```sh
-npm install --global github:ridelink0/atlias
+npm install --global sub-atlias
 atlias install --claude
 ```
 
 Choose the host you use: `--claude`, `--codex`, `--antigravity`, or `--gemini`. Run `atlias doctor` to check the install. `atlias uninstall --codex|--antigravity|--gemini` removes the entries atlias added for that host. Remove the Claude Code plugin with `/plugin uninstall atlias@atlias` inside Claude Code.
 
-For Claude Code's plugin browser, add `ridelink0/atlias` as a marketplace and install `atlias`. Codex users can add the repository as a plugin marketplace, then run `atlias install --codex` to configure its MCP server and hooks.
+For Claude Code's plugin browser, add `ridelink0/sub-atlias` as a marketplace and install `atlias`. Codex users can add the repository as a plugin marketplace, then run `atlias install --codex` to configure its MCP server and hooks.
 
 ## What it adds
 

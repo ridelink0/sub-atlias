@@ -1,13 +1,13 @@
 {
   "name": "atlias",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "description": "A sub-harness for shared project memory, a knowledge graph, host hooks, MCP tools, and verification.",
   "author": {
-    "name": "Gev",
+    "name": "Ridelinkmaps",
     "url": "https://github.com/ridelink0"
   },
-  "homepage": "https://github.com/ridelink0/atlias",
-  "repository": "https://github.com/ridelink0/atlias",
+  "homepage": "https://github.com/ridelink0/sub-atlias",
+  "repository": "https://github.com/ridelink0/sub-atlias",
   "license": "MIT",
   "keywords": [
     "agent harness",
@@ -25,13 +25,13 @@
     "displayName": "atlias",
     "shortDescription": "Done means done: checks every claim of done against what really happened",
     "longDescription": "atlias checks an agent's claim that it finished against the session itself: a pass claimed with no test run, a pass after a failing run, done with no check since the last edit, placeholders, weakened tests, new code nothing calls, files that do not parse, loops, and destructive commands. It adds a memory shared with every other harness and a knowledge graph that answers codebase questions before files are read. The hooks and the MCP server come from atlias install --codex, which points Codex at a launcher that survives updates.",
-    "developerName": "Gev",
+    "developerName": "Ridelinkmaps",
     "category": "Developer Tools",
     "capabilities": [
       "Read",
       "Write"
     ],
-    "websiteURL": "https://github.com/ridelink0/atlias",
+    "websiteURL": "https://github.com/ridelink0/sub-atlias",
     "defaultPrompt": [
       "Double-check that the last change really works",
       "What does atlias know about this project?",
