@@ -16,7 +16,29 @@
       "category": "productivity",
       "source": "./",
       "homepage": "https://github.com/ridelink0/sub-atlias",
-      "version": "4.0.2"
+      "version": "4.1.0"
+    },
+    {
+      "name": "atlias-transaction",
+      "description": "sub-atlias token saver: defers Claude Code built-in tools other than Read, Edit, Write, Glob and the shell behind ToolSearch.",
+      "author": {
+        "name": "Ridelinkmaps"
+      },
+      "category": "productivity",
+      "source": "./mods/atlias-transaction",
+      "homepage": "https://github.com/ridelink0/sub-atlias",
+      "version": "4.1.0"
+    },
+    {
+      "name": "atlias-efficiency",
+      "description": "sub-atlias token saver: skill names only in the skill listing, and no built-in memory section.",
+      "author": {
+        "name": "Ridelinkmaps"
+      },
+      "category": "productivity",
+      "source": "./mods/atlias-efficiency",
+      "homepage": "https://github.com/ridelink0/sub-atlias",
+      "version": "4.1.0"
     }
   ]
 }

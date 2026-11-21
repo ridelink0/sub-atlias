@@ -1,0 +1,49 @@
+{
+  "name": "atlias-efficiency",
+  "version": "4.1.0",
+  "author": {
+    "name": "Ridelinkmaps"
+  },
+  "description": "sub-atlias token saver: lists skills by name only and leaves out Claude Code's own memory section (sub-atlias's memory tools take its place).",
+  "userConfig": {
+    "enabled": {
+      "type": "boolean",
+      "title": "Atlias efficiency",
+      "description": "Defer supported built-in tools behind native ToolSearch. Requires a compatible endpoint.",
+      "default": true
+    },
+    "skillListing": {
+      "type": "boolean",
+      "title": "Brief skill listing",
+      "description": "Cut each skill's description in the listing to one line. Skill names and a skill's own instructions are never changed. Needs Atlias efficiency on.",
+      "default": false
+    },
+    "hotGlob": {
+      "type": "boolean",
+      "title": "Keep Glob visible",
+      "description": "Leave Glob natively visible instead of deferring it, and do not name it as deferred. Set the transaction mod's hotGlob too when both mods are loaded. Needs Atlias efficiency on.",
+      "default": true
+    },
+    "skillNamesOnly": {
+      "type": "boolean",
+      "title": "Skill names only",
+      "description": "List skills by name only, with no description. Every skill stays available and its own instructions are never changed. Overrides Brief skill listing. Needs Atlias efficiency on.",
+      "default": true
+    },
+    "omitMemorySection": {
+      "type": "boolean",
+      "title": "Leave out Claude Code's memory instructions",
+      "description": "Omit the system prompt's own memory section; Atlias's memory tools take its place. Every other section is untouched. Needs Atlias efficiency on.",
+      "default": true
+    },
+    "compactToolText": {
+      "type": "boolean",
+      "title": "Compact tool text",
+      "description": "Replace the long usage notes of Bash, Read and ToolSearch with short ones. The opening of each description and every schema stay as they are. Needs Atlias efficiency on.",
+      "default": false
+    }
+  },
+  "homepage": "https://github.com/ridelink0/sub-atlias",
+  "repository": "https://github.com/ridelink0/sub-atlias",
+  "license": "MIT"
+}

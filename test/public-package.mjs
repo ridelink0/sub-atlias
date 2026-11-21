@@ -78,6 +78,45 @@ const noHost = spawnSync(process.execPath, [path.join(root, 'bin', 'atlias.mjs')
 assert.equal(noHost.status, 2);
 assert.match(noHost.stderr, /Choose a host/);
 
+// 4.1.0 token savers (2026-11-21): two more plugins of this marketplace, shipped in the npm package, on by default, and tool search set by install.
+{
+  const market = JSON.parse(fs.readFileSync(path.join(root, '.claude-plugin/marketplace.json'), 'utf8'));
+  const names = market.plugins.map((p) => p.name);
+  assert.deepEqual(names, ['atlias', 'atlias-transaction', 'atlias-efficiency'], 'the marketplace lists sub-atlias and both token savers');
+  for (const p of market.plugins) assert.equal(p.version, packageJson.version, `${p.name} carries the package version`);
+  assert.ok(packageJson.files.includes('mods/'), 'the npm package ships the token savers');
+  const defaults = (name) => Object.fromEntries(Object.entries(JSON.parse(fs.readFileSync(path.join(root, 'mods', name, '.claude-plugin/plugin.json'), 'utf8')).userConfig).map(([k, v]) => [k, v.default]));
+  const t = defaults('atlias-transaction'), e = defaults('atlias-efficiency');
+  for (const k of ['enabled', 'deferBuiltins', 'hotCoreTools', 'hotGlob', 'omitBatch']) assert.equal(t[k], true, `atlias-transaction ${k} is on in the public edition`);
+  for (const k of ['deferShell', 'unchangedReads', 'deduplicateTextReads']) assert.equal(t[k], false, `atlias-transaction ${k} stays off in the public edition`);
+  for (const k of ['enabled', 'skillNamesOnly', 'omitMemorySection', 'hotGlob']) assert.equal(e[k], true, `atlias-efficiency ${k} is on in the public edition`);
+  assert.equal(e.compactToolText, false, 'atlias-efficiency compactToolText stays off in the public edition');
+  for (const name of ['atlias-transaction', 'atlias-efficiency']) {
+    const hooks = JSON.parse(fs.readFileSync(path.join(root, 'mods', name, 'hooks/hooks.json'), 'utf8'));
+    for (const m of hooks.modules) assert.ok(fs.existsSync(path.join(root, 'mods', name, 'hooks', m)), `${name} module ${m} exists`);
+  }
+  const hosts = await import('../lib/hosts.mjs');
+  assert.deepEqual(hosts.TOKEN_MODS, ['atlias-transaction', 'atlias-efficiency']);
+  const added = hosts.withToolSearch({ model: 'x', env: { FOO: '1' } });
+  assert.equal(added.changed, true);
+  assert.deepEqual(added.settings, { model: 'x', env: { FOO: '1', ENABLE_TOOL_SEARCH: 'true' } }, 'other settings and env values are kept');
+  assert.deepEqual(hosts.withToolSearch({}).settings, { env: { ENABLE_TOOL_SEARCH: 'true' } });
+  assert.equal(hosts.withToolSearch({ env: { ENABLE_TOOL_SEARCH: 'false' } }).changed, false, "an explicit value, even false, is the user's choice");
+  assert.equal(hosts.withToolSearch({ env: 'oops' }).changed, false, 'an env that is not an object is left alone');
+  assert.equal(hosts.withToolSearch([]).changed, false, 'a settings file that is not an object is left alone');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sub-atlias-ts-'));
+  const good = path.join(dir, 'settings.json'), bad = path.join(dir, 'bad.json'), none = path.join(dir, 'none', 'settings.json');
+  fs.writeFileSync(good, JSON.stringify({ theme: 'dark' }));
+  fs.writeFileSync(bad, '{ not json');
+  assert.match(hosts.setToolSearch(good), /added/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(good, 'utf8')), { theme: 'dark', env: { ENABLE_TOOL_SEARCH: 'true' } });
+  assert.match(hosts.setToolSearch(good), /left as it is/, 'a second install changes nothing');
+  assert.match(hosts.setToolSearch(bad), /does not parse/);
+  assert.equal(fs.readFileSync(bad, 'utf8'), '{ not json', 'an unreadable settings file is never rewritten');
+  assert.match(hosts.setToolSearch(none), /added/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(none, 'utf8')), { env: { ENABLE_TOOL_SEARCH: 'true' } }, 'a missing settings file is created');
+  fs.rmSync(dir, { recursive: true, force: true });
+}
 console.log('public package checks passed');
 
 // Compaction hooks (Gev, 2026-10-22: Claude Code rejected both as "Hook JSON output validation

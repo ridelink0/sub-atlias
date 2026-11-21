@@ -1,6 +1,6 @@
 {
   "name": "sub-atlias",
-  "version": "4.0.2",
+  "version": "4.1.0",
   "description": "sub-atlias: the free sub-harness version of Atlias (not the full Atlias app). Shared project memory, knowledge graphs, host hooks, MCP tools, and verification inside Claude Code, Codex and other hosts.",
   "type": "module",
   "bin": {
@@ -24,6 +24,7 @@
     "hooks/",
     "lib/",
     "mcp/",
+    "mods/",
     "test/"
   ],
   "engines": {
