@@ -32,14 +32,14 @@ Hard coding tasks, 2026-11-21: 120 tasks from DeepSWE (R2E bug fixes), SWE-Atlas
 
 | Harness | Solved | Tokens per solved task | Against plain Claude Code |
 | --- | --- | --- | --- |
-| Plain Claude Code | 44 / 111 | 890,226 | 1.0x |
-| sub-atlias 4.0.2 (previous release) | 46 / 111 | 878,990 | 1.01x |
-| **sub-atlias 4.1.0 (this release)** | **49 / 111** | **713,083** | **1.25x fewer** |
-| Atlias, the full app (own agent loop) | mean 45.25 / 120 over four nights | 310,398 | about 3x fewer (2.89x) |
+| Plain Claude Code | 47 / 120 | 896,688 | 1.0x |
+| sub-atlias 4.0.2 (previous release) | 49 / 120 | 931,423 | 1.04x more |
+| **sub-atlias 4.1.0 (this release)** | **53 / 120** | **763,375** | **1.17x fewer** |
+| Atlias, the full app (own agent loop) | 46 / 120 | 324,224 | about 3x fewer (2.77x; 2.89x over four nights) |
 
-- Per kind, sub-atlias 4.1.0 against plain Claude Code in tokens per solved task: R2E 1.09x fewer, harness-bench 1.07x, QnA 1.83x. Paired per task, its total tokens were 1.18x fewer (90% interval 1.08x to 1.28x) and its largest prompt 1.26x smaller.
+- A timed-out attempt counts as unsolved, with its tokens. Paired per task on the 118 tasks it finished without a timeout, sub-atlias 4.1.0 used 1.18x fewer total tokens than plain Claude Code (90% interval 1.09x to 1.27x) and its largest prompt was 1.25x smaller; in tokens per solved task it was 1.09x fewer on R2E, 1.20x on harness-bench and 2.02x on QnA.
 - The saving comes from the two plugins this release adds: Claude Code's first request falls from about 75,500 to about 27,800 characters, and that request is sent again on every call.
-- 111 of the 120 tasks are compared: the run was stopped by its weekly-usage guard after 113 tasks, and two of those timed out. The plain Claude Code and sub-atlias 4.0.2 rows come from 2026-11-10 on the same tasks and client; the Atlias row is the mean of four nights of its kept setup (2026-11-17 to 2026-11-21).
+- All 120 tasks are compared. The plain Claude Code and sub-atlias 4.0.2 rows come from 2026-11-10 and the Atlias row from 2026-11-17, on the same tasks and client; over four nights of its kept setup (2026-11-17 to 2026-11-21) Atlias averaged 2.89x fewer.
 - One run per arm on these tasks: a single night moves solves by a few tasks either way, so read the solve counts as a lead.
 - Not measured against a Claude plan's 5-hour limit, and not on light tasks.
 
