@@ -117,6 +117,12 @@ assert.match(noHost.stderr, /Choose a host/);
   assert.deepEqual(JSON.parse(fs.readFileSync(none, 'utf8')), { env: { ENABLE_TOOL_SEARCH: 'true' } }, 'a missing settings file is created');
   fs.rmSync(dir, { recursive: true, force: true });
 }
+{
+  const hostsSrc = fs.readFileSync(path.join(root, 'lib/hosts.mjs'), 'utf8');
+  assert.doesNotMatch(hostsSrc, /run\('claude'/, 'claude is started through resolveCommand, never by name (Windows .cmd shim)');
+  const { runClaude } = await import('../lib/hosts.mjs');
+  assert.equal(typeof runClaude, 'function');
+}
 console.log('public package checks passed');
 
 // Compaction hooks (Gev, 2026-10-22: Claude Code rejected both as "Hook JSON output validation
