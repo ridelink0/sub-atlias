@@ -1,6 +1,6 @@
 # sub-atlias
 
-> **This is sub-atlias, the free sub version of Atlias, not Atlias itself.** It runs inside a coding host you already use (Claude Code, Codex, Antigravity or Gemini CLI) and adds to it. The full Atlias app, with its own agent loop (the one measured at 19.52x fewer tokens than plain Claude Code), is a separate paid product and is not in this repository. The command and plugin are still named `atlias`.
+> **This is sub-atlias, the free sub version of Atlias, not Atlias itself.** It runs inside a coding host you already use (Claude Code, Codex, Antigravity or Gemini CLI) and adds to it. The full Atlias app, with its own agent loop (about 3x fewer tokens per solved task than plain Claude Code on hard coding tasks; see Benchmarks), is a separate paid product and is not in this repository. The command and plugin are still named `atlias`.
 
 sub-atlias adds shared project memory, a knowledge graph, and verification hooks to the host. It leaves model choice and provider billing with you.
 
@@ -28,15 +28,20 @@ The launcher accepts Claude's Anthropic Messages API or Codex's Responses API. I
 
 ## Benchmarks
 
-Measured on one PC with a local model (qwen3.5:9b through Ollama, 32,768-token window); a task counts as solved only when its hidden check passes.
+Hard coding tasks, 2026-11-21: 120 tasks from DeepSWE (R2E bug fixes), SWE-Atlas QnA (questions about real repositories) and harness-bench (multi-step work tasks). Every arm ran Claude Haiku 5.5 through Claude Code 2.1.303 with the same tasks, grader, 32-turn budget and 600-second limit, one attempt per task. A task counts as solved only when its hidden check passes (QnA answers are graded against a rubric by a Claude Haiku judge). Tokens are every token the provider counted: input, cache reads, cache writes and output, failed attempts included.
 
-| Run | Arms | Solved | Total tokens | Fewer tokens |
-| --- | --- | --- | --- | --- |
-| Ten-task smoke, 2026-10-16 (one run per arm) | Claude Code + this sub-harness / plain Claude Code | 8 / 10 and 8 / 10 | 250,143 and 659,112 | 2.63x |
+| Harness | Solved | Tokens per solved task | Against plain Claude Code |
+| --- | --- | --- | --- |
+| Plain Claude Code | 44 / 111 | 890,226 | 1.0x |
+| sub-atlias 4.0.2 (previous release) | 46 / 111 | 878,990 | 1.01x |
+| **sub-atlias 4.1.0 (this release)** | **49 / 111** | **713,083** | **1.25x fewer** |
+| Atlias, the full app (own agent loop) | mean 45.25 / 120 over four nights | 310,398 | about 3x fewer (2.89x) |
 
-- That trial build also carried two Claude Code mods (tool deferral and a short skill listing). This 4.0.1 package does not ship them, so the saving of a standard install is not measured.
-- Not measured against a Claude plan's 5-hour limit. The session brief this package adds at session start counts toward it, so on a Claude subscription it can use more of that limit than plain Claude Code.
-- Atlias's own agent (the full app, not this package) measured a pooled 19.52x fewer tokens than plain Claude Code over nine 120-run screens on the same model; see [the evidence page](https://atlias-ridelink.netlify.app/evidence.html).
+- Per kind, sub-atlias 4.1.0 against plain Claude Code in tokens per solved task: R2E 1.09x fewer, harness-bench 1.07x, QnA 1.83x. Paired per task, its total tokens were 1.18x fewer (90% interval 1.08x to 1.28x) and its largest prompt 1.26x smaller.
+- The saving comes from the two plugins this release adds: Claude Code's first request falls from about 75,500 to about 27,800 characters, and that request is sent again on every call.
+- 111 of the 120 tasks are compared: the run was stopped by its weekly-usage guard after 113 tasks, and two of those timed out. The plain Claude Code and sub-atlias 4.0.2 rows come from 2026-11-10 on the same tasks and client; the Atlias row is the mean of four nights of its kept setup (2026-11-17 to 2026-11-21).
+- One run per arm on these tasks: a single night moves solves by a few tasks either way, so read the solve counts as a lead.
+- Not measured against a Claude plan's 5-hour limit, and not on light tasks.
 
 ## Free to use, open to contributors
 
